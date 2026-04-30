@@ -1,0 +1,233 @@
+/* ClientWallet.css - Premium Wallet Styles */
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --primary: #ff4500;
+    --primary-dark: #e63900;
+    --primary-light: rgba(255, 69, 0, 0.1);
+    --accent-purple: #2d1b4e;
+    --accent-purple-light: rgba(45, 27, 78, 0.1);
+    --bg-white: #ffffff;
+    --bg-light: #f8f9fa;
+    --text-dark: #1a1a1a;
+    --text-medium: #666666;
+    --text-light: #999999;
+    --border-color: #e5e5e5;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --font-syne: 'Syne', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-syne);
+    background: white;
+}
+
+.client-wallet {
+    min-height: 100vh;
+    background: white;
+    font-family: var(--font-syne);
+    padding: 20px;
+}
+
+.wallet-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.wallet-header {
+    margin-bottom: 32px;
+}
+
+.wallet-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.wallet-balance-card {
+    background: linear-gradient(135deg, #ff4500 0%, #e63900 100%);
+    border-radius: var(--radius-xl);
+    padding: 40px;
+    color: white;
+    text-align: center;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 24px rgba(255, 69, 0, 0.3);
+}
+
+.wallet-balance-card h3 {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.9;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.balance-amount {
+    font-size: 48px;
+    font-weight: 800;
+    margin-bottom: 16px;
+}
+
+.pending-balance {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.btn-topup {
+    padding: 12px 32px;
+    background: white;
+    color: var(--primary);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-syne);
+}
+
+.btn-topup:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.transactions-section {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.transactions-section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 16px;
+}
+
+.transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.transaction-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.transaction-item:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.tx-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.tx-details {
+    flex: 1;
+}
+
+.tx-desc {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.tx-date {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.tx-amount {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.tx-amount.credit {
+    color: #16a34a;
+}
+
+.tx-amount.debit {
+    color: #dc2626;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-family: var(--font-syne);
+}
+
+.action-btn.primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+}
+
+.action-btn.primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.action-btn.secondary {
+    background: white;
+    color: var(--text-dark);
+    border: 2px solid var(--border-color);
+}
+
+.action-btn.secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .balance-amount {
+        font-size: 36px;
+    }
+    
+    .quick-actions {
+        flex-direction: column;
+    }
+}

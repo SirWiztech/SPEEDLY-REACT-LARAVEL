@@ -1,0 +1,250 @@
+/* Preloader.css - Premium Preloader Styles */
+
+/* Desktop Preloader */
+.desktop-preloader {
+    position: fixed;
+    inset: 0;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.desktop-preloader .preloader-content {
+    text-align: center;
+}
+
+.desktop-preloader .preloader-logo-img {
+    width: 120px;
+    height: auto;
+    margin-bottom: 24px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.desktop-preloader .preloader-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666666;
+    letter-spacing: 2px;
+    animation: blink 1s ease-in-out infinite;
+}
+
+/* Mobile Preloader */
+.page-preloader {
+    position: fixed;
+    inset: 0;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.preloader-content {
+    text-align: center;
+}
+
+.preloader-logo {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 24px;
+}
+
+.preloader-orbit {
+    position: absolute;
+    width: 130px;
+    height: 130px;
+    top: 50%;
+    left: 50%;
+    margin-top: -65px;
+    margin-left: -65px;
+    border: 2px dashed rgba(255, 69, 0, 0.2);
+    border-radius: 50%;
+    animation: spin 1.5s linear infinite;
+}
+
+.preloader-path {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    margin-left: -6px;
+}
+
+.preloader-dot {
+    width: 12px;
+    height: 12px;
+    background: #ff4500;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
+}
+
+.preloader-logo img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: auto;
+}
+
+.preloader-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666666;
+    letter-spacing: 2px;
+    animation: blink 1s ease-in-out infinite;
+}
+
+/* Splash Preloader */
+.splash-container {
+    min-height: 100vh;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+}
+
+.brand-panel {
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.logo-wrapper {
+    margin-bottom: 24px;
+}
+
+.logo-img {
+    width: 120px;
+    height: auto;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.brand-title {
+    font-size: 48px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ff4500 0%, #ff6347 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+}
+
+.brand-tagline {
+    font-size: 16px;
+    color: #666666;
+    font-weight: 500;
+}
+
+.splash-actions {
+    margin-top: 32px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.btn-splash {
+    padding: 14px 32px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-family: 'Syne', sans-serif;
+}
+
+.btn-splash-primary {
+    background: #ff4500;
+    color: white;
+}
+
+.btn-splash-primary:hover {
+    background: #e63900;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 69, 0, 0.3);
+}
+
+.btn-splash-secondary {
+    background: white;
+    color: #1a1a1a;
+    border: 2px solid #e5e5e5;
+}
+
+.btn-splash-secondary:hover {
+    border-color: #ff4500;
+    color: #ff4500;
+}
+
+/* Common Animations */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Loading states */
+.btn-loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}

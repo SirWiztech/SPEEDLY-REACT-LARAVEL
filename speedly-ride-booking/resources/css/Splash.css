@@ -1,0 +1,297 @@
+/* Splash.css - Premium Splash Page Styles */
+
+/* Reset & Base */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Syne', sans-serif;
+    background: white;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Background Effects */
+.bg-effects {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+}
+
+.orb-1 {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 69, 0, 0.08) 0%, transparent 70%);
+    top: -200px;
+    right: -150px;
+}
+
+.orb-2 {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(45, 27, 78, 0.05) 0%, transparent 70%);
+    bottom: -100px;
+    left: -100px;
+}
+
+.orb-3 {
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 69, 0, 0.05) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Splash Container */
+.splash-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1800px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-panel {
+    text-align: center;
+    animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.brand-content {
+    position: relative;
+}
+
+/* Logo */
+.logo-wrapper {
+    position: relative;
+    margin-bottom: 32px;
+}
+
+.comet-orbit {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(255, 69, 0, 0.15);
+    border-radius: 50%;
+    animation: spin 8s linear infinite;
+}
+
+.comet-path {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.comet-dot {
+    width: 12px;
+    height: 12px;
+    background: #ff4500;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
+}
+
+.logo-ring {
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(255, 69, 0, 0.1);
+    border-radius: 50%;
+}
+
+.logo-img {
+    width: 100px;
+    height: auto;
+    position: relative;
+    z-index: 1;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* Brand Text */
+.brand-title {
+    font-size: 64px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ff4500 0%, #ff6347 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    letter-spacing: 3px;
+}
+
+.brand-tagline {
+    font-size: 18px;
+    color: #666666;
+    font-weight: 500;
+    margin-bottom: 40px;
+}
+
+/* Typewriter Effect */
+.typewriter-container {
+    margin-bottom: 16px;
+}
+
+.typewriter-prefix {
+    font-size: 14px;
+    color: #999999;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.typewriter-text {
+    font-size: 48px;
+    font-weight: 700;
+    color: #1a1a1a;
+    min-height: 60px;
+}
+
+.typewriter-cursor {
+    display: inline-block;
+    width: 3px;
+    height: 48px;
+    background: #ff4500;
+    margin-left: 8px;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+}
+
+.typewriter-subtext {
+    font-size: 16px;
+    color: #666666;
+    margin-top: 16px;
+}
+
+/* Loading Dots */
+.loading-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.loading-dots span {
+    width: 8px;
+    height: 8px;
+    background: #ff4500;
+    border-radius: 50%;
+    animation: bounce 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+/* Content Panel */
+.content-panel {
+    position: relative;
+    z-index: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .brand-title {
+        font-size: 42px;
+    }
+    
+    .typewriter-text {
+        font-size: 32px;
+        min-height: 40px;
+    }
+    
+    .typewriter-cursor {
+        height: 32px;
+    }
+    
+    .logo-img {
+        width: 80px;
+    }
+    
+    .comet-orbit {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .logo-ring {
+        width: 140px;
+        height: 140px;
+    }
+}
