@@ -29,15 +29,11 @@ export default function DriverKyc() {
 
     const { data: kycStatus, isLoading } = useQuery<KycStatus>({
         queryKey: ['driver-kyc'],
-        queryFn: () => fetch('/api/driver/kyc').then(res => res.json()),
+        queryFn: () => api.driver.kyc().then(res => res.data),
     });
 
     const uploadMutation = useMutation({
-        mutationFn: (formData: FormData) => 
-            fetch('/api/driver/kyc/upload', {
-                method: 'POST',
-                body: formData,
-            }).then(res => res.json()),
+        mutationFn: (formData: FormData) => api.driver.uploadKyc(formData),
     });
 
     const handleFileUpload = () => {

@@ -1,9 +1,21 @@
-import React from 'react';
+import { useTheme } from '@/hooks/use-appearance';
+import { Toaster as Sonner, ToasterProps } from 'sonner';
 
-export const Toaster = () => null;
+export function Toaster(props: ToasterProps) {
+  const { theme = 'system' } = useTheme();
 
-export const toast = {
-  success: (message: string) => console.log('Toast success:', message),
-  error: (message: string) => console.log('Toast error:', message),
-  info: (message: string) => console.log('Toast info:', message),
-};
+  return (
+    <Sonner
+      theme={theme as ToasterProps['theme']}
+      className="toaster group"
+      style={
+        {
+          '--normal-bg': 'var(--popover)',
+          '--normal-text': 'var(--popover-foreground)',
+          '--normal-border': 'var(--border)',
+        } as React.CSSProperties
+      }
+      {...props}
+    />
+  );
+}

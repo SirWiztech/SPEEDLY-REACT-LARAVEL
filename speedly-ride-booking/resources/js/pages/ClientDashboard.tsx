@@ -7,22 +7,23 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 import '../../css/ClientDashboard.css';
 
 interface Ride {
     id: string;
-    pickup: string;
-    destination: string;
-    status: 'completed' | 'in-progress' | 'pending';
-    date: string;
-    fare: number;
+    pickup_location: string;
+    dropoff_location: string;
+    status: 'completed' | 'accepted' | 'pending' | 'cancelled' | 'in_progress';
+    created_at: string;
+    fare_amount: number;
 }
 
 interface DashboardStats {
-    totalRides: number;
-    walletBalance: number;
-    activeRides: number;
-    totalSpent: number;
+    total_rides: number;
+    completed_rides: number;
+    cancelled_rides: number;
+    total_spent: number;
 }
 
 export default function ClientDashboard() {
@@ -32,12 +33,12 @@ export default function ClientDashboard() {
 
     const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
         queryKey: ['client-stats'],
-        queryFn: () => fetch('/api/client/stats').then(res => res.json()),
+        queryFn: () => api.client.stats().then(res => res.data),
     });
 
     const { data: recentRides, isLoading: ridesLoading } = useQuery<Ride[]>({
         queryKey: ['client-recent-rides'],
-        queryFn: () => fetch('/api/client/rides?limit=5').then(res => res.json()),
+        queryFn: () => api.client.rides(5).then(res => res.data),
     });
 
     if (loading) {
@@ -59,19 +60,19 @@ export default function ClientDashboard() {
 
                     <div className="stats-grid">
                         <div className="stat-card">
-                            <h3>{stats?.totalRides || 0}</h3>
+                            <h3>{stats?.total_rides || 0}</h3>
                             <p>Total Rides</p>
                         </div>
                         <div className="stat-card">
-                            <h3>${(stats?.walletBalance || 0).toFixed(2)}</h3>
-                            <p>Wallet Balance</p>
+                            <h3>{stats?.completed_rides || 0}</h3>
+                            <p>Completed Rides</p>
                         </div>
                         <div className="stat-card">
-                            <h3>{stats?.activeRides || 0}</h3>
-                            <p>Active Rides</p>
+                            <h3>{stats?.cancelled_rides || 0}</h3>
+                            <p>Cancelled Rides</p>
                         </div>
                         <div className="stat-card">
-                            <h3>${(stats?.totalSpent || 0).toFixed(2)}</h3>
+                            <h3>₦{(stats?.total_spent || 0).toLocaleString()}</h3>
                             <p>Total Spent</p>
                         </div>
                     </div>
@@ -81,10 +82,10 @@ export default function ClientDashboard() {
                         <div className="rides-list">
                             {recentRides?.map((ride) => (
                                 <div key={ride.id} className="ride-card">
-                                    <p><strong>From:</strong> {ride.pickup}</p>
-                                    <p><strong>To:</strong> {ride.destination}</p>
+                                    <p><strong>From:</strong> {ride.pickup_location}</p>
+                                    <p><strong>To:</strong> {ride.dropoff_location}</p>
                                     <p><strong>Status:</strong> {ride.status}</p>
-                                    <p><strong>Fare:</strong> ${ride.fare.toFixed(2)}</p>
+                                    <p><strong>Fare:</strong> ₦{ride.fare_amount?.toLocaleString()}</p>
                                 </div>
                             ))}
                         </div>

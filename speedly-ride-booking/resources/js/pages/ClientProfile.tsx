@@ -8,47 +8,37 @@ import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import { useQuery } from '@tanstack/react-query';
+import { api } from '../services/api';
 import '../../css/ClientProfile.css';
 
 interface UserData {
-  id?: number;
+  id?: string;
   full_name?: string;
   name?: string;
   email?: string;
+  phone_number?: string;
   phone?: string;
   address?: string;
   city?: string;
   state?: string;
+  profile_picture_url?: string;
   avatar?: string;
   profile_picture?: string;
   is_verified?: boolean;
-  avg_rating?: number;
-  total_reviews?: number;
-  driver?: {
-    vehicle_type?: string;
-    vehicle_model?: string;
-    vehicle_year?: string;
-    license_plate?: string;
-  };
-  bank?: {
-    bank_name?: string;
-    account_number?: string;
-    account_name?: string;
-  };
-  notifications?: Array<{ is_read: boolean }>;
 }
 
 export default function ClientProfile() {
   const loading = usePreloader(1000);
   const isMobile = useMobile();
   
-  const { data: userData, isLoading } = useQuery<UserData>({
+  const { data: profileData, isLoading } = useQuery<{ user: UserData; profile: any }>({
     queryKey: ['client-profile'],
-    queryFn: () => fetch('/api/client/profile').then(res => res.json()),
+    queryFn: () => api.client.profile().then(res => res.data),
   });
 
+  const userData = profileData?.user || {};
   const userName = userData?.full_name?.split(' ')[0] || userData?.name?.split(' ')[0] || 'User';
-  const userAvatar = userData?.avatar || userData?.profile_picture || null;
+  const userAvatar = userData?.profile_picture_url || userData?.avatar || userData?.profile_picture || null;
 
   if (loading || isLoading) {
     return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
@@ -73,7 +63,7 @@ export default function ClientProfile() {
             </div>
             <h2>{userData?.full_name || userData?.name}</h2>
             <p>{userData?.email}</p>
-            <p>{userData?.phone}</p>
+            <p>{userData?.phone_number || userData?.phone}</p>
           </div>
 
           <div className="profile-info-card">
@@ -88,43 +78,9 @@ export default function ClientProfile() {
             </div>
             <div className="info-row">
               <span className="info-label">Phone</span>
-              <span className="info-value">{userData?.phone || 'Not set'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Address</span>
-              <span className="info-value">{userData?.address || 'Not set'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">City</span>
-              <span className="info-value">{userData?.city || 'Not set'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">State</span>
-              <span className="info-value">{userData?.state || 'Not set'}</span>
+              <span className="info-value">{userData?.phone_number || userData?.phone || 'Not set'}</span>
             </div>
           </div>
-
-          {userData?.driver && (
-            <div className="profile-info-card">
-              <h3>Vehicle Information</h3>
-              <div className="info-row">
-                <span className="info-label">Vehicle Type</span>
-                <span className="info-value">{userData.driver.vehicle_type || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Vehicle Model</span>
-                <span className="info-value">{userData.driver.vehicle_model || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Vehicle Year</span>
-                <span className="info-value">{userData.driver.vehicle_year || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">License Plate</span>
-                <span className="info-value">{userData.driver.license_plate || 'Not set'}</span>
-              </div>
-            </div>
-          )}
 
           <div className="mobile-nav-container">
             <ClientNavmobile />
@@ -167,43 +123,9 @@ export default function ClientProfile() {
               </div>
               <div className="info-row">
                 <span className="info-label">Phone</span>
-                <span className="info-value">{userData?.phone || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Address</span>
-                <span className="info-value">{userData?.address || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">City</span>
-                <span className="info-value">{userData?.city || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">State</span>
-                <span className="info-value">{userData?.state || 'Not set'}</span>
+                <span className="info-value">{userData?.phone_number || userData?.phone || 'Not set'}</span>
               </div>
             </div>
-
-            {userData?.driver && (
-              <div className="cd-card">
-                <h3>Vehicle Information</h3>
-                <div className="info-row">
-                  <span className="info-label">Vehicle Type</span>
-                  <span className="info-value">{userData.driver.vehicle_type || 'Not set'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Vehicle Model</span>
-                  <span className="info-value">{userData.driver.vehicle_model || 'Not set'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Vehicle Year</span>
-                  <span className="info-value">{userData.driver.vehicle_year || 'Not set'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">License Plate</span>
-                  <span className="info-value">{userData.driver.license_plate || 'Not set'}</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

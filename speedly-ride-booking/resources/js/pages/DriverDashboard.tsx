@@ -7,24 +7,25 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 import '../../css/DriverDashboard.css';
 
 interface Ride {
     id: string;
-    pickup: string;
-    destination: string;
-    status: 'pending' | 'accepted' | 'ongoing' | 'completed';
-    fare: number;
-    rider_name: string;
+    pickup_location: string;
+    dropoff_location: string;
+    status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+    fare_amount: number;
+    created_at: string;
+    client: { full_name: string } | null;
 }
 
 interface DashboardStats {
-    totalRides: number;
-    todayEarnings: number;
-    activeRides: number;
-    rating: number;
-    completedRides: number;
-    totalEarnings: number;
+    total_rides: number;
+    completed_rides: number;
+    total_earnings: number;
+    average_rating: number;
+    driver_status: string;
 }
 
 export default function DriverDashboard() {
@@ -34,12 +35,12 @@ export default function DriverDashboard() {
 
     const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
         queryKey: ['driver-stats'],
-        queryFn: () => fetch('/api/driver/stats').then(res => res.json()),
+        queryFn: () => api.driver.stats().then(res => res.data),
     });
 
     const { data: rides, isLoading: ridesLoading } = useQuery<Ride[]>({
         queryKey: ['driver-recent-rides'],
-        queryFn: () => fetch('/api/driver/rides?limit=5').then(res => res.json()),
+        queryFn: () => api.driver.rides(5).then(res => res.data),
     });
 
     if (loading) {
@@ -61,19 +62,19 @@ export default function DriverDashboard() {
 
                     <div className="stats-grid">
                         <div className="stat-card">
-                            <h3>{stats?.totalRides || 0}</h3>
+                            <h3>{stats?.total_rides || 0}</h3>
                             <p>Total Rides</p>
                         </div>
                         <div className="stat-card">
-                            <h3>${(stats?.todayEarnings || 0).toFixed(2)}</h3>
-                            <p>Today's Earnings</p>
+                            <h3>₦{(stats?.total_earnings || 0).toLocaleString()}</h3>
+                            <p>Total Earnings</p>
                         </div>
                         <div className="stat-card">
-                            <h3>{stats?.activeRides || 0}</h3>
-                            <p>Active Rides</p>
+                            <h3>{stats?.completed_rides || 0}</h3>
+                            <p>Completed Rides</p>
                         </div>
                         <div className="stat-card">
-                            <h3>{(stats?.rating || 0).toFixed(1)} ⭐</h3>
+                            <h3>{(stats?.average_rating || 0).toFixed(1)} ⭐</h3>
                             <p>Rating</p>
                         </div>
                     </div>
@@ -83,11 +84,11 @@ export default function DriverDashboard() {
                         <div className="rides-list">
                             {rides?.map((ride) => (
                                 <div key={ride.id} className="ride-card">
-                                    <p><strong>From:</strong> {ride.pickup}</p>
-                                    <p><strong>To:</strong> {ride.destination}</p>
-                                    <p><strong>Rider:</strong> {ride.rider_name}</p>
+                                    <p><strong>From:</strong> {ride.pickup_location}</p>
+                                    <p><strong>To:</strong> {ride.dropoff_location}</p>
+                                    <p><strong>Rider:</strong> {ride.client?.full_name || 'N/A'}</p>
                                     <p><strong>Status:</strong> {ride.status}</p>
-                                    <p><strong>Fare:</strong> ${ride.fare.toFixed(2)}</p>
+                                    <p><strong>Fare:</strong> ₦{ride.fare_amount?.toLocaleString()}</p>
                                 </div>
                             ))}
                         </div>

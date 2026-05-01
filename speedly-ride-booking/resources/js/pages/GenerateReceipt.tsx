@@ -4,13 +4,14 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 
 interface RideData {
     id: string;
-    pickup: string;
-    destination: string;
-    fare: number;
-    date: string;
+    pickup_location: string;
+    dropoff_location: string;
+    fare_amount: number;
+    created_at: string;
     client_name: string;
     driver_name: string;
     vehicle_model: string;
@@ -34,10 +35,9 @@ export default function GenerateReceipt() {
         const rideId = urlParams.get('ride_id');
 
         if (rideId) {
-            fetch(`/api/rides/${rideId}/receipt`)
-                .then(res => res.json())
+            api.rides.receipt(rideId)
                 .then(data => {
-                    setRideData(data.ride);
+                    setRideData(data.data);
                 })
                 .catch(err => console.error('Error fetching receipt:', err));
         }
@@ -66,15 +66,15 @@ export default function GenerateReceipt() {
                                 </div>
                                 <div className="detail-row">
                                     <span className="label">Date</span>
-                                    <span className="value">{new Date(rideData.date).toLocaleDateString()}</span>
+                                    <span className="value">{new Date(rideData.created_at).toLocaleDateString()}</span>
                                 </div>
                                 <div className="detail-row">
                                     <span className="label">Pickup</span>
-                                    <span className="value">{rideData.pickup}</span>
+                                    <span className="value">{rideData.pickup_location}</span>
                                 </div>
                                 <div className="detail-row">
                                     <span className="label">Destination</span>
-                                    <span className="value">{rideData.destination}</span>
+                                    <span className="value">{rideData.dropoff_location}</span>
                                 </div>
                                 <div className="detail-row">
                                     <span className="label">Driver</span>
@@ -92,7 +92,7 @@ export default function GenerateReceipt() {
 
                             <div className="receipt-total">
                                 <span className="label">Total Fare</span>
-                                <span className="amount">${rideData.fare.toFixed(2)}</span>
+                                <span className="amount">₦{rideData.fare_amount?.toLocaleString()}</span>
                             </div>
 
                             <div className="receipt-actions">

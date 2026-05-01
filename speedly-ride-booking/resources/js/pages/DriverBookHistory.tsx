@@ -7,16 +7,17 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 import '../../css/DriverBookHistory.css';
 
 interface Ride {
     id: string;
-    pickup: string;
-    destination: string;
-    status: 'completed' | 'cancelled';
-    date: string;
-    fare: number;
-    rider_name: string;
+    pickup_location: string;
+    dropoff_location: string;
+    status: 'completed' | 'cancelled' | 'accepted' | 'pending';
+    created_at: string;
+    fare_amount: number;
+    client: { full_name: string } | null;
 }
 
 export default function DriverBookHistory() {
@@ -26,7 +27,7 @@ export default function DriverBookHistory() {
 
     const { data: rides, isLoading } = useQuery<Ride[]>({
         queryKey: ['driver-rides-history'],
-        queryFn: () => fetch('/api/driver/rides/history').then(res => res.json()),
+        queryFn: () => api.driver.rideHistory().then(res => res.data),
     });
 
     const filteredRides = rides?.filter(ride => {
@@ -77,12 +78,12 @@ export default function DriverBookHistory() {
                             <div key={ride.id} className="ride-card">
                                 <div className="ride-header">
                                     <span className={`ride-status ${ride.status}`}>{ride.status}</span>
-                                    <span className="ride-fare">${ride.fare.toFixed(2)}</span>
+                                    <span className="ride-fare">₦{ride.fare_amount?.toLocaleString()}</span>
                                 </div>
-                                <p><strong>From:</strong> {ride.pickup}</p>
-                                <p><strong>To:</strong> {ride.destination}</p>
-                                <p><strong>Rider:</strong> {ride.rider_name}</p>
-                                <p><strong>Date:</strong> {new Date(ride.date).toLocaleDateString()}</p>
+                                <p><strong>From:</strong> {ride.pickup_location}</p>
+                                <p><strong>To:</strong> {ride.dropoff_location}</p>
+                                <p><strong>Rider:</strong> {ride.client?.full_name || 'N/A'}</p>
+                                <p><strong>Date:</strong> {new Date(ride.created_at).toLocaleDateString()}</p>
                             </div>
                         ))}
                     </div>

@@ -29,15 +29,11 @@ export default function ClientKyc() {
 
   const { data: kycStatus, isLoading } = useQuery<KycStatus>({
     queryKey: ['client-kyc'],
-    queryFn: () => fetch('/api/client/kyc').then(res => res.json()),
+    queryFn: () => api.client.kyc().then(res => res.data),
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (formData: FormData) =>
-      fetch('/api/client/kyc/upload', {
-        method: 'POST',
-        body: formData,
-      }).then(res => res.json()),
+    mutationFn: (formData: FormData) => api.client.uploadKyc(formData),
   });
 
   const handleFileUpload = () => {

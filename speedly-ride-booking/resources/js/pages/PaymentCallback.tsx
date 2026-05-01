@@ -4,6 +4,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 
 export default function PaymentCallback() {
     const [status, setStatus] = useState<'processing' | 'success' | 'failed'>('processing');
@@ -17,8 +18,7 @@ export default function PaymentCallback() {
         const payerId = urlParams.get('PayerID');
 
         if (paymentId && payerId) {
-            fetch(`/api/payment/callback?paymentId=${paymentId}&PayerID=${payerId}`)
-                .then(res => res.json())
+            api.payment.callback(paymentId, payerId)
                 .then(data => {
                     if (data.success) {
                         setStatus('success');

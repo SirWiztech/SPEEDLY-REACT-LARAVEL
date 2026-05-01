@@ -7,32 +7,39 @@ import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../services/api';
 import '../../css/ClientWallet.css';
 
 interface Transaction {
   id: string;
-  type: string;
+  type: 'credit' | 'debit';
   amount: number;
-  date: string;
-  status: string;
-  formatted_amount?: string;
-  display_id?: string;
-  type_display?: string;
-  is_credit?: boolean;
+  category: string;
+  description: string;
+  created_at: string;
   reference?: string;
-  description?: string;
-  balance_before?: number;
-  balance_after?: number;
+}
+
+interface WalletData {
+  balance: number;
+  currency: string;
+  recent_transactions: Transaction[];
 }
 
 export default function ClientWallet() {
   const loading = usePreloader(1000);
   const isMobile = useMobile();
-  const [balance, setBalance] = useState(150.00);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: '1', type: 'deposit', amount: 50, date: '2026-04-30', status: 'completed', formatted_amount: '50.00', type_display: 'Deposit' },
-    { id: '2', type: 'ride_payment', amount: -25, date: '2026-04-29', status: 'completed', formatted_amount: '25.00', type_display: 'Ride Payment' }
-  ]);
+
+  const { data: walletData, isLoading: walletLoading } = useQuery<WalletData>({
+    queryKey: ['client-wallet'],
+    queryFn: () => api.client.wallet().then(res => res.data),
+  });
+
+  const { data: transactions } = useQuery<Transaction[]>({
+    queryKey: ['client-transactions'],
+    queryFn: () => api.client.transactions().then(res => res.data),
+  });
 
   const { data, setData, post, processing } = useForm({
     deposit_amount: '',
@@ -62,7 +69,10 @@ export default function ClientWallet() {
     });
   };
 
-  if (loading) {
+  const balance = walletData?.balance || 0;
+  const txList = transactions || walletData?.recent_transactions || [];
+
+  if (loading || walletLoading) {
     return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
   }
 
@@ -77,7 +87,7 @@ export default function ClientWallet() {
 
           <div className="wallet-balance">
             <h2>Balance</h2>
-            <p className="balance-amount">₦{balance.toFixed(2)}</p>
+            <p className="balance-amount">₦{balance.toLocaleString()}</p>
             <div className="wallet-actions">
               <button className="action-btn primary">Deposit</button>
               <button className="action-btn">Withdraw</button>
@@ -87,14 +97,15 @@ export default function ClientWallet() {
           <div className="transactions-section">
             <h2>Recent Transactions</h2>
             <div className="transactions-list">
-              {transactions.map(tx => (
+              {txList.map((tx: Transaction) => (
                 <div key={tx.id} className="transaction-card">
                   <div className="tx-info">
-                    <p><strong>{tx.type_display || tx.type}</strong></p>
-                    <p>{tx.date}</p>
+                    <p><strong>{tx.category || tx.type}</strong></p>
+                    <p>{tx.description}</p>
+                    <p>{new Date(tx.created_at).toLocaleDateString()}</p>
                   </div>
-                  <p className={`tx-amount ${tx.amount > 0 ? 'positive' : 'negative'}`}>
-                    {tx.amount > 0 ? '+' : ''}₦{tx.formatted_amount || tx.amount.toFixed(2)}
+                  <p className={`tx-amount ${tx.type === 'credit' ? 'positive' : 'negative'}`}>
+                    {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString()}
                   </p>
                 </div>
               ))}
@@ -117,7 +128,7 @@ export default function ClientWallet() {
             <div className="cd-card">
               <div className="wallet-balance">
                 <h2>Balance</h2>
-                <p className="balance-amount">₦{balance.toFixed(2)}</p>
+                <p className="balance-amount">₦{balance.toLocaleString()}</p>
                 <div className="wallet-actions">
                   <button className="btn-premium">Deposit</button>
                   <button className="btn-secondary">Withdraw</button>
@@ -128,14 +139,15 @@ export default function ClientWallet() {
             <div className="cd-card">
               <h2>Recent Transactions</h2>
               <div className="transactions-list">
-                {transactions.map(tx => (
+                {txList.map((tx: Transaction) => (
                   <div key={tx.id} className="transaction-card">
                     <div className="tx-info">
-                      <p><strong>{tx.type_display || tx.type}</strong></p>
-                      <p>{tx.date}</p>
+                      <p><strong>{tx.category || tx.type}</strong></p>
+                      <p>{tx.description}</p>
+                      <p>{new Date(tx.created_at).toLocaleDateString()}</p>
                     </div>
-                    <p className={`tx-amount ${tx.amount > 0 ? 'positive' : 'negative'}`}>
-                      {tx.amount > 0 ? '+' : ''}₦{tx.formatted_amount || tx.amount.toFixed(2)}
+                    <p className={`tx-amount ${tx.type === 'credit' ? 'positive' : 'negative'}`}>
+                      {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString()}
                     </p>
                   </div>
                 ))}

@@ -7,21 +7,23 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 import '../../css/DriverWallet.css';
-
-interface WalletData {
-    balance: number;
-    pending_balance: number;
-    total_earnings: number;
-    transactions: Transaction[];
-}
 
 interface Transaction {
     id: string;
     type: 'credit' | 'debit';
     amount: number;
+    category: string;
     description: string;
-    date: string;
+    created_at: string;
+}
+
+interface WalletData {
+    balance: number;
+    currency: string;
+    pending_withdrawals?: number;
+    recent_transactions: Transaction[];
 }
 
 export default function DriverWallet() {
@@ -32,16 +34,11 @@ export default function DriverWallet() {
 
     const { data: wallet, isLoading } = useQuery<WalletData>({
         queryKey: ['driver-wallet'],
-        queryFn: () => fetch('/api/driver/wallet').then(res => res.json()),
+        queryFn: () => api.driver.wallet().then(res => res.data),
     });
 
     const withdrawMutation = useMutation({
-        mutationFn: (amount: string) => 
-            fetch('/api/driver/wallet/withdraw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: parseFloat(amount) }),
-            }).then(res => res.json()),
+        mutationFn: (amount: string) => api.driver.requestWithdrawal({ amount: parseFloat(amount) }),
     });
 
     const handleWithdraw = () => {
@@ -70,10 +67,12 @@ export default function DriverWallet() {
 
                     <div className="wallet-balance-card">
                         <h3>Available Balance</h3>
-                        <div className="balance-amount">${(wallet?.balance || 0).toFixed(2)}</div>
-                        <p className="pending-balance">
-                            Pending: ${(wallet?.pending_balance || 0).toFixed(2)}
-                        </p>
+                        <div className="balance-amount">₦{(wallet?.balance || 0).toLocaleString()}</div>
+                        {wallet?.pending_withdrawals && wallet.pending_withdrawals > 0 && (
+                            <p className="pending-balance">
+                                Pending Withdrawals: ₦{wallet.pending_withdrawals.toLocaleString()}
+                            </p>
+                        )}
                         <button 
                             className="btn-premium"
                             onClick={() => setShowWithdraw(true)}
@@ -115,17 +114,17 @@ export default function DriverWallet() {
                     <div className="transactions-section">
                         <h2>Recent Transactions</h2>
                         <div className="transactions-list">
-                            {wallet?.transactions.map((tx) => (
+                            {wallet?.recent_transactions.map((tx) => (
                                 <div key={tx.id} className="transaction-item">
                                     <div className="tx-icon">
                                         {tx.type === 'credit' ? '↗️' : '↘️'}
                                     </div>
                                     <div className="tx-details">
-                                        <p className="tx-desc">{tx.description}</p>
-                                        <p className="tx-date">{new Date(tx.date).toLocaleDateString()}</p>
+                                        <p className="tx-desc">{tx.description || tx.category}</p>
+                                        <p className="tx-date">{new Date(tx.created_at).toLocaleDateString()}</p>
                                     </div>
-                                    <div className={`tx-amount ${tx.type}`}>
-                                        {tx.type === 'credit' ? '+' : '-'}${tx.amount.toFixed(2)}
+                                    <div className={`tx-amount ${tx.type === 'credit' ? 'credit' : 'debit'}`}>
+                                        {tx.type === 'credit' ? '+' : '-'}₦{tx.amount.toLocaleString()}
                                     </div>
                                 </div>
                             ))}

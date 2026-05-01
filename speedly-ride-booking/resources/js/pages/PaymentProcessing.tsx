@@ -4,6 +4,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 
 export default function PaymentProcessing() {
     const [status, setStatus] = useState<'processing' | 'success' | 'failed'>('processing');
@@ -22,10 +23,8 @@ export default function PaymentProcessing() {
             return;
         }
 
-        // Simulate payment processing
         const timer = setTimeout(() => {
-            fetch(`/api/payment/verify?reference=${reference}`)
-                .then(res => res.json())
+            api.payment.verify(reference)
                 .then(data => {
                     if (data.success) {
                         setStatus('success');

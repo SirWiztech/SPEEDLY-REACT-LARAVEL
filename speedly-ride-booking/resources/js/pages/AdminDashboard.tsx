@@ -6,20 +6,27 @@ import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { queryClient } from '../lib/queryClient';
+import { api } from '../services/api';
 import '../../css/AdminDashboard.css';
 
 interface StatData {
     total_users: number;
+    total_clients: number;
     total_drivers: number;
+    total_rides: number;
+    pending_rides: number;
     active_rides: number;
     completed_rides: number;
+    cancelled_rides: number;
     total_revenue: number;
-    pending_withdrawals: number;
-    pending_count: number;
+    total_payouts: number;
+    pending_withdrawals_amount: number;
+    pending_withdrawals_count: number;
+    pending_kyc_count: number;
 }
 
 interface Withdrawal {
-    id: number;
+    id: string;
     driver_name: string;
     amount: number;
     status: string;
@@ -27,12 +34,11 @@ interface Withdrawal {
 }
 
 interface Driver {
-    id: number;
+    id: string;
     full_name: string;
     email: string;
     verification_status: string;
     driver_status: string;
-    vehicle_count: number;
 }
 
 export default function AdminDashboard() {
@@ -42,17 +48,17 @@ export default function AdminDashboard() {
 
     const { data: stats, isLoading: statsLoading } = useQuery<StatData>({
         queryKey: ['admin-stats'],
-        queryFn: () => fetch('/api/admin/stats').then(res => res.json()),
+        queryFn: () => api.admin.stats().then(res => res.data),
     });
 
     const { data: withdrawals, isLoading: withdrawalsLoading } = useQuery<Withdrawal[]>({
         queryKey: ['admin-withdrawals'],
-        queryFn: () => fetch('/api/admin/withdrawals').then(res => res.json()),
+        queryFn: () => api.admin.withdrawals().then(res => res.data),
     });
 
     const { data: drivers, isLoading: driversLoading } = useQuery<Driver[]>({
         queryKey: ['admin-drivers'],
-        queryFn: () => fetch('/api/admin/drivers').then(res => res.json()),
+        queryFn: () => api.admin.drivers().then(res => res.data),
     });
 
     if (loading) {
@@ -97,12 +103,12 @@ export default function AdminDashboard() {
                         </div>
                         <div className="stat-card">
                             <div className="stat-icon">💰</div>
-                            <div className="stat-value">${(stats?.total_revenue || 0).toLocaleString()}</div>
+                            <div className="stat-value">₦{(stats?.total_revenue || 0).toLocaleString()}</div>
                             <div className="stat-label">Total Revenue</div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-icon">⏳</div>
-                            <div className="stat-value">{stats?.pending_count || 0}</div>
+                            <div className="stat-value">{stats?.pending_withdrawals_count || 0}</div>
                             <div className="stat-label">Pending Withdrawals</div>
                         </div>
                     </div>

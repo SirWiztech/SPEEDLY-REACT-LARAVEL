@@ -2,33 +2,74 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable, HasApiTokens;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $fillable = [
+        'name',
+        'full_name',
+        'username',
+        'email',
+        'phone_number',
+        'password',
+        'role',
+        'profile_picture_url',
+        'is_active',
+        'is_verified',
+        'last_login',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'two_factor_confirmed_at' => 'datetime',
+        'is_active' => 'boolean',
+        'is_verified' => 'boolean',
+        'last_login' => 'datetime',
+    ];
+
+    public function clientProfile()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
-        ];
+        return $this->hasOne(ClientProfile::class, 'user_id');
+    }
+
+    public function driverProfile()
+    {
+        return $this->hasOne(DriverProfile::class, 'user_id');
+    }
+
+    public function walletTransactions()
+    {
+        return $this->hasMany(WalletTransaction::class, 'user_id');
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class, 'user_id');
+    }
+
+    public function isClient(): bool
+    {
+        return $this->role === 'client';
+    }
+
+    public function isDriver(): bool
+    {
+        return $this->role === 'driver';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 }

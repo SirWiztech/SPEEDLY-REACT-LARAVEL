@@ -41,12 +41,10 @@ export default function VerifyOtp() {
     };
 
     const handleResend = () => {
-        fetch('/api/resend-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: data.phone }),
-        }).then(() => {
+        api.auth.resendOtp({ email: data.phone }).then(() => {
             alert('OTP resent successfully!');
+        }).catch(() => {
+            alert('Failed to resend OTP');
         });
     };
 

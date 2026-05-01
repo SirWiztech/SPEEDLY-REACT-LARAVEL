@@ -7,6 +7,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 import '../../css/ClientBookRide.css';
 
 interface Location {
@@ -16,10 +17,15 @@ interface Location {
 }
 
 interface RideRequest {
-    pickup: Location;
-    destination: Location;
-    rideType: string;
-    estimatedFare: number;
+    pickup_location: string;
+    dropoff_location: string;
+    pickup_lat: number;
+    pickup_lng: number;
+    dropoff_lat: number;
+    dropoff_lng: number;
+    ride_type: string;
+    scheduled_at?: string;
+    notes?: string;
 }
 
 export default function ClientBookRide() {
@@ -28,24 +34,22 @@ export default function ClientBookRide() {
     const isMobile = useMobile();
     
     const [rideData, setRideData] = useState<RideRequest>({
-        pickup: { address: '', lat: 0, lng: 0 },
-        destination: { address: '', lat: 0, lng: 0 },
-        rideType: 'standard',
-        estimatedFare: 0,
+        pickup_location: '',
+        dropoff_location: '',
+        pickup_lat: 0,
+        pickup_lng: 0,
+        dropoff_lat: 0,
+        dropoff_lng: 0,
+        ride_type: 'economy',
     });
 
     const { data: rideTypes } = useQuery({
         queryKey: ['ride-types'],
-        queryFn: () => fetch('/api/ride-types').then(res => res.json()),
+        queryFn: () => api.rides.getRideTypes().then(res => res.data),
     });
 
     const bookRideMutation = useMutation({
-        mutationFn: (data: RideRequest) => 
-            fetch('/api/rides/book', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            }).then(res => res.json()),
+        mutationFn: (data: RideRequest) => api.rides.book(data),
     });
 
     const handleBookRide = () => {
@@ -76,10 +80,10 @@ export default function ClientBookRide() {
                                 <input 
                                     type="text" 
                                     placeholder="Enter pickup address"
-                                    value={rideData.pickup.address}
+                                    value={rideData.pickup_location}
                                     onChange={(e) => setRideData({
                                         ...rideData,
-                                        pickup: { ...rideData.pickup, address: e.target.value }
+                                        pickup_location: e.target.value
                                     })}
                                 />
                             </div>
@@ -88,10 +92,10 @@ export default function ClientBookRide() {
                                 <input 
                                     type="text" 
                                     placeholder="Enter destination"
-                                    value={rideData.destination.address}
+                                    value={rideData.dropoff_location}
                                     onChange={(e) => setRideData({
                                         ...rideData,
-                                        destination: { ...rideData.destination, address: e.target.value }
+                                        dropoff_location: e.target.value
                                     })}
                                 />
                             </div>
@@ -103,12 +107,12 @@ export default function ClientBookRide() {
                                 {rideTypes?.map((type: any) => (
                                     <div 
                                         key={type.id}
-                                        className={`ride-type-card ${rideData.rideType === type.id ? 'selected' : ''}`}
-                                        onClick={() => setRideData({ ...rideData, rideType: type.id })}
+                                        className={`ride-type-card ${rideData.ride_type === type.id ? 'selected' : ''}`}
+                                        onClick={() => setRideData({ ...rideData, ride_type: type.id })}
                                     >
                                         <span className="ride-icon">{type.icon}</span>
                                         <span className="ride-name">{type.name}</span>
-                                        <span className="ride-price">${type.baseFare}</span>
+                                        <span className="ride-price">₦{type.base_fare}</span>
                                     </div>
                                 ))}
                             </div>

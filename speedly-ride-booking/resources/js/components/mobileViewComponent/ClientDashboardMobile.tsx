@@ -4,36 +4,36 @@ import ClientNavmobile from '@/components/navbars/ClientNavmobile';
 import { useQuery } from '@tanstack/react-query';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../preloader/MobilePreloader';
+import { api } from '../../services/api';
 import '../../../css/ClientDashboard.css';
 
 interface Ride {
     id: string;
-    pickup: string;
-    destination: string;
-    status: 'completed' | 'in-progress' | 'pending';
-    date: string;
-    fare: number;
+    pickup_location: string;
+    dropoff_location: string;
+    status: string;
+    fare_amount: number;
 }
 
 interface DashboardStats {
-    totalRides: number;
-    walletBalance: number;
-    activeRides: number;
-    totalSpent: number;
+    total_rides: number;
+    completed_rides: number;
+    cancelled_rides: number;
+    total_spent: number;
 }
 
 export default function ClientDashboardMobile() {
     const [activeTab, setActiveTab] = useState('overview');
     const loading = usePreloader(1500);
 
-    const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    const { data: stats } = useQuery<DashboardStats>({
         queryKey: ['client-stats-mobile'],
-        queryFn: () => fetch('/api/client/stats').then(res => res.json()),
+        queryFn: () => api.client.stats().then(res => res.data),
     });
 
-    const { data: recentRides, isLoading: ridesLoading } = useQuery<Ride[]>({
+    const { data: recentRides } = useQuery<Ride[]>({
         queryKey: ['client-recent-rides-mobile'],
-        queryFn: () => fetch('/api/client/rides?limit=5').then(res => res.json()),
+        queryFn: () => api.client.rides(5).then(res => res.data),
     });
 
     if (loading) {
@@ -50,16 +50,16 @@ export default function ClientDashboardMobile() {
 
                 <div className="stats-grid">
                     <div className="stat-card">
-                        <h3>{stats?.totalRides || 0}</h3>
+                        <h3>{stats?.total_rides || 0}</h3>
                         <p>Total Rides</p>
                     </div>
                     <div className="stat-card">
-                        <h3>${(stats?.walletBalance || 0).toFixed(2)}</h3>
-                        <p>Wallet</p>
+                        <h3>{stats?.completed_rides || 0}</h3>
+                        <p>Completed</p>
                     </div>
                     <div className="stat-card">
-                        <h3>{stats?.activeRides || 0}</h3>
-                        <p>Active</p>
+                        <h3>₦{(stats?.total_spent || 0).toLocaleString()}</h3>
+                        <p>Spent</p>
                     </div>
                 </div>
 
@@ -68,8 +68,8 @@ export default function ClientDashboardMobile() {
                     <div className="rides-list">
                         {recentRides?.map((ride) => (
                             <div key={ride.id} className="ride-card">
-                                <p><strong>From:</strong> {ride.pickup}</p>
-                                <p><strong>To:</strong> {ride.destination}</p>
+                                <p><strong>From:</strong> {ride.pickup_location}</p>
+                                <p><strong>To:</strong> {ride.dropoff_location}</p>
                                 <p><strong>Status:</strong> {ride.status}</p>
                             </div>
                         ))}
