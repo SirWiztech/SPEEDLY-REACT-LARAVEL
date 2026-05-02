@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../../css/form.css';
+import DesktopPreloader from '../components/preloader/DesktopPreloader';
 
 interface Toast {
     id: number;
@@ -30,6 +31,7 @@ interface FormProps {
 }
 
 export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
+    const [isLoading, setIsLoading] = useState(true);
     const [isActive, setIsActive] = useState(false);
     const [isLoginLoading, setIsLoginLoading] = useState(false);
     const [isRegisterLoading, setIsRegisterLoading] = useState(false);
@@ -287,13 +289,27 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
         showToast('warning', 'Coming Soon', `${provider.charAt(0).toUpperCase() + provider.slice(1)} login will be available soon.`);
     };
     
-    // Stagger animation on mount
+    // Handle preloader load complete
+    const handlePreloaderComplete = () => {
+        setIsLoading(false);
+    };
+    
+    // Stagger animation on mount (only after preloader)
     useEffect(() => {
-        const staggerItems = document.querySelectorAll('.stagger-item');
-        staggerItems.forEach((item, index) => {
-            (item as HTMLElement).style.animationDelay = `${0.1 + index * 0.05}s`;
-        });
-    }, []);
+        if (!isLoading) {
+            setTimeout(() => {
+                const staggerItems = document.querySelectorAll('.stagger-item');
+                staggerItems.forEach((item, index) => {
+                    (item as HTMLElement).style.animationDelay = `${0.1 + index * 0.05}s`;
+                });
+            }, 100);
+        }
+    }, [isLoading]);
+    
+    // Show preloader while loading
+    if (isLoading) {
+        return <DesktopPreloader onLoad={handlePreloaderComplete} />;
+    }
     
     return (
         <div className="form-page">
@@ -353,10 +369,10 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
                             Join thousands of users who trust Speedly for their delivery needs.
                         </p>
                     </div>
-                </div>
+                </div>  
                 
                 {/* Form Panel */}
-                <div className="form-panel">
+                <div className="form-panel" >
                     <div className="form-content">
                         {/* Login Form */}
                         <div className={`form-wrapper login-wrapper ${!isActive ? 'active' : ''}`}>
@@ -452,6 +468,8 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
                             <p className="form-footer stagger-item">
                                 Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); switchToRegister(); }}>Create one</a>
                             </p>
+
+                            
                         </div>
                         
                         {/* Register Form */}

@@ -1,6 +1,8 @@
 /* ============================================
    SPEEDLY - CLEAN WHITE LUXURY
    Premium Login/Register Form - React Version
+   MOBILE FIXES: No double container, no scrollbars
+   FIXED: Mobile footer visibility with subtle scroll
    ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
@@ -177,8 +179,33 @@ body {
     flex-direction: column;
     justify-content: center;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
     transition: flex-basis 0.7s var(--ease-slide);
+}
+
+/* Hide scrollbar for form panel - but allow scrolling for footer visibility */
+.form-panel {
+    scrollbar-width: thin;
+    -ms-overflow-style: auto;
+}
+
+.form-panel::-webkit-scrollbar {
+    width: 4px;
+    background: transparent;
+}
+
+.form-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.form-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 80, 0, 0.3);
+    border-radius: 4px;
+}
+
+.form-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 80, 0, 0.5);
 }
 
 .form-panel::before {
@@ -203,8 +230,18 @@ body {
     align-items: center;
     text-align: center;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
     transition: width 0.7s var(--ease-slide), padding 0.7s var(--ease-slide);
+}
+
+/* Hide scrollbar for brand panel */
+.brand-panel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.brand-panel::-webkit-scrollbar {
+    display: none;
 }
 
 .main-container.active .brand-panel {
@@ -646,6 +683,7 @@ body {
 .form-footer {
     text-align: center;
     margin-top: var(--space-lg);
+    margin-bottom: var(--space-sm);
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
@@ -789,48 +827,105 @@ body {
 }
 
 /* ============================================
-   RESPONSIVE DESIGN
+   RESPONSIVE DESIGN - FIXED (No double container)
    ============================================ */
 
+/* Tablet and below */
 @media (max-width: 900px) {
+    body {
+        background: linear-gradient(135deg, var(--white-base) 0%, var(--white-warm) 50%, var(--white-off) 100%);
+        align-items: flex-start;
+    }
+    
     .main-container {
         width: 100%;
-        height: 100vh;
         min-height: 100vh;
         border-radius: 0;
         flex-direction: column;
+        overflow: visible;
+        box-shadow: none;
+        background: transparent;
+    }
+    
+    /* Remove the gradient overlay that creates double container effect */
+    body::before {
+        display: none;
     }
     
     .form-panel {
-        flex: 1;
         padding: var(--space-xl);
+        background: var(--white-base);
+        border-radius: 0;
+        margin: 0;
+        flex: none;
+        min-height: auto;
+        overflow-y: auto;
+        max-height: 100vh;
     }
     
     .brand-panel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
+        position: relative;
         width: 100%;
-        height: 220px;
-        border-radius: 0 0 40px 40px;
-        z-index: 5;
+        min-height: auto;
+        border-radius: 0;
+        padding: var(--space-xl);
+        margin: 0;
     }
     
     .main-container.active .brand-panel {
         width: 100%;
-        height: 220px;
+        min-height: auto;
+        padding: var(--space-xl);
+    }
+    
+    /* Fix for brand panel content */
+    .brand-content,
+    .register-brand-content {
+        position: relative;
+    }
+    
+    .main-container.active .brand-content {
+        display: none;
+    }
+    
+    .register-brand-content {
+        position: absolute;
+        opacity: 0;
+        visibility: hidden;
+        display: none;
+    }
+    
+    .main-container.active .register-brand-content {
+        position: relative;
+        opacity: 1;
+        visibility: visible;
+        display: block;
+    }
+    
+    /* Adjust brand panel text */
+    .brand-panel .brand-title {
+        font-size: 1.5rem;
+        margin-bottom: var(--space-sm);
+    }
+    
+    .brand-panel .brand-subtitle {
+        font-size: 0.85rem;
+        max-width: 100%;
     }
     
     .form-content {
-        padding-top: 180px;
+        padding-top: 0;
+        padding-bottom: var(--space-xl);
     }
     
+    /* No backdrop blur on mobile - cleaner look */
     .form-wrapper {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: var(--space-lg);
+        background: transparent;
+        backdrop-filter: none;
+        border-radius: 0;
+        padding: 0;
+        max-height: none;
+        overflow-y: visible;
     }
     
     .social-buttons {
@@ -839,30 +934,53 @@ body {
     
     .name-fields {
         grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+    
+    /* Ensure form footer is always visible at the bottom */
+    .form-footer {
+        margin-bottom: var(--space-lg);
+        position: relative;
+        clear: both;
     }
 }
 
+/* Small tablets and large phones */
 @media (max-width: 700px) {
-    body {
-        align-items: stretch;
-        background: linear-gradient(180deg, #FF5500 0%, #FF6B00 30%, var(--white-base) 30%);
-    }
-    
-    .bg-effects {
-        display: none;
+    .form-panel {
+        padding: var(--space-lg);
+        max-height: 100vh;
     }
     
     .brand-panel {
-        height: 200px;
+        padding: var(--space-lg);
     }
     
-    .form-content {
-        padding-top: 160px;
+    .main-container.active .brand-panel {
+        padding: var(--space-lg);
+    }
+    
+    .brand-panel .brand-logo {
+        width: 60px;
+        height: 60px;
+        margin-bottom: var(--space-sm);
+    }
+    
+    .comet-orbit {
+        width: 90px;
+        height: 90px;
+    }
+    
+    .brand-panel .brand-title {
+        font-size: 1.25rem;
+    }
+    
+    .brand-panel .brand-subtitle {
+        font-size: 0.75rem;
     }
     
     .form-wrapper {
-        border-radius: 28px 28px 0 0;
-        margin: 0 -1px;
+        padding: 0;
     }
     
     .toast-container {
@@ -875,42 +993,52 @@ body {
     .toast {
         min-width: auto;
         max-width: none;
+        padding: var(--space-sm) var(--space-md);
     }
 }
 
+/* Mobile phones */
 @media (max-width: 480px) {
+    .form-panel {
+        padding: var(--space-md);
+        padding-top: var(--space-lg);
+        max-height: 100vh;
+    }
+    
     .brand-panel {
-        height: 180px;
+        padding: var(--space-md);
+    }
+    
+    .main-container.active .brand-panel {
+        padding: var(--space-md);
     }
     
     .brand-logo {
-        width: 56px;
-        height: 56px;
+        width: 48px;
+        height: 48px;
     }
     
     .comet-orbit {
-        width: 80px;
-        height: 80px;
+        width: 70px;
+        height: 70px;
     }
     
-    .brand-title {
-        font-size: 1.5rem;
+    .brand-panel .brand-title {
+        font-size: 1rem;
     }
     
-    .brand-subtitle {
-        font-size: 0.8rem;
-    }
-    
-    .form-content {
-        padding-top: 140px;
-    }
-    
-    .form-wrapper {
-        padding: var(--space-md);
+    .brand-panel .brand-subtitle {
+        font-size: 0.7rem;
     }
     
     .form-title {
         font-size: 1.25rem;
+        margin-bottom: var(--space-md);
+    }
+    
+    .form-subtitle {
+        font-size: 0.85rem;
+        margin-bottom: var(--space-lg);
     }
     
     .input-field,
@@ -924,42 +1052,109 @@ body {
         height: 48px;
         font-size: 0.9rem;
     }
+    
+    .social-buttons {
+        gap: var(--space-sm);
+    }
+    
+    .btn-social {
+        height: 42px;
+        font-size: 0.8rem;
+    }
+    
+    /* Extra bottom padding for footer on small screens */
+    .form-wrapper {
+        padding-bottom: var(--space-md);
+    }
+    
+    .form-footer {
+        margin-bottom: var(--space-md);
+        padding-bottom: env(safe-area-inset-bottom, var(--space-md));
+    }
 }
 
+/* Extra small phones */
 @media (max-width: 360px) {
+    .form-panel {
+        padding: var(--space-sm);
+        padding-top: var(--space-md);
+    }
+    
     .brand-panel {
-        height: 160px;
-        padding: var(--space-md);
+        padding: var(--space-sm);
     }
     
     .brand-logo {
-        width: 48px;
-        height: 48px;
+        width: 40px;
+        height: 40px;
     }
     
-    .brand-subtitle {
-        display: none;
+    .brand-panel .brand-title {
+        font-size: 0.9rem;
     }
     
-    .form-content {
-        padding-top: 120px;
+    .form-title {
+        font-size: 1.1rem;
+    }
+    
+    .form-footer {
+        font-size: 0.8rem;
     }
 }
 
 /* Landscape Mode */
 @media (max-height: 500px) and (orientation: landscape) {
-    .brand-panel {
-        display: none;
-    }
-    
     .main-container {
-        width: 90%;
-        height: auto;
-        border-radius: 20px;
+        flex-direction: row;
+        min-height: 100vh;
     }
     
-    .form-content {
-        padding-top: 0;
+    .brand-panel {
+        width: 40%;
+        min-height: 100vh;
+    }
+    
+    .form-panel {
+        width: 60%;
+        min-height: 100vh;
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+    
+    .brand-panel .brand-content {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--space-lg);
+    }
+    
+    .brand-panel .brand-logo {
+        margin: 0;
+    }
+    
+    .brand-panel .brand-title {
+        margin: 0;
+    }
+    
+    .form-wrapper {
+        max-height: 100vh;
+        overflow-y: visible;
+    }
+    
+    /* Hide scrollbar for landscape mode too - subtle */
+    .form-wrapper {
+        scrollbar-width: thin;
+        -ms-overflow-style: auto;
+    }
+    
+    .form-wrapper::-webkit-scrollbar {
+        width: 4px;
+        background: transparent;
+    }
+    
+    .form-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(255, 80, 0, 0.3);
+        border-radius: 4px;
     }
 }
 
@@ -967,5 +1162,189 @@ body {
 @supports (padding: env(safe-area-inset-top)) {
     .toast-container {
         bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+    }
+    
+    .brand-panel {
+        padding-top: max(var(--space-xl), env(safe-area-inset-top));
+        padding-bottom: max(var(--space-xl), env(safe-area-inset-bottom));
+    }
+    
+    .form-panel {
+        padding-bottom: max(var(--space-xl), env(safe-area-inset-bottom));
+    }
+    
+    /* Footer safe area on mobile */
+    .form-footer {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* ============================================
+   MOBILE SCROLL FIXES - Login & Register
+   Subtle scrollbars for both forms
+   ============================================ */
+
+/* Fix for form panel - ensure both forms can scroll */
+@media (max-width: 900px) {
+    .form-panel {
+        overflow-y: auto;
+        max-height: 100vh;
+        scrollbar-width: thin;
+        -ms-overflow-style: auto;
+    }
+    
+    .form-panel::-webkit-scrollbar {
+        width: 4px;
+        background: transparent;
+    }
+    
+    .form-panel::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+    }
+    
+    .form-panel::-webkit-scrollbar-thumb {
+        background: rgba(255, 80, 0, 0.3);
+        border-radius: 4px;
+    }
+    
+    .form-panel::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 80, 0, 0.5);
+    }
+    
+    /* Ensure form content has enough bottom padding to show button */
+    .form-content {
+        padding-bottom: var(--space-2xl);
+    }
+    
+    /* Make sure the button is fully visible */
+    .btn-primary {
+        margin-bottom: var(--space-md);
+    }
+    
+    .form-footer {
+        margin-bottom: var(--space-xl);
+        padding-bottom: var(--space-lg);
+    }
+}
+
+/* Specific fix for small mobile screens */
+@media (max-width: 480px) {
+    .form-panel {
+        max-height: 100vh;
+       padding-bottom: calc(var(--space-2xl) * 3);  /* ← Main property */
+    }
+    
+    .form-content {
+        padding-bottom: var(--space-xl);
+    }
+    
+    .btn-primary {
+        margin-bottom: var(--space-md);
+        margin-top: var(--space-xs);
+    }
+    
+    .form-footer {
+        margin-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 360px) {
+    .form-panel {
+        padding-bottom: var(--space-lg);
+    }
+    
+    .form-content {
+        padding-bottom: var(--space-lg);
+    }
+    
+    .btn-primary {
+        margin-bottom: var(--space-sm);
+    }
+    
+    .form-footer {
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-md);
+    }
+}
+
+/* Ensure scrollbar works on both login and register wrappers */
+.form-wrapper {
+    display: none;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.4s var(--ease-smooth), transform 0.4s var(--ease-smooth);
+}
+
+.form-wrapper.active {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Make sure both forms have proper scroll behavior on mobile */
+@media (max-width: 900px) {
+    .form-wrapper {
+        overflow-y: visible;
+    }
+    
+    .form-wrapper.active {
+        overflow-y: visible;
+    }
+}
+
+/* Landscape mode fix */
+@media (max-height: 500px) and (orientation: landscape) {
+    .form-panel {
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+    
+    .form-content {
+        padding-bottom: var(--space-lg);
+    }
+    
+    .btn-primary {
+        margin-bottom: var(--space-sm);
+    }
+}
+
+@media (max-width: 900px) {
+    /* Add bottom padding to the scrollable content */
+    .form-content {
+        padding-bottom: 20px;  /* ← This extends scroll distance */
+    }
+    
+    /* OR add margin to the last elements */
+    .form-footer {
+        margin-bottom: 10px;   /* ← This also extends scroll distance */
+        padding-bottom: 80px;
+    }
+    
+    /* OR add padding to the form wrapper */
+    .form-wrapper.active {
+        padding-bottom: 120px;
+    }
+}
+
+/* Extend scroll for REGISTER section only */
+@media (max-width: 900px) {
+    .register-wrapper.active {
+        padding-bottom: 10px;  /* Adds scroll space at bottom */
+        position: relative;
+        top: 50px;
+    }
+    
+    /* OR add margin to the footer inside register form */
+    .register-wrapper.active .form-footer {
+        margin-bottom: 60px;
+        padding-bottom: 100px;
+    }
+    
+    /* OR add padding to the form content inside register */
+    .register-wrapper.active .form-content {
+        padding-bottom: 250px;
     }
 }
