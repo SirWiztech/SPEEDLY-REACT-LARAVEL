@@ -1,14 +1,103 @@
-import { useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from '@inertiajs/react';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import '../../css/home.css';
+import '../../css/page-transitions.css';
 
-export default function Home() {
+
+
+export default function Home({ isLoggedIn = false }) {
     const isMobile = useMobile();
     const loading = usePreloader(isMobile ? 1500 : 1000);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+    const profileBtnRef = useRef(null);
+    const profileDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (profileBtnRef.current && profileDropdownRef.current &&
+                !profileBtnRef.current.contains(e.target as Node) &&
+                !profileDropdownRef.current.contains(e.target as Node)) {
+                setProfileDropdownOpen(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    // Typing effect for Explore section
+    useEffect(() => {
+        const textToType = "Move Better. Travel Smarter.";
+        const typingTarget = document.getElementById("typing-text");
+        const section = document.getElementById("explore-section");
+
+        if (!typingTarget || !section) return;
+
+        let index = 0;
+        let hasStarted = false;
+
+        const typeEffect = () => {
+            if (index < textToType.length) {
+                typingTarget.textContent += textToType.charAt(index);
+                index++;
+                setTimeout(typeEffect, 100);
+            }
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !hasStarted) {
+                    hasStarted = true;
+                    typeEffect();
+                }
+            });
+        }, { threshold: 0.3 });
+
+        observer.observe(section);
+
+        return () => observer.disconnect();
+    }, []);
+
+    const link = isLoggedIn ? '/book-ride' : '/form';
+
+    // SIMPLE WORKING SCROLL REVEAL - FIXED
+    // SIMPLE WORKING SLIDE IN/SLIDE OUT ANIMATION
+useEffect(() => {
+    // Function to check and reveal/hide elements
+    const handleScrollReveal = () => {
+        const elements = document.querySelectorAll('.scroll-reveal');
+        elements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            
+            // Element is visible when it enters the viewport
+            const isVisible = rect.top < windowHeight - 100 && rect.bottom > 50;
+            
+            if (isVisible) {
+                el.classList.add('revealed');
+            } else {
+                // Remove revealed class to trigger slide out animation
+                el.classList.remove('revealed');
+            }
+        });
+    };
+
+    // Initial check
+    setTimeout(handleScrollReveal, 100);
+    
+    // Check on scroll and resize
+    window.addEventListener('scroll', handleScrollReveal);
+    window.addEventListener('resize', handleScrollReveal);
+    
+    return () => {
+        window.removeEventListener('scroll', handleScrollReveal);
+        window.removeEventListener('resize', handleScrollReveal);
+    };
+}, []);
 
     if (loading) {
         return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
@@ -16,78 +105,367 @@ export default function Home() {
 
     return (
         <div className="home-page">
-            <div className="hero-section">
-                <div className="hero-content">
-                    <div className="hero-badge">Premium Ride Experience</div>
-                    <h1 className="hero-title">
-                        Redefining <span className="gradient-text">Urban Mobility</span>
-                    </h1>
-                    <p className="hero-description">
-                        Fast, safe, and affordable rides at your fingertips. Experience the future of transportation with Speedly.
-                    </p>
-                    <div className="hero-buttons">
-                        <Link href="/register" className="btn-hero btn-hero-primary">
-                            Get Started
-                        </Link>
-                        <Link href="/login" className="btn-hero btn-hero-secondary">
-                            Sign In
-                        </Link>
-                    </div>
-                    <div className="hero-stats">
-                        <div className="stat-item">
-                            <span className="stat-number">50K+</span>
-                            <span className="stat-label">Active Users</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-number">4.8</span>
-                            <span className="stat-label">App Rating</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-number">1M+</span>
-                            <span className="stat-label">Rides Completed</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="hero-image">
-                    <img src="/main-assets/hero-image.png" alt="Speedly Ride" />
-                </div>
+            {/* Background Orbs */}
+            <div className="bg-effects">
+                <div className="orb orb-1"></div>
+                <div className="orb orb-2"></div>
             </div>
 
-            <div className="features-section">
-                <h2 className="section-title">Why Choose Speedly</h2>
-                <div className="features-grid">
-                    <div className="feature-card">
-                        <div className="feature-icon">⚡</div>
-                        <h3>Book Instantly</h3>
-                        <p>Get a ride in minutes with just a few taps. No waiting, no hassle.</p>
-                    </div>
-                    <div className="feature-card">
-                        <div className="feature-icon">📍</div>
-                        <h3>Track Live</h3>
-                        <p>Real-time driver tracking for complete peace of mind during your journey.</p>
-                    </div>
-                    <div className="feature-card">
-                        <div className="feature-icon">🛡️</div>
-                        <h3>Safe & Secure</h3>
-                        <p>Verified drivers, secure payments, and 24/7 support for your safety.</p>
-                    </div>
-                    <div className="feature-card">
-                        <div className="feature-icon">💎</div>
-                        <h3>Premium Experience</h3>
-                        <p>Luxury vehicles and professional drivers for an elevated ride experience.</p>
-                    </div>
-                </div>
-            </div>
+            {/* Navigation */}
+            <nav className="navbar">
+                <Link href="/home" className="nav-logo">
+                    <img src="/main-assets/logo-no-background.png" alt="Speedly Logo" />
+                    <span className="logo-text">SPEEDLY</span>
+                </Link>
 
-            <div className="cta-section">
-                <div className="cta-content">
-                    <h2>Ready to Experience Premium Rides?</h2>
-                    <p>Join thousands of satisfied users who trust Speedly for their daily commute.</p>
-                    <Link href="/register" className="btn-hero btn-hero-primary">
-                        Download App Now
+                <div className="nav-links">
+                    <Link href="/home" className="nav-link active">
+                        <i className='bx bxs-home-circle'></i> Home
                     </Link>
+                    <a href="#services" className="nav-link">
+                        <i className='bx bxs-car'></i> Services
+                    </a>
+                    <a href="#about" className="nav-link">
+                        <i className='bx bxs-info-circle'></i> About
+                    </a>
+                    <a href="#features" className="nav-link">
+                        <i className='bx bxs-zap'></i> Features
+                    </a>
+                    <a href="#download" className="nav-link">
+                        <i className='bx bxs-download'></i> Download
+                    </a>
+                    <a href="#contact" className="nav-link">
+                        <i className='bx bxs-envelope'></i> Contact
+                    </a>
+                </div>
+
+                <div className="nav-actions">
+                    {isLoggedIn ? (
+                        <div className="nav-profile">
+                            <button
+                                className="profile-btn"
+                                ref={profileBtnRef}
+                                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                            >
+                                Get started
+                            </button>
+                            <div
+                                className={`profile-dropdown ${profileDropdownOpen ? 'active' : ''}`}
+                                ref={profileDropdownRef}
+                            >
+                                <a href="/form" className="dropdown-item"><i className='bx bx-user'></i> Register</a>
+                                <a href="/form" className="dropdown-item"><i className='bx bx-cog'></i> Login</a>
+                                <hr className="dropdown-divider" />
+                            </div>
+                        </div>
+                    ) : (
+                        <Link href="/form" className="auth-btn" aria-label="Register or Login">
+                            <i className='bx bx-user'></i>
+                            Register / Login
+                        </Link>
+                    )}
+                </div>
+
+                <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+                    <i className='bx bx-menu'></i>
+                </button>
+            </nav>
+
+            {/* Mobile Menu */}
+            <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`} id="mobileMenu">
+                <div className="mobile-menu-header">
+                    <Link href="/home" className="nav-logo">
+                        <img src="/main-assets/logo-no-background.png" alt="Speedly Logo" />
+                        <span className="logo-text">SPEEDLY</span>
+                    </Link>
+                    <button className="mobile-menu-close" onClick={() => setMobileMenuOpen(false)}>
+                        <i className='bx bx-x'></i>
+                    </button>
+                </div>
+
+                <div className="mobile-menu-links">
+                    <a href="/home" className="mobile-menu-link active"><i className='bx bxs-home-circle'></i> Home</a>
+                    <a href="#services" className="mobile-menu-link"><i className='bx bxs-car'></i> Services</a>
+                    <a href="#about" className="mobile-menu-link"><i className='bx bxs-info-circle'></i> About</a>
+                    <a href="#features" className="mobile-menu-link"><i className='bx bxs-zap'></i> Features</a>
+                    <a href="#download" className="mobile-menu-link"><i className='bx bxs-download'></i> Download</a>
+                    <a href="#contact" className="mobile-menu-link"><i className='bx bxs-envelope'></i> Contact</a>
+                </div>
+
+                <div className="mobile-menu-buttons">
+                    {isLoggedIn ? (
+                        <a href="/form" className="btn-mobile btn-mobile-outline">Sign Out</a>
+                    ) : (
+                        <Link href="/form" className="auth-btn" style={{width: '100%', justifyContent: 'center'}}>
+                            <i className='bx bx-user'></i>
+                            Register / Login
+                        </Link>
+                    )}
                 </div>
             </div>
+
+            <main className="home-main">
+                {/* Hero Section - Always visible */}
+                <section className="hero reverse section scroll-reveal" data-reveal="scale">
+                    <div className="hero-bg">
+                        <video autoPlay muted loop playsInline>
+                            <source src="/main-assets/5233_New_York_NYC_1920x1080.mp4" type="video/mp4" />
+                        </video>
+                        <div className="hero-overlay"></div>
+                    </div>
+                    <div className="hero-content">
+                        <div className="hero-badge">
+                            <span className="pulse-dot"></span>
+                            <span>New: Speedly Pro is here</span>
+                        </div>
+                        <h1 className="hero-title">
+                            We accelerate the<br />
+                            <span className="gradient-text">city's movement</span>
+                        </h1>
+                        <p className="hero-description">
+                            At Speedly, we focus on routes where efficiency, reliability, and speed unlock seamless travel and drive urban connection.
+                        </p>
+                        <div className="hero-buttons">
+                            <a href={link} className="btn-hero btn-hero-primary">
+                                Book a Ride <i className='bx bx-right-arrow-alt'></i>
+                            </a>
+                            <a href="#how-it-works" className="btn-hero btn-hero-secondary">
+                                <i className='bx bx-play-circle'></i> How it Works
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Services Section */}
+                <section className="section scroll-reveal" id="services">
+                    <div className="section-container">
+                        <div className="section-header">
+                            <span className="section-badge">What We Offer</span>
+                            <h2 className="section-title">Our Services</h2>
+                            <p className="section-description text-white">Premium ride solutions for every journey</p>
+                        </div>
+
+                        <div className="services-grid">
+                            <div className="service-card" style={{ backgroundImage: 'url(/main-assets/book-ride-1.jpg)' }}>
+                                <div className="service-overlay"></div>
+                                <div className="service-content">
+                                    <h3 className="service-title">Premium Airport Transfers</h3>
+                                    <a href={link} className="btn-service">Book Ride</a>
+                                </div>
+                            </div>
+
+                            <div className="service-card" style={{ backgroundImage: 'url(/main-assets/book-ride-2.jpg)' }}>
+                                <div className="service-overlay"></div>
+                                <div className="service-content">
+                                    <h3 className="service-title">City-to-City Travel</h3>
+                                    <a href={link} className="btn-service">Book Ride</a>
+                                </div>
+                            </div>
+
+                            <div className="service-card" style={{ backgroundImage: 'url(/main-assets/book-ride-3.jpg)' }}>
+                                <div className="service-overlay"></div>
+                                <div className="service-content">
+                                    <h3 className="service-title">Corporate Chauffeur</h3>
+                                    <a href={link} className="btn-service">Book Ride</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Explore Banner */}
+                <section className="explore-banner scroll-reveal" id="explore-section">
+                    <div className="explore-bg" style={{ backgroundImage: 'url(/main-assets/explore.jpg)' }}></div>
+                    <div className="explore-overlay"></div>
+                    <div className="explore-content">
+                        <h2 className="explore-text">
+                            <span id="typing-text"></span><span className="typewriter-cursor"></span>
+                        </h2>
+                    </div>
+                </section>
+
+                {/* About Section */}
+                <section className="section about-section scroll-reveal" id="about">
+                    <div className="section-container">
+                        <div className="about-grid">
+                            <div className="about-brand">
+                                <h2 className="brand-large">SPEED<span className="accent">:</span>LY</h2>
+                                <p className="brand-tagline">Urban Mobility Redefined</p>
+                            </div>
+
+                            <div className="about-content">
+                                <p className="about-lead">
+                                    Speedly is the <span className="highlight">premier mobility super-app.</span> We build cities for people, not traffic.
+                                </p>
+                                <p className="about-text">
+                                    From instant ride-hailing and shared fleets to scooters and lightning-fast delivery—we provide a better alternative to the private car for every journey.
+                                </p>
+                                <a href="#" className="btn-about">Learn More <i className='bx bx-right-arrow-alt'></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Features Section */}
+                <section className="section features-section scroll-reveal" id="features">
+                    <div className="section-container">
+                        <div className="section-header">
+                            <span className="section-badge">Why Choose Us</span>
+                            <h2 className="section-title">Our Features</h2>
+                            <p className="section-description">Experience the Speedly difference</p>
+                        </div>
+
+                        {/* Feature 1 */}
+                        <div className="feature-card section scroll-reveal" data-reveal="left">
+                            <div className="feature-image">
+                                <img src="/main-assets/driver.png" alt="Premium Interior" />
+                            </div>
+                            <div className="feature-content">
+                                <span className="feature-badge">Book at Comfort</span>
+                                <h3 className="feature-title">Your living room, <span className="gradient-text">on wheels.</span></h3>
+                                <p className="feature-text">
+                                    Why wait on the curb? Request a premium Speedly ride from the comfort of your sofa and watch your driver arrive in real-time.
+                                </p>
+                                <a href={link} className="btn-feature btn-feature-primary">Book Now <i className='bx bx-right-arrow-alt'></i></a>
+                            </div>
+                        </div>
+
+                        {/* Feature 2 */}
+                        <div className="feature-card reverse section scroll-reveal" data-reveal="right">
+                            <div className="feature-image">
+                                <img src="/main-assets/travel.jpg" alt="Safe Travel" />
+                            </div>
+                            <div className="feature-content">
+                                <span className="feature-badge">Safe Travel</span>
+                                <h3 className="feature-title">Travel with <span className="gradient-text">Total Peace of Mind.</span></h3>
+                                <p className="feature-text">
+                                    Every Speedly captain is vetted and tracked. Share your live trip status with loved ones with a single tap.
+                                </p>
+                                <a href={link} className="btn-feature btn-feature-dark">Secure Your Ride <i className='bx bx-right-arrow-alt'></i></a>
+                            </div>
+                        </div>
+
+                        {/* Feature 3 */}
+                        <div className="feature-card section scroll-reveal" data-reveal="top">
+                            <div className="feature-image">
+                                <img src="/main-assets/office.jpg" alt="Drive with Speedly" />
+                            </div>
+                            <div className="feature-content">
+                                <span className="feature-badge">Drive with Speedly</span>
+                                <h3 className="feature-title">Your car, <span className="gradient-text">your office.</span></h3>
+                                <p className="feature-text">
+                                    Turn your miles into money. With Speedly, you're in the driver's seat of your own business—choose your own hours and earn competitive weekly payouts.
+                                </p>
+                                <a href="#" className="btn-feature btn-feature-primary">Start Earning <i className='bx bx-right-arrow-alt'></i></a>
+                            </div>
+                        </div>
+
+                        {/* Feature 4 */}
+                        <div className="feature-card reverse section scroll-reveal" data-reveal="scale">
+                            <div className="feature-image">
+                                <img src="https://images.unsplash.com/photo-1534536281715-e28d76689b4d?q=80&w=800" alt="24/7 Support" />
+                            </div>
+                            <div className="feature-content">
+                                <span className="feature-badge badge-red">24/7 Support</span>
+                                <h3 className="feature-title">Journey didn't go <span className="gradient-text">as planned?</span></h3>
+                                <p className="feature-text">
+                                    Your safety and satisfaction are our top priorities. If you encountered an issue during your Speedly ride, let us know immediately.
+                                </p>
+                                <a href="#" className="btn-feature btn-feature-dark">File a Complaint <i className='bx bx-error'></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* CTA Section */}
+                <section className="section cta-section scroll-reveal" id="download">
+                    <div className="cta-card">
+                        <div className="cta-glow glow-1"></div>
+                        <div className="cta-glow glow-2"></div>
+
+                        <div className="cta-content">
+                            <span className="cta-badge">Available on iOS & Android</span>
+                            <h2 className="cta-title">Ready to move?</h2>
+                            <p className="cta-description">Join over 1 million users moving smarter every day. Book rides, track deliveries, and manage your journey all in one place.</p>
+
+                            <div className="cta-buttons">
+                                <a href="#" className="btn-cta-store">
+                                    <svg width="28" height="28" viewBox="0 0 384 512" fill="currentColor">
+                                        <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                                    </svg>
+                                    <div className="store-text">
+                                        <span className="store-label">Download for</span>
+                                        <span className="store-name">iOS</span>
+                                    </div>
+                                </a>
+                                <a href="#" className="btn-cta-store">
+                                    <svg width="28" height="28" viewBox="0 0 512 512" fill="currentColor">
+                                        <path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.7c24.5-14.2 24.5-37.1-1.2-51.2zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/>
+                                    </svg>
+                                    <div className="store-text">
+                                        <span className="store-label">Download for</span>
+                                        <span className="store-name">Android</span>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            {/* Footer */}
+            <footer className="footer scroll-reveal" id="contact">
+                <div className="footer-container">
+                    <div>
+                        <div className="footer-brand" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <img src="/main-assets/logo-no-background.png" alt="Speedly" width="50" style={{ borderRadius: '50%' }} />
+                            <span className="logo-text">SPEEDLY</span>
+                        </div>
+                        <p style={{ maxWidth: '260px', marginTop: '16px' }}>
+                            Join our newsletter for regular updates on new features and city launches.
+                        </p>
+                        <form className="footer-form" action="#" method="POST">
+                            <input type="email" placeholder="Enter your email" required />
+                            <button type="submit" className="btn-subscribe">Subscribe</button>
+                        </form>
+                    </div>
+                    <div style={{ display: 'flex', gap: '48px', flexWrap: 'wrap' }}>
+                        <div>
+                            <h4 className="footer-heading">Services</h4>
+                            <a className="footer-link">Ride Hailing</a>
+                            <a className="footer-link">Food Delivery</a>
+                            <a className="footer-link">Courier Services</a>
+                            <a className="footer-link">Business Accounts</a>
+                        </div>
+
+                        <div>
+                            <h4 className="footer-heading">Support</h4>
+                            <a className="footer-link">Help Center</a>
+                            <a className="footer-link">Safety</a>
+                            <a className="footer-link">Log a Complaint</a>
+                            <a className="footer-link">City Coverage</a>
+                        </div>
+
+                        <div>
+                            <h4 className="footer-heading">Company</h4>
+                            <a className="footer-link">About Us</a>
+                            <a className="footer-link">
+                                Careers <span className="badge-hiring">HIRING</span>
+                            </a>
+                            <a className="footer-link">Privacy Policy</a>
+                            <a className="footer-link">Terms of Service</a>
+                        </div>
+                    </div>
+                </div>
+                <div className="footer-bottom">
+                    <div className="copyright">© 2026 Speedly Mobility Solutions</div>
+                    <div className="social-links">
+                        <a className="social-link"><i className='bx bxl-twitter'></i></a>
+                        <a className="social-link"><i className='bx bxl-linkedin'></i></a>
+                        <a className="social-link"><i className='bx bxl-instagram'></i></a>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

@@ -1,12 +1,12 @@
-import { useTheme } from '@/hooks/use-appearance';
+import { useAppearance } from '@/hooks/use-appearance';
 import { Toaster as Sonner, ToasterProps } from 'sonner';
 
 export function Toaster(props: ToasterProps) {
-  const { theme = 'system' } = useTheme();
+  const { appearance = 'light' } = useAppearance();
 
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
+      theme={appearance as ToasterProps['theme']}
       className="toaster group"
       style={
         {

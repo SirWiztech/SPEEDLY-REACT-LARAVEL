@@ -1,23 +1,35 @@
 const API_BASE = '/api';
 
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  const isFormData = options.body instanceof FormData;
+
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    ...options.headers,
+  };
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    credentials: 'include',
+    headers,
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data.message || 'An error occurred');
+    throw new Error(data?.message || 'An error occurred');
   }
 
   return data;
 }
+
+export const sanctum = {
+  csrf: () => fetch('/sanctum/csrf-cookie', { credentials: 'include' }),
+};
 
 export const api = {
   // Auth
@@ -67,7 +79,7 @@ export const api = {
       apiFetch('/client/profile/update', { method: 'POST', body: JSON.stringify(data) }),
     kyc: () => apiFetch('/client/kyc'),
     uploadKyc: (formData: FormData) =>
-      apiFetch('/client/kyc/upload', { method: 'POST', body: formData, headers: {} }),
+      apiFetch('/client/kyc/upload', { method: 'POST', body: formData }),
     locations: () => apiFetch('/client/locations'),
     support: (data: { category: string; subject: string; message: string; priority: string }) =>
       apiFetch('/client/support', { method: 'POST', body: JSON.stringify(data) }),
@@ -99,7 +111,7 @@ export const api = {
       apiFetch('/driver/profile/update', { method: 'POST', body: JSON.stringify(data) }),
     kyc: () => apiFetch('/driver/kyc'),
     uploadKyc: (formData: FormData) =>
-      apiFetch('/driver/kyc/upload', { method: 'POST', body: formData, headers: {} }),
+      apiFetch('/driver/kyc/upload', { method: 'POST', body: formData }),
     locations: () => apiFetch('/driver/locations'),
     toggleStatus: (data: { status: string }) =>
       apiFetch('/driver/toggle-status', { method: 'POST', body: JSON.stringify(data) }),

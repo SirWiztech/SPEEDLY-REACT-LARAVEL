@@ -1,36 +1,64 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import ClientSidebar from '../components/DriverSidebar';
 import Preloader from '../components/Preloader';
 import MobileNav from '../components/DriverMobileNav';
-import { userAPI, locationAPI } from '../services/api';
+import { api } from '../services/api';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyB1tM_s2w8JWfnIoUTAzJNpbblU-eZiC30';
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+interface LocationCoords {
+  lat: number;
+  lng: number;
+  accuracy: number;
+  altitude: number;
+  speed: number;
+  heading: number;
+}
+
+interface PlaceData {
+  name: string;
+  type: string;
+  distance: string;
+}
+
+interface UserData {
+  fullname: string;
+  role: string;
+  email?: string;
+  phone?: string;
+  logged_in: boolean;
+}
+
 export default function Location() {
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [userName, setUserName] = useState('User');
   const [hasPermission, setHasPermission] = useState(false);
-  const [location, setLocation] = useState(null);
+  const [location, setLocation] = useState<LocationCoords | null>(null);
   const [address, setAddress] = useState('');
   const [street, setStreet] = useState('');
   const [speed, setSpeed] = useState(0);
   const [heading, setHeading] = useState(0);
   const [altitude, setAltitude] = useState(0);
   const [accuracy, setAccuracy] = useState(0);
-  const [places, setPlaces] = useState([]);
+  const [places, setPlaces] = useState<PlaceData[]>([]);
   const [showPlaces, setShowPlaces] = useState(false);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   
-  const mobileMapRef = useRef(null);
-  const desktopMapRef = useRef(null);
-  const mobileMarkerRef = useRef(null);
-  const desktopMarkerRef = useRef(null);
-  const mobileMapInstance = useRef(null);
-  const desktopMapInstance = useRef(null);
-  const watchIdRef = useRef(null);
-  const geocoderRef = useRef(null);
+  const mobileMapRef = useRef<HTMLDivElement>(null);
+  const desktopMapRef = useRef<HTMLDivElement>(null);
+  const mobileMarkerRef = useRef<any>(null);
+  const desktopMarkerRef = useRef<any>(null);
+  const mobileMapInstance = useRef<any>(null);
+  const desktopMapInstance = useRef<any>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const geocoderRef = useRef<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -118,7 +146,7 @@ export default function Location() {
 
   const fetchData = async () => {
     try {
-      const profileRes = await userAPI.getProfile();
+      const profileRes = await api.client.profile();
       const profile = profileRes.data?.user || profileRes.data?.profile || profileRes.data;
       
       if (profile) {
@@ -132,7 +160,7 @@ export default function Location() {
         setUserName(profile.full_name || profile.name || 'User');
       }
 
-      const placesRes = await userAPI.getSavedLocations();
+      const placesRes = await api.client.locations();
       if (placesRes.data?.locations) {
         setPlaces(placesRes.data.locations);
       }
@@ -189,7 +217,7 @@ export default function Location() {
     );
   };
 
-  const updateLocation = (coords) => {
+  const updateLocation = (coords: GeolocationCoordinates) => {
     const newLocation = {
       lat: coords.latitude,
       lng: coords.longitude,
@@ -209,10 +237,10 @@ export default function Location() {
     updateMapMarker(newLocation);
   };
 
-  const reverseGeocode = (lat, lng) => {
+  const reverseGeocode = (lat: number, lng: number) => {
     if (!geocoderRef.current || !window.google) return;
     
-    geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+    geocoderRef.current.geocode({ location: { lat, lng } }, (results: any, status: string) => {
       if (status === 'OK' && results[0]) {
         const formatted = results[0].formatted_address;
         let streetName = '';
@@ -230,7 +258,7 @@ export default function Location() {
     });
   };
 
-  const updateMapMarker = (loc) => {
+  const updateMapMarker = (loc: LocationCoords) => {
     if (!window.google || !loc) return;
     
     const position = { lat: loc.lat, lng: loc.lng };

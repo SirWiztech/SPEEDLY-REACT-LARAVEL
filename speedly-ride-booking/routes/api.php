@@ -31,7 +31,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 | Authenticated Routes (Sanctum)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:web')->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);

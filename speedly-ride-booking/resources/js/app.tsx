@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { queryClient } from '@/lib/queryClient';
+import '@/../css/Preloader.css';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -15,6 +16,8 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'welcome':
+                return null;
+            case name === 'Home':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

@@ -7,6 +7,7 @@ import ClientSidebarDesktop from '@/components/navbars/ClientSidebarDesktop';
 import ClientNavmobile from '@/components/navbars/ClientNavmobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { api } from '../services/api';
 import '../../css/ClientKyc.css';
 
 interface KycDocument {

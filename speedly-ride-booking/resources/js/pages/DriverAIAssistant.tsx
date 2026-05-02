@@ -5,7 +5,7 @@ import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
-import { Robot, Rocket, Car, Wallet, ShieldAlert, Send } from 'lucide-react';
+import { Bot, Rocket, Car, Wallet, ShieldAlert, Send } from 'lucide-react';
 import '../../css/DriverAIAssistant.css';
 
 interface TopicItem {
@@ -156,15 +156,15 @@ export default function DriverAIAssistant() {
   if (loading) return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
 
   const renderIcon = (iconName: string, className: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactElement> = {
       'Rocket': <Rocket className={className} />,
       'Car': <Car className={className} />,
       'Wallet': <Wallet className={className} />,
       'ShieldAlert': <ShieldAlert className={className} />,
       'Send': <Send className={className} />,
-      'Robot': <Robot className={className} />
+      'Bot': <Bot className={className} />
     };
-    return icons[iconName] || <Robot className={className} />;
+    return icons[iconName] || <Bot className={className} />;
   };
 
   return (
