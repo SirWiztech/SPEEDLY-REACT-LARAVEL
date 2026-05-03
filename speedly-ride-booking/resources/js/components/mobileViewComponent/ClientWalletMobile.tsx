@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
-import ClientNavmobile from '@/components/navbars/ClientNavmobile';
+import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 import { useQuery } from '@tanstack/react-query';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../preloader/MobilePreloader';

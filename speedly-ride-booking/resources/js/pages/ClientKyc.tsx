@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import ClientSidebarDesktop from '@/components/navbars/ClientSidebarDesktop';
-import ClientNavmobile from '@/components/navbars/ClientNavmobile';
+import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { api } from '../services/api';

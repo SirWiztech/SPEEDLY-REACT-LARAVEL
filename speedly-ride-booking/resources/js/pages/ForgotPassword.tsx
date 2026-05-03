@@ -46,7 +46,7 @@ export default function ForgotPassword() {
                         <div className="success-message">
                             <span>✅</span>
                             <p>Password reset link has been sent to your email.</p>
-                            <a href="/login" className="btn-premium" style={{ marginTop: '16px', display: 'inline-block' }}>
+                            <a href="/form" className="btn-premium" style={{ marginTop: '16px', display: 'inline-block' }}>
                                 Back to Login
                             </a>
                         </div>
@@ -75,7 +75,7 @@ export default function ForgotPassword() {
                                 {processing ? 'Sending...' : 'Send Reset Link'}
                             </button>
 
-                            <a href="/login" className="back-link">Back to Login</a>
+                            <a href="/form" className="back-link">Back to Login</a>
                         </form>
                     )}
                 </div>

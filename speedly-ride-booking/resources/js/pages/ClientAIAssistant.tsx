@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import ClientSidebarDesktop from '@/components/navbars/ClientSidebarDesktop';
-import ClientNavmobile from '@/components/navbars/ClientNavmobile';
+import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 
 interface Message {
     type: 'ai' | 'user';

@@ -1,64 +1,81 @@
-import { Link, usePage } from '@inertiajs/react';
-import { Home, History, Wallet, MapPin, IdCard, Bot, Settings, LucideIcon } from 'lucide-react';
-import { Icon } from '@/components/ui/icon';
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+import '../../../css/NavBar.css';
 
-interface DesktopNavItemProps {
-    href: string;
-    icon: LucideIcon;
-    label: string;
-    activePaths: string[];
+interface ClientSidebarDesktopProps {
+  userName: string;
+  userRole?: string;
+  profilePictureUrl?: string | null;
 }
 
-function DesktopNavItem({ href, icon: IconComponent, label, activePaths }: DesktopNavItemProps) {
-    const { url } = usePage();
-    const isActive = activePaths.some(path => url.includes(path));
+const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
+  userName = 'User',
+  userRole = 'client',
+  profilePictureUrl = null,
+}) => {
+  const { url } = usePage();
+  const currentPath = url;
 
-    return (
-        <Link href={href} className={`desktop-nav-item ${isActive ? 'active' : ''}`}>
-            <Icon iconNode={IconComponent} className="desktop-nav-icon" />
-            <span>{label}</span>
-        </Link>
-    );
-}
+  const isActive = (path: string) => {
+    return currentPath === path;
+  };
 
-interface DriverSidebarDesktopProps {
-    userName?: string;
-}
+  const navItems = [
+    { path: '/client-dashboard', name: 'Dashboard', icon: 'fas fa-home' },
+    { path: '/book-ride', name: 'Book Ride', icon: 'fas fa-car' },
+    { path: '/ride-history', name: 'Ride History', icon: 'fas fa-history' },
+    { path: '/wallet', name: 'Wallet', icon: 'fas fa-wallet' },
+    { path: '/location', name: 'Locations', icon: 'fas fa-map-marker-alt' },
+    { path: '/ai-assistant', name: 'AI Assistant', icon: 'fas fa-robot' },
+    { path: '/settings', name: 'Settings', icon: 'fas fa-cog' },
+  ];
 
-export default function DriverSidebarDesktop({ userName = 'Driver' }: DriverSidebarDesktopProps) {
-    return (
-        <div className="desktop-sidebar">
-            <div className="sidebar-header">
-                <img src="/main-assets/logo.png" alt="Speedly" className="logo-image" />
-                <h2>Speedly</h2>
-            </div>
+  const getInitial = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
 
-            <nav className="sidebar-nav">
-                <div className="nav-section">
-                    <div className="nav-section-title">Main</div>
-                    <DesktopNavItem href="/driver/dashboard" icon={Home} label="Dashboard" activePaths={['/driver/dashboard']} />
-                    <DesktopNavItem href="/driver/book-history" icon={History} label="Book History" activePaths={['/driver/book-history']} />
-                    <DesktopNavItem href="/driver/wallet" icon={Wallet} label="Wallet" activePaths={['/driver/wallet']} />
-                </div>
+  return (
+    <div className="desktop-sidebar">
+      <div className="logo">
+        <img 
+          src="/main-assets/logo-no-background.png" 
+          alt="Speedly Logo" 
+          className="logo-image"
+        />
+      </div>
 
-                <div className="nav-section">
-                    <div className="nav-section-title">Account</div>
-                    <DesktopNavItem href="/driver/location" icon={MapPin} label="Locations" activePaths={['/driver/location']} />
-                    <DesktopNavItem href="/driver/kyc" icon={IdCard} label="KYC" activePaths={['/driver/kyc']} />
-                    <DesktopNavItem href="/driver/ai-assistant" icon={Bot} label="AI Assistant" activePaths={['/driver/ai-assistant']} />
-                    <DesktopNavItem href="/driver/settings" icon={Settings} label="Settings" activePaths={['/driver/settings', '/driver/profile']} />
-                </div>
-            </nav>
+      <div className="desktop-nav">
+        {navItems.map((item) => (
+          <Link
+            key={item.path}
+            href={item.path}
+            className={`desktop-nav-item ${isActive(item.path) ? 'active' : ''}`}
+          >
+            <i className={`${item.icon} desktop-nav-icon`}></i>
+            <span>{item.name}</span>
+          </Link>
+        ))}
+      </div>
 
-            <div className="user-profile">
-                <div className="profile-avatar">
-                    {userName.charAt(0).toUpperCase()}
-                </div>
-                <div className="profile-info">
-                    <h3>{userName}</h3>
-                    <p>Driver Member</p>
-                </div>
-            </div>
+      <Link href="/client-profile" className="user-profile">
+        <div className="profile-avatar">
+          {profilePictureUrl ? (
+            <img 
+              src={profilePictureUrl} 
+              alt={userName} 
+            />
+          ) : (
+            getInitial(userName)
+          )}
         </div>
-    );
-}
+        <div className="profile-info">
+          <h3>{userName}</h3>
+          <p>Client Member</p>
+        </div>
+      </Link>
+    </div>
+  );
+};
+
+export default ClientSidebarDesktop;

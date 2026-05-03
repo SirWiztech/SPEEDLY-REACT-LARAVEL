@@ -50,7 +50,7 @@ export default function ResetPassword() {
                         <div className="success-message">
                             <span>✅</span>
                             <p>Your password has been reset successfully!</p>
-                            <a href="/login" className="btn-premium" style={{ marginTop: '16px', display: 'inline-block' }}>
+                            <a href="/form" className="btn-premium" style={{ marginTop: '16px', display: 'inline-block' }}>
                                 Sign In
                             </a>
                         </div>

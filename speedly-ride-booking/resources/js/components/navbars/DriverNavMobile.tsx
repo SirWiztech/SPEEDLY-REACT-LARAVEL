@@ -1,37 +1,45 @@
-import { Link, usePage } from '@inertiajs/react';
-import { Home, Car, Wallet, MapPin, Bot, User, LucideIcon } from 'lucide-react';
-import { Icon } from '@/components/ui/icon';
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+import '../../../css/NavBar.css';
 
-interface NavItemProps {
-    href: string;
-    icon: LucideIcon;
-    label: string;
-    activePaths: string[];
+interface DriverNavMobileProps {
 }
 
-function NavItem({ href, icon: IconComponent, label, activePaths }: NavItemProps) {
-    const { url } = usePage();
-    const isActive = activePaths.some(path => url.includes(path));
+const DriverNavMobile: React.FC<DriverNavMobileProps> = () => {
+  const { url } = usePage();
+  const currentPath = url;
 
-    return (
-        <Link href={href} className={`nav-item ${isActive ? 'active' : ''}`}>
-            <div className="nav-icon-wrapper">
-                <Icon iconNode={IconComponent} className="nav-icon" />
-            </div>
-            <span>{label}</span>
+  const isActive = (path: string, alternativePaths: string[] = []) => {
+    if (currentPath === path) return true;
+    return alternativePaths.some(altPath => currentPath === altPath);
+  };
+
+  const navItems = [
+    { path: '/driver-dashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/driver-dashboard'] },
+    { path: '/book-history', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/book-history', '/book-ride'] },
+    { path: '/driver-wallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/driver-wallet'] },
+    { path: '/driver-location', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/driver-location'] },
+    { path: '/driver-ai-assistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/driver-ai-assistant'] },
+    { path: '/driver-settings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/driver-settings', '/driver-profile', '/kyc'] },
+  ];
+
+  return (
+    <div className="bottom-nav">
+      {navItems.map((item) => (
+        <Link
+          key={item.path}
+          to={item.path}
+          className={`nav-item ${isActive(item.path, item.matchPaths) ? 'active' : ''}`}
+        >
+          <div className="nav-icon-wrapper">
+            <i className={item.icon}></i>
+          </div>
+          <span>{item.name}</span>
         </Link>
-    );
-}
+      ))}
+    </div>
+  );
+};
 
-export default function DriverNavMobile() {
-    return (
-        <div className="bottom-nav">
-            <NavItem href="/driver/dashboard" icon={Home} label="Home" activePaths={['/driver/dashboard']} />
-            <NavItem href="/driver/book-history" icon={Car} label="Rides" activePaths={['/driver/book-history', '/driver/book-ride']} />
-            <NavItem href="/driver/wallet" icon={Wallet} label="Wallet" activePaths={['/driver/wallet']} />
-            <NavItem href="/driver/location" icon={MapPin} label="Map" activePaths={['/driver/location']} />
-            <NavItem href="/driver/ai-assistant" icon={Bot} label="AI" activePaths={['/driver/ai-assistant']} />
-            <NavItem href="/driver/settings" icon={User} label="Profile" activePaths={['/driver/settings', '/driver/profile', '/driver/kyc']} />
-        </div>
-    );
-}
+export default DriverNavMobile;

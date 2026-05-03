@@ -1,37 +1,49 @@
-import { Link, usePage } from '@inertiajs/react';
-import { Home, Car, Wallet, MapPin, Bot, User, LucideIcon } from 'lucide-react';
-import { Icon } from '@/components/ui/icon';
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+import '../../../css/NavBar.css';
 
-interface NavItemProps {
-    href: string;
-    icon: LucideIcon;
-    label: string;
-    activePaths: string[];
-}
+interface ClientNavMobileProps {}
 
-function NavItem({ href, icon: IconComponent, label, activePaths }: NavItemProps) {
-    const { url } = usePage();
-    const isActive = activePaths.some(path => url.includes(path));
+const ClientNavMobile: React.FC<ClientNavMobileProps> = () => {
+  const { url } = usePage();
+  const currentPath = url;
 
-    return (
-        <Link href={href} className={`nav-item ${isActive ? 'active' : ''}`}>
-            <div className="nav-icon-wrapper">
-                <Icon iconNode={IconComponent} className="nav-icon" />
-            </div>
-            <span>{label}</span>
+  const isActive = (path: string, matchPaths?: string[]): boolean => {
+    if (currentPath === path) return true;
+    if (matchPaths && matchPaths.some(p => currentPath === p)) return true;
+    // For nested routes like /settings/*, check if path is a prefix
+    if (path !== '/client-dashboard' && currentPath.startsWith(path)) {
+      return true;
+    }
+    return false;
+  };
+
+  const navItems = [
+    { path: '/client-dashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/client-dashboard'] },
+    { path: '/book-ride', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/book-ride'] },
+    { path: '/wallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/wallet'] },
+    { path: '/location', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/location'] },
+    { path: '/ai-assistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/ai-assistant'] },
+    { path: '/settings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/client-profile', '/settings'] },
+  ];
+
+  return (
+    <div className="bottom-nav">
+      {navItems.map((item) => (
+        <Link
+          key={item.path}
+          href={item.path}
+          className={`nav-item ${isActive(item.path, item.matchPaths) ? 'active' : ''}`}
+        >
+          <div className="nav-icon-wrapper">
+            <i className={item.icon}></i>
+          </div>
+          <span>{item.name}</span>
         </Link>
-    );
-}
+      ))}
+    </div>
+  );
+};
 
-export default function ClientNavmobile() {
-    return (
-        <div className="bottom-nav">
-            <NavItem href="/client/dashboard" icon={Home} label="Home" activePaths={['/client/dashboard']} />
-            <NavItem href="/client/book-ride" icon={Car} label="Rides" activePaths={['/client/book-ride']} />
-            <NavItem href="/client/wallet" icon={Wallet} label="Wallet" activePaths={['/client/wallet']} />
-            <NavItem href="/client/location" icon={MapPin} label="Map" activePaths={['/client/location']} />
-            <NavItem href="/client/ai-assistant" icon={Bot} label="AI" activePaths={['/client/ai-assistant']} />
-            <NavItem href="/client/settings" icon={User} label="Profile" activePaths={['/client/settings', '/client/profile', '/client/kyc']} />
-        </div>
-    );
-}
+export default ClientNavMobile;

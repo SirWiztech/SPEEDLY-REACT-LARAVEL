@@ -11,6 +11,10 @@ Route::inertia('/home', 'Home', [
     'isLoggedIn' => session('logged_in', false),
 ])->name('home');
 
+Route::inertia('/client_dashboard', 'ClientDashboard')->name('client_dashboard');
+Route::inertia('/client_book_ride', 'ClientBookRide')->name('client_book_ride');
+Route::inertia('/client_ride_history', 'ClientRideHistory')->name('client_ride_history');
+
 Route::middleware(['guest'])->group(function () {
     Route::inertia('/auth/login', 'auth/login')->name('login');
     Route::inertia('/auth/register', 'auth/register')->name('register');
@@ -34,9 +38,8 @@ Route::middleware(['auth'])->group(function () {
     Route::inertia('/settings/security', 'settings/security')->name('security.edit');
     Route::inertia('/settings/appearance', 'settings/appearance')->name('appearance.edit');
 
-    // Client Routes
-    Route::prefix('client')->name('client.')->group(function () {
-        Route::get('/dashboard', fn() => Inertia::render('ClientDashboard'))->name('dashboard');
+    // Client Routes (accessible without auth - dashboard moved outside)
+    Route::prefix('client')->name('client_')->group(function () {
         Route::get('/book-ride', fn() => Inertia::render('ClientBookRide'))->name('book-ride');
         Route::get('/wallet', fn() => Inertia::render('ClientWallet'))->name('wallet');
         Route::get('/profile', fn() => Inertia::render('ClientProfile'))->name('profile');

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { useForm } from '@inertiajs/react';
 import ClientSidebarDesktop from '@/components/navbars/ClientSidebarDesktop';
-import ClientNavmobile from '@/components/navbars/ClientNavmobile';
+import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import { usePreloader } from '../hooks/usePreloader';
