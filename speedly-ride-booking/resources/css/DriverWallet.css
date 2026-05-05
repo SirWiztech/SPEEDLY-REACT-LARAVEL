@@ -39,6 +39,7 @@ body {
     overflow: visible;
     position: relative;
     min-height: 100vh;
+    
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {

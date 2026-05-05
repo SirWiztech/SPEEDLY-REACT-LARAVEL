@@ -11,20 +11,28 @@ Route::inertia('/home', 'Home', [
     'isLoggedIn' => session('logged_in', false),
 ])->name('home');
 
-Route::inertia('/client_dashboard', 'ClientDashboard')->name('client_dashboard');
-Route::inertia('/client_book_ride', 'ClientBookRide')->name('client_book_ride');
-Route::inertia('/client_ride_history', 'ClientRideHistory')->name('client_ride_history');
+Route::inertia('/clientdashboard', 'ClientDashboard')->name('clientdashboard');
+Route::inertia('/clientbookride', 'ClientBookRide')->name('clientbookride');
+Route::inertia('/clientridehistory', 'ClientRideHistory')->name('clientridehistory');
+Route::inertia('/clientwallet', 'ClientWallet')->name('clientwallet');
+Route::inertia('/clientlocation ', 'ClientLocation')->name('clientlocation');
+Route::inertia('/clientaiassistant', 'ClientAIAssistant')->name('clientaiassistant');
+Route::inertia('/clientsettings', 'ClientSettings')->name('clientsettings');
+
+Route::inertia('/driverdashboard', 'DriverDashboard')->name('driverdashboard');
+Route::inertia('/driverbookhistory', 'DriverBookHistory')->name('driverbookhistory');
+Route::inertia('/driverwallet', 'DriverWallet')->name('driverwallet');
+Route::inertia('/driverlocation ', 'DriverLocation')->name('driverlocation');
+Route::inertia('/driveraiassistant', 'DriverAIAssistant')->name('driveraiassistant');
+Route::inertia('/driverkyc', 'DriverKyc')->name('driverkyc');
+Route::inertia('/driversettings', 'DriverSettings')->name('driversettings');
+
 
 Route::middleware(['guest'])->group(function () {
-    Route::inertia('/auth/login', 'auth/login')->name('login');
-    Route::inertia('/auth/register', 'auth/register')->name('register');
-    Route::inertia('/auth/forgot-password', 'auth/forgot-password')->name('password.request');
-    Route::inertia('/auth/reset-password', 'auth/reset-password')->name('password.reset');
-    Route::inertia('/auth/confirm-password', 'auth/confirm-password')->name('password.confirm');
-    Route::inertia('/auth/verify-email', 'auth/verify-email')->name('verification.notice');
-    Route::inertia('/auth/two-factor-challenge', 'auth/two-factor-challenge')->name('two-factor.login');
-    Route::inertia('/forgot-password', 'ForgotPassword')->name('client.forgot-password');
-    Route::inertia('/reset-password', 'ResetPassword')->name('client.reset-password');
+    Route::inertia('/login', 'Form')->name('login');
+    Route::inertia('/register', 'Form')->name('register');
+    Route::inertia('/forgot-password', 'ForgotPassword')->name('password.request');
+    Route::inertia('/reset-password', 'ResetPassword')->name('password.reset');
     Route::inertia('/admin-login', 'Admin-Login')->name('admin.login');
     Route::inertia('/forgot-admin-password', 'ForgotAdminPassword')->name('admin.forgot-password');
     Route::inertia('/verify-otp', 'VerifyOtp')->name('verify.otp');
@@ -32,19 +40,19 @@ Route::middleware(['guest'])->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-
+    Route::inertia('/dashboard', 'dashboard')->name('dashboard');
     Route::inertia('/settings/profile', 'settings/profile')->name('profile.edit');
     Route::inertia('/settings/security', 'settings/security')->name('security.edit');
     Route::inertia('/settings/appearance', 'settings/appearance')->name('appearance.edit');
 
     // Client Routes (accessible without auth - dashboard moved outside)
     Route::prefix('client')->name('client_')->group(function () {
+        Route::get('/dashboard', fn() => Inertia::render('ClientBookRide'))->name('dashboard');
         Route::get('/book-ride', fn() => Inertia::render('ClientBookRide'))->name('book-ride');
         Route::get('/wallet', fn() => Inertia::render('ClientWallet'))->name('wallet');
         Route::get('/profile', fn() => Inertia::render('ClientProfile'))->name('profile');
         Route::get('/kyc', fn() => Inertia::render('ClientKyc'))->name('kyc');
-        Route::get('/rides/history', fn() => Inertia::render('ClientRideHistory'))->name('rides.history');
+        Route::get('/rideshistory', fn() => Inertia::render('ClientRideHistory'))->name('rides_history');
         Route::get('/location', fn() => Inertia::render('ClientLocation'))->name('location');
         Route::get('/support', fn() => Inertia::render('ClientSupport'))->name('support');
         Route::get('/settings', fn() => Inertia::render('ClientSettings'))->name('settings');
@@ -57,7 +65,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/wallet', fn() => Inertia::render('DriverWallet'))->name('wallet');
         Route::get('/profile', fn() => Inertia::render('DriverProfile'))->name('profile');
         Route::get('/kyc', fn() => Inertia::render('DriverKyc'))->name('kyc');
-        Route::get('/rides/history', fn() => Inertia::render('DriverBookHistory'))->name('rides.history');
+        Route::get('/bookhistory', fn() => Inertia::render('DriverBookHistory'))->name('rides.history');
         Route::get('/location', fn() => Inertia::render('DriverLocation'))->name('location');
         Route::get('/support', fn() => Inertia::render('DriverSupport'))->name('support');
         Route::get('/settings', fn() => Inertia::render('DriverSettings'))->name('settings');
