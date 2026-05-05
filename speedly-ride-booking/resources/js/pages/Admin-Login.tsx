@@ -1,135 +1,213 @@
-import { useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/AdminLogin.css';
 
-interface AdminLoginForm {
-    username: string;
-    password: string;
-    remember: boolean;
-}
-
-export default function AdminLogin() {
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
-    const loading = usePreloader(1000);
-    const isMobile = useMobile();
+const AdminLogin: React.FC = () => {
+    const navigate = useNavigate();
+    const [username, setUsername] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [rememberMe, setRememberMe] = useState<boolean>(false);
+    const [showPassword, setShowPassword] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>('');
     
-    const { data, setData, post, processing } = useForm<AdminLoginForm>({
-        username: '',
-        password: '',
-        remember: false,
-    });
+    const preloaderLoading = usePreloader(1000);
+    const isMobile = useMobile();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Check if already logged in
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const response = await fetch('/SERVER/API/check_admin_session.php');
+                const data = await response.json();
+                if (data.logged_in) {
+                    navigate('/admin-dashboard');
+                }
+            } catch (error) {
+                console.error('Session check failed:', error);
+            }
+        };
+        checkSession();
+    }, [navigate]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-
-        if (!data.username || !data.password) {
+        
+        if (!username || !password) {
             setError('Please enter both username and password');
             return;
         }
+        
+        setLoading(true);
+        setError('');
+        
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        formData.append('remember', rememberMe ? '1' : '0');
+        
+        try {
+            const response = await fetch('/SERVER/API/admin-login.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Login Successful!',
+                    text: 'Redirecting to dashboard...',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    navigate('/admin-dashboard');
+                });
+            } else {
+                setError(data.message || 'Invalid username or password');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Login Failed',
+                    text: data.message || 'Invalid credentials',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        } catch (error) {
+            setError('Connection error. Please try again.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Connection Error',
+                text: 'Unable to connect to the server',
+                confirmButtonColor: '#ff5e00'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        post('/admin/login', {
-            onError: (errors) => {
-                setError(errors.message || 'Invalid username or password');
-            },
+    const handleForgotPassword = () => {
+        Swal.fire({
+            title: 'Reset Password',
+            html: `
+                <input type="email" id="resetEmail" class="swal2-input" placeholder="Enter your email">
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Send Reset Link',
+            confirmButtonColor: '#ff5e00',
+            preConfirm: () => {
+                const email = (document.getElementById('resetEmail') as HTMLInputElement)?.value;
+                if (!email || !email.includes('@')) {
+                    Swal.showValidationMessage('Please enter a valid email');
+                    return false;
+                }
+                return email;
+            }
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Reset Link Sent!',
+                    text: 'Check your email for password reset instructions.',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
         });
     };
 
-    if (loading) {
+    if (preloaderLoading) {
         return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
     }
 
     return (
-        <div className="admin-login-page">
-            <div className="admin-login-container">
-                <div className="admin-login-brand">
-                    <div className="logo">
-                        <img src="/main-assets/logo.png" alt="Speedly" />
+        <div className="admin-login-container">
+            <div className="admin-login-card">
+                <div className="login-header">
+                    <div className="logo-wrapper">
+                        <img src="/main-assets/logo-no-background.png" alt="Speedly" className="logo-image" />
                     </div>
-                    <h1>SPEEDLY</h1>
-                    <p>Your Everyday Ride Partner<br />Admin Portal</p>
+                    <h1>Admin Dashboard</h1>
+                    <p>Sign in to manage your platform</p>
                 </div>
 
-                <div className="admin-login-form">
-                    <h2>Admin Login</h2>
-                    <p className="subtitle">Sign in to access the admin dashboard</p>
-
+                <form onSubmit={handleSubmit} className="login-form">
                     {error && (
                         <div className="error-message">
-                            <span>⚠️</span> {error}
+                            <i className="fas fa-exclamation-circle"></i>
+                            <span>{error}</span>
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label htmlFor="username">Username</label>
-                            <input
-                                id="username"
-                                type="text"
-                                value={data.username}
-                                onChange={(e) => setData('username', e.target.value)}
-                                placeholder="Enter your username"
-                                autoComplete="username"
+                    <div className="input-group">
+                        <i className="fas fa-user input-icon"></i>
+                        <input
+                            type="text"
+                            className="input-field"
+                            placeholder="Username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="input-group">
+                        <i className="fas fa-lock input-icon"></i>
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            className="input-field"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                        <i 
+                            className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} password-toggle`}
+                            onClick={() => setShowPassword(!showPassword)}
+                        ></i>
+                    </div>
+
+                    <div className="login-options">
+                        <label className="remember-me">
+                            <input 
+                                type="checkbox" 
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
                             />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="password">Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    id="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={data.password}
-                                    onChange={(e) => setData('password', e.target.value)}
-                                    placeholder="Enter your password"
-                                    autoComplete="current-password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        color: '#666',
-                                    }}
-                                >
-                                    {showPassword ? '🙈' : '👁️'}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="form-options">
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={data.remember}
-                                    onChange={(e) => setData('remember', e.target.checked)}
-                                />
-                                <span>Remember me</span>
-                            </label>
-                            <a href="/admin/forgot-password">Forgot password?</a>
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="btn-login"
-                            disabled={processing}
-                        >
-                            {processing ? 'Signing in...' : 'Sign In'}
+                            <span>Remember me</span>
+                        </label>
+                        <button type="button" className="forgot-password" onClick={handleForgotPassword}>
+                            Forgot Password?
                         </button>
-                    </form>
-                </div>
+                    </div>
+
+                    <button type="submit" className="login-btn" disabled={loading}>
+                        {loading ? (
+                            <><span className="spinner"></span> Signing in...</>
+                        ) : (
+                            <><span className="btn-text">Sign In</span> <i className="fas fa-arrow-right"></i></>
+                        )}
+                    </button>
+
+                    <div className="security-badge">
+                        <i className="fas fa-shield-alt"></i>
+                        <span>Secure 256-bit SSL encrypted connection</span>
+                    </div>
+
+                    <div className="back-link">
+                        <a href="/">
+                            <i className="fas fa-arrow-left"></i>
+                            Back to Website
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     );
-}
+};
+
+export default AdminLogin;

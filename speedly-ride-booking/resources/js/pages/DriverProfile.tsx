@@ -1,190 +1,151 @@
-import { useState, useEffect } from 'react';
-import { Head } from '@inertiajs/react';
-import { useForm } from '@inertiajs/react';
-import DriverSidebarDesktop from '@/components/navbars/DriverSidebarDesktop';
-import DriverNavMobile from '@/components/navbars/DriverNavMobile';
-import MobilePreloader from '../components/preloader/MobilePreloader';
-import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import React, { useState, useEffect } from 'react';
+import { router } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
+import MobilePreloader from '../components/preloader/MobilePreloader';
+import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/DriverProfile.css';
 
-interface UserData {
-  id?: number;
-  full_name?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  avatar?: string;
-  profile_picture?: string;
-  driver_status?: string;
-  is_verified?: boolean;
-  avg_rating?: number;
-  total_reviews?: number;
-  driver?: {
-    vehicle_type?: string;
-    vehicle_model?: string;
-    vehicle_year?: string;
-    license_plate?: string;
-    vehicle_plate?: string;
-  };
-  bank?: {
-    bank_name?: string;
-    account_number?: string;
-    account_name?: string;
-  };
-  notifications?: Array<{ is_read: boolean }>;
+interface DriverData {
+    id: string;
+    full_name: string;
+    email: string;
+    phone_number: string;
+    profile_picture_url: string | null;
+    created_at: string;
+    driver_status: string;
+    verification_status: string;
+    vehicle_type: string;
+    vehicle_model: string;
+    vehicle_year: string;
+    license_plate: string;
+    address: string;
+    city: string;
+    state: string;
 }
 
-export default function DriverProfile() {
-  const loading = usePreloader(1000);
-  const isMobile = useMobile();
-  
-  const { data: userData } = useForm({
-    full_name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: ''
-  });
-
-  const userName = userData?.full_name?.split(' ')[0] || userData?.name?.split(' ')[0] || 'Driver';
-  const userAvatar = userData?.avatar || userData?.profile_picture || null;
-
-  if (loading) {
-    return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
-  }
-
-  return (
-    <>
-      <Head title="Profile" />
-      {isMobile ? (
-        <div className="mobile-container">
-          <div className="mobile-header">
-            <h1>Profile</h1>
-          </div>
-          
-          <div className="profile-card">
-            <div className="profile-avatar-large">
-              {userAvatar ? (
-                <img src={userAvatar} alt="Profile" className="avatar-image" />
-              ) : (
-                <span>{userName.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <h2>{userData?.full_name || userData?.name}</h2>
-            <p>{userData?.email}</p>
-            <p>{userData?.phone}</p>
-          </div>
-
-          <div className="profile-info-card">
-            <h3>Driver Information</h3>
-            <div className="info-row">
-              <span className="info-label">Full Name</span>
-              <span className="info-value">{userData?.full_name || userData?.name || 'Not set'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Email</span>
-              <span className="info-value">{userData?.email || 'Not set'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Phone</span>
-              <span className="info-value">{userData?.phone || 'Not set'}</span>
-            </div>
-          </div>
-
-          {userData?.driver && (
-            <div className="profile-info-card">
-              <h3>Vehicle Information</h3>
-              <div className="info-row">
-                <span className="info-label">Vehicle Type</span>
-                <span className="info-value">{userData.driver.vehicle_type || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Vehicle Model</span>
-                <span className="info-value">{userData.driver.vehicle_model || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Vehicle Year</span>
-                <span className="info-value">{userData.driver.vehicle_year || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">License Plate</span>
-                <span className="info-value">{userData.driver.license_plate || userData.driver.vehicle_plate || 'Not set'}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="mobile-nav-container">
-            <DriverNavMobile />
-          </div>
-        </div>
-      ) : (
-        <div className="dashboard-container">
-          <DriverSidebarDesktop userName={userName} />
-          <div className="desktop-main">
-            <div className="desktop-header">
-              <h1>Profile</h1>
-              <p>Manage your driver information</p>
-            </div>
-
-            <div className="cd-card">
-              <div className="profile-header">
-                <div className="profile-avatar-large">
-                  {userAvatar ? (
-                    <img src={userAvatar} alt="Profile" className="avatar-image" />
-                  ) : (
-                    <span>{userName.charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-                <div>
-                  <h2>{userData?.full_name || userData?.name}</h2>
-                  <p>{userData?.email}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="cd-card">
-              <h3>Driver Information</h3>
-              <div className="info-row">
-                <span className="info-label">Full Name</span>
-                <span className="info-value">{userData?.full_name || userData?.name || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Email</span>
-                <span className="info-value">{userData?.email || 'Not set'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Phone</span>
-                <span className="info-value">{userData?.phone || 'Not set'}</span>
-              </div>
-            </div>
-
-            {userData?.driver && (
-              <div className="cd-card">
-                <h3>Vehicle Information</h3>
-                <div className="info-row">
-                  <span className="info-label">Vehicle Type</span>
-                  <span className="info-value">{userData.driver.vehicle_type || 'Not set'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Vehicle Model</span>
-                  <span className="info-value">{userData.driver.vehicle_model || 'Not set'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Vehicle Year</span>
-                  <span className="info-value">{userData.driver.vehicle_year || 'Not set'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">License Plate</span>
-                  <span className="info-value">{userData.driver.license_plate || userData.driver.vehicle_plate || 'Not set'}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </>
-  );
+interface DriverStats {
+    total_rides: number;
+    total_earnings: number;
+    average_rating: number;
+    total_reviews: number;
 }
+
+const DriverProfile: React.FC = () => {
+    const [driverData, setDriverData] = useState<DriverData | null>(null);
+    const [stats, setStats] = useState<DriverStats>({
+        total_rides: 0,
+        total_earnings: 0,
+        average_rating: 0,
+        total_reviews: 0
+    });
+    const [activeTab, setActiveTab] = useState<string>('personal');
+    const [loading, setLoading] = useState<boolean>(true);
+    const [editName, setEditName] = useState<string>('');
+    const [editPhone, setEditPhone] = useState<string>('');
+    const [editAddress, setEditAddress] = useState<string>('');
+    const [editCity, setEditCity] = useState<string>('');
+    const [editState, setEditState] = useState<string>('');
+    const [vehicleType, setVehicleType] = useState<string>('');
+    const [vehicleModel, setVehicleModel] = useState<string>('');
+    const [vehicleYear, setVehicleYear] = useState<string>('');
+    const [licensePlate, setLicensePlate] = useState<string>('');
+    const [bankName, setBankName] = useState<string>('');
+    const [accountNumber, setAccountNumber] = useState<string>('');
+    const [accountName, setAccountName] = useState<string>('');
+    
+    const preloaderLoading = usePreloader(1000);
+    const isMobile = useMobile();
+
+    // Fetch driver data
+    const fetchDriverData = async () => {
+        try {
+            const response = await fetch('/SERVER/API/driver_profile_data.php');
+            const data = await response.json();
+            
+            if (data.success) {
+                setDriverData(data.driver);
+                setStats(data.stats);
+                setEditName(data.driver?.full_name || '');
+                setEditPhone(data.driver?.phone_number || '');
+                setEditAddress(data.driver?.address || '');
+                setEditCity(data.driver?.city || '');
+                setEditState(data.driver?.state || '');
+                setVehicleType(data.driver?.vehicle_type || '');
+                setVehicleModel(data.driver?.vehicle_model || '');
+                setVehicleYear(data.driver?.vehicle_year || '');
+                setLicensePlate(data.driver?.license_plate || '');
+            }
+        } catch (error) {
+            console.error('Error fetching driver data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Update profile
+    const updateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        Swal.fire({
+            title: 'Updating...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        try {
+            const response = await fetch('/SERVER/API/update_driver_profile.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    full_name: editName, 
+                    phone_number: editPhone,
+                    address: editAddress,
+                    city: editCity,
+                    state: editState
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Profile Updated',
+                    text: 'Your profile has been updated successfully',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    fetchDriverData();
+                    setActiveTab('personal');
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#ff5e00' });
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update profile', confirmButtonColor: '#ff5e00' });
+        }
+    };
+
+    // Update vehicle
+    const updateVehicle = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        Swal.fire({
+            title: 'Updating...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        try {
+            const response = await fetch('/SERVER/API/update_driver_vehicle.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    vehicle_type: vehicleType,
+                    vehicle_model: vehicleModel,
+                    vehicle_year: vehicleYear,
+                    license_plate: licensePlate
+                })
+            });
+            const

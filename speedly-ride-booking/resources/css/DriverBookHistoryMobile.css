@@ -1,0 +1,450 @@
+/* Driver Book History Mobile Styles */
+/* ALL SELECTORS HAVE "mobile-" PREFIX */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.mobile-driver-book-history-container {
+    width: 100%;
+    min-height: 100vh;
+    background-color: #fff;
+    overflow-x: hidden;
+}
+
+.mobile-driver-book-history-view {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 80px;
+    scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+.mobile-driver-book-history-view::-webkit-scrollbar {
+    width: 4px;
+}
+
+.mobile-driver-book-history-view::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.mobile-driver-book-history-view::-webkit-scrollbar-thumb {
+    background: #ff5e00;
+    border-radius: 10px;
+}
+
+/* Header */
+.mobile-driver-book-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.mobile-driver-book-history-user-info h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.mobile-driver-book-history-user-info p {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.mobile-driver-book-history-notification-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Stats Grid */
+.mobile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+.mobile-stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    text-align: center;
+}
+
+.mobile-stat-card .stat-label {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.mobile-stat-card .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.stat-subtext {
+    font-size: 10px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* Commission Summary */
+.mobile-commission-summary {
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    margin: 0 16px 20px;
+    padding: 16px;
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.commission-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.commission-header i {
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+.commission-label {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.commission-value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.commission-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Tabs */
+.mobile-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 16px;
+}
+
+.mobile-tab {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.mobile-tab.active {
+    color: #ff5e00;
+}
+
+.mobile-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ff5e00;
+}
+
+/* Rides List */
+.mobile-rides-list {
+    padding: 0 16px 20px;
+}
+
+.list-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+/* Ride Card */
+.mobile-ride-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.mobile-ride-card:active {
+    transform: scale(0.98);
+    background: #fafafa;
+}
+
+.mobile-ride-card.declined-card {
+    border-left: 4px solid #9ca3af;
+}
+
+.ride-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #888;
+}
+
+.ride-location-info {
+    margin-bottom: 12px;
+}
+
+.pickup {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    word-break: break-word;
+}
+
+.destination {
+    font-size: 13px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.ride-meta {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 12px;
+}
+
+.client {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.client-avatar {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #ff5e00, #ff8c3a);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.client-avatar.declined {
+    background: #9ca3af;
+}
+
+.client-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.ride-fare {
+    text-align: right;
+}
+
+.fare-total {
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+}
+
+.fare-commission {
+    font-size: 11px;
+    color: #ef4444;
+}
+
+.fare-earnings {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.earnings-positive {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.earnings-pending {
+    color: #f59e0b;
+}
+
+.earnings-neutral {
+    color: #6b7280;
+}
+
+.ride-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ride-status .status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.status.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status.pending {
+    background: #fff3e0;
+    color: #f97316;
+}
+
+.status.accepted {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.status.cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.status.declined {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.details-btn {
+    background: none;
+    border: none;
+    color: #ff5e00;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.details-btn:active {
+    opacity: 0.7;
+}
+
+/* Empty State */
+.mobile-empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: #9ca3af;
+}
+
+.mobile-empty-state i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.mobile-empty-state p {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.empty-subtext {
+    font-size: 12px;
+    color: #b0b0b0;
+}
+
+/* Responsive */
+@media (max-width: 380px) {
+    .mobile-stats-grid {
+        gap: 10px;
+    }
+    
+    .mobile-stat-card {
+        padding: 12px;
+    }
+    
+    .mobile-stat-card .stat-value {
+        font-size: 20px;
+    }
+    
+    .ride-meta {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .ride-fare {
+        text-align: left;
+    }
+    
+    .commission-header i {
+        font-size: 20px;
+    }
+    
+    .commission-value {
+        font-size: 14px;
+    }
+}
+
+/* Safe Area Support */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .mobile-driver-book-history-view {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+}

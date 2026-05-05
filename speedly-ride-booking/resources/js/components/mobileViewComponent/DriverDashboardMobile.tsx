@@ -1,694 +1,904 @@
-import { useState, useEffect } from 'react';
-import { router, usePage, Link } from '@inertiajs/react';
-import DriverSidebarDesktop from '@/components/navbars/DriverSidebarDesktop';
-import DriverNavMobile from '@/components/navbars/DriverNavMobile';
-import MobilePreloader from '@/components/preloader/MobilePreloader';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { router } from '@inertiajs/react';
+import DriverNavMobile from '../../components/navbars/DriverNavMobile';
+import Swal from 'sweetalert2';
+import { usePreloader } from '../../hooks/usePreloader';
+import MobilePreloader from '../../components/preloader/MobilePreloader';
+import '../../../css/DriverDashboardMobile.css';
+
+// Types
+interface DriverData {
+    id: string;
+    fullname: string;
+    email: string;
+    phone_number: string;
+    profile_picture_url: string | null;
+    driver_status: string;
+    verification_status: string;
+    avg_rating: number;
+    total_reviews: number;
+}
+
+interface Earnings {
+    today_earnings: number;
+    total_earnings: number;
+    available_balance: number;
+    total_withdrawn: number;
+}
+
+interface RideStats {
+    total_rides: number;
+    completed_rides: number;
+    cancelled_rides: number;
+    today_rides: number;
+    acceptance_rate: number;
+}
 
 interface Ride {
-  id?: number;
-  status?: string;
-  total_fare?: string;
-  estimated_fare?: string;
-  pickup_address?: string;
-  destination_address?: string;
-  distance?: number;
-  created_at?: string;
-  completed_at?: string;
+    id: string;
+    status: string;
+    request_type: 'private' | 'public';
+    pickup_address: string;
+    destination_address: string;
+    total_fare: number;
+    driver_payout: number;
+    distance_km: number;
+    created_at: string;
+    client_name: string;
+    client_phone: string;
+    client_photo: string | null;
+    pickup_latitude: number | null;
+    pickup_longitude: number | null;
+    formatted_date: string;
+    formatted_time: string;
 }
 
-interface UserData {
-  id?: number;
-  full_name?: string;
-  fullname?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  avatar?: string;
-  profile_picture?: string;
-  driver_status?: string;
-  is_verified?: boolean;
-  avg_rating?: number;
-  total_reviews?: number;
-  balance?: number;
-  notifications?: Array<{ is_read: boolean }>;
+interface RecentRide {
+    id: string;
+    pickup_address: string;
+    destination_address: string;
+    total_fare: number;
+    driver_payout: number;
+    platform_commission: number;
+    created_at: string;
+    client_name: string;
+    formatted_time: string;
 }
 
-interface PageProps extends Record<string, unknown> {
-    auth: {
-        user?: UserData;
+const DriverDashboardMobile: React.FC = () => {
+    // State
+    const [driverData, setDriverData] = useState<DriverData | null>(null);
+    const [earnings, setEarnings] = useState<Earnings>({
+        today_earnings: 0,
+        total_earnings: 0,
+        available_balance: 0,
+        total_withdrawn: 0
+    });
+    const [stats, setStats] = useState<RideStats>({
+        total_rides: 0,
+        completed_rides: 0,
+        cancelled_rides: 0,
+        today_rides: 0,
+        acceptance_rate: 100
+    });
+    const [activeRide, setActiveRide] = useState<Ride | null>(null);
+    const [pendingRide, setPendingRide] = useState<Ride | null>(null);
+    const [recentRides, setRecentRides] = useState<RecentRide[]>([]);
+    const [driverStatus, setDriverStatus] = useState<string>('offline');
+    const [verificationStatus, setVerificationStatus] = useState<string>('pending');
+    const [notificationCount, setNotificationCount] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [countdown, setCountdown] = useState<number>(30);
+
+    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const preloaderLoading = usePreloader(1000);
+
+    // Fetch driver dashboard data
+    const fetchDashboardData = useCallback(async () => {
+        try {
+            const response = await fetch('/SERVER/API/driver_dashboard_data.php');
+            const data = await response.json();
+
+            if (data.success) {
+                setDriverData(data.driver);
+                setEarnings(data.earnings);
+                setStats(data.stats);
+                setActiveRide(data.active_ride || null);
+                setPendingRide(data.pending_ride || null);
+                setRecentRides(data.recent_rides || []);
+                setDriverStatus(data.driver_status || 'offline');
+                setVerificationStatus(data.verification_status || 'pending');
+                setNotificationCount(data.notification_count || 0);
+            } else {
+                console.error('Failed to fetch dashboard data:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Toggle driver status
+    const toggleDriverStatus = async () => {
+        if (verificationStatus !== 'approved') {
+            Swal.fire({
+                title: 'Verification Required',
+                text: 'Please complete KYC verification before going online',
+                icon: 'warning',
+                confirmButtonColor: '#ff5e00'
+            });
+            return;
+        }
+
+        const newStatus = driverStatus === 'online' ? 'offline' : 'online';
+
+        const result = await Swal.fire({
+            title: newStatus === 'online' ? 'Go Online' : 'Go Offline',
+            text: `Are you sure you want to go ${newStatus}?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: newStatus === 'online' ? '#10b981' : '#ef4444',
+            confirmButtonText: `Yes, go ${newStatus}`,
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/SERVER/API/toggle_driver_status.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    setDriverStatus(newStatus);
+                    Swal.fire({
+                        title: 'Success',
+                        text: `You are now ${newStatus}`,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    fetchDashboardData();
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Failed to update status',
+                        icon: 'error',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to update status',
+                    icon: 'error',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        }
     };
-}
 
-export default function DriverDashboard() {
-  const { props } = usePage<PageProps>();
-  const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [availableBalance, setAvailableBalance] = useState(0);
-  const [todayEarnings, setTodayEarnings] = useState(0);
-  const [totalEarnings, setTotalEarnings] = useState(0);
-  const [completedRides, setCompletedRides] = useState(0);
-  const [todayRides, setTodayRides] = useState(0);
-  const [driverStatus, setDriverStatus] = useState('offline');
-  const [verificationStatus, setVerificationStatus] = useState('pending');
-  const [activeRide, setActiveRide] = useState<Ride | null>(null);
-  const [pendingRides, setPendingRides] = useState<Ride[]>([]);
-  const [avgRating, setAvgRating] = useState(0);
-  const [totalReviews, setTotalReviews] = useState(0);
-  const [notificationCount, setNotificationCount] = useState(0);
+    // Accept ride
+    const acceptRide = async (rideId: string) => {
+        const result = await Swal.fire({
+            title: 'Accept Ride?',
+            text: 'Are you sure you want to accept this ride?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, accept',
+            cancelButtonText: 'Cancel'
+        });
 
-  useEffect(() => {
-    fetchDriverData();
-  }, []);
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/SERVER/API/accept_ride.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ride_id: rideId })
+                });
+                const data = await response.json();
 
-  const fetchDriverData = async () => {
-    try {
-      const authUser = (props as unknown as { auth?: { user?: UserData } }).auth?.user;
-      
-      if (authUser) {
-        setUserData(authUser);
-        setAvailableBalance(authUser.balance || 0);
-        setDriverStatus(authUser.driver_status || 'offline');
-        setVerificationStatus(authUser.is_verified ? 'verified' : 'pending');
-        setAvgRating(authUser.avg_rating || 0);
-        setTotalReviews(authUser.total_reviews || 0);
-        
-        const unreadNotifications = authUser.notifications?.filter(n => !n.is_read) || [];
-        setNotificationCount(unreadNotifications.length);
-      }
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Ride accepted successfully!',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        fetchDashboardData();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Failed to accept ride',
+                        icon: 'error',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to accept ride',
+                    icon: 'error',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        }
+    };
 
-      const mockRides: Ride[] = [
-        { id: 1, status: 'completed', total_fare: '5000', created_at: new Date().toISOString() },
-        { id: 2, status: 'completed', total_fare: '3500', created_at: new Date().toISOString() },
-        { id: 3, status: 'pending', total_fare: '7000', pickup_address: '123 Main St', destination_address: '456 Oak Ave', distance: 5 },
-      ];
+    // Decline ride
+    const declineRide = async (rideId: string) => {
+        const result = await Swal.fire({
+            title: 'Decline Ride?',
+            text: 'Are you sure you want to decline this ride?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, decline',
+            cancelButtonText: 'Cancel'
+        });
 
-      const today = new Date().toDateString();
-      const todayRidesList = mockRides.filter(r => {
-        const rideDate = new Date(r.created_at || r.completed_at || '').toDateString();
-        return rideDate === today && r.status === 'completed';
-      });
-      
-      setTodayEarnings(todayRidesList.reduce((sum, r) => sum + (parseFloat(r.total_fare || '0') || 0), 0));
-      setTotalEarnings(mockRides.filter(r => r.status === 'completed').reduce((sum, r) => sum + (parseFloat(r.total_fare || '0') || 0), 0));
-      setCompletedRides(mockRides.filter(r => r.status === 'completed').length);
-      setTodayRides(todayRidesList.length);
-      setActiveRide(mockRides.find(r => r.status === 'accepted') || null);
-      setPendingRides(mockRides.filter(r => r.status === 'pending').slice(0, 10));
-    } catch (err) {
-      console.error('Error fetching driver data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/SERVER/API/decline_ride.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ride_id: rideId, auto_decline: false })
+                });
+                const data = await response.json();
 
-  const toggleDriverStatus = async () => {
-    const newStatus = driverStatus === 'online' ? 'offline' : 'online';
-    setDriverStatus(newStatus);
-  };
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Declined',
+                        text: data.message || 'Ride declined',
+                        icon: 'info',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        fetchDashboardData();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Failed to decline ride',
+                        icon: 'error',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to decline ride',
+                    icon: 'error',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        }
+    };
 
-  const numberStyle = { fontFamily: "'Outfit', sans-serif" };
+    // Complete ride
+    const completeRide = async (rideId: string, payout: number) => {
+        let selectedRating = 0;
+        let reviewComment = '';
 
-  if (loading) {
-    return <MobilePreloader />;
-  }
-
-  const userName = userData?.full_name?.split(' ')[0] || userData?.fullname?.split(' ')[0] || 'Driver';
-  const userAvatar = userData?.avatar || userData?.profile_picture || null;
-
-  return (
-    <div className="dashboard-container">
-      {/* MOBILE VIEW */}
-      <div className="mobile-view" style={{paddingBottom: '80px'}}>
-        {/* Hero Header with Premium Orange Gradient */}
-        <div style={{
-          background: 'linear-gradient(135deg, #ff5e00 0%, #ff7a1a 40%, #ff8c3a 70%, #ffaa5c 100%)',
-          padding: '48px 20px 36px',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {/* Decorative Elements */}
-          <div style={{
-            position: 'absolute',
-            top: '-30%',
-            right: '-15%',
-            width: '250px',
-            height: '250px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
-            borderRadius: '50%'
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            bottom: '-20%',
-            left: '-10%',
-            width: '150px',
-            height: '150px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-            borderRadius: '50%'
-          }}></div>
-          
-          <div style={{position: 'relative', zIndex: 1}}>
-            {/* Top Row: Greeting + Avatar */}
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
-              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                <div style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
-                  background: 'rgba(255,255,255,0.2)',
-                  backdropFilter: 'blur(10px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                  border: '1px solid rgba(255,255,255,0.3)'
-                }}>
-                  👋
-                </div>
-                <div>
-                  <div style={{color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.5px'}}>WELCOME BACK,</div>
-                  <h1 style={{fontSize: '26px', fontWeight: 800, color: 'white', margin: 0, letterSpacing: '-0.5px', lineHeight: 1.2}}>{userName}!</h1>
-                </div>
-              </div>
-              <div 
-                onClick={() => router.visit('/driver_settings')}
-                style={{
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: '16px',
-                  background: 'rgba(255,255,255,0.2)',
-                  backdropFilter: 'blur(10px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '22px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  cursor: 'pointer',
-                  overflow: 'hidden'
-                }}
-              >
-                {userAvatar ? (
-                  <img src={userAvatar} alt={userName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-                ) : (
-                  <span style={{fontWeight: 700, fontSize: '20px'}}>{userName.charAt(0).toUpperCase()}</span>
-                )}
-              </div>
-            </div>
-
-            {/* Driver Status Badge */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 18px',
-              background: driverStatus === 'online' 
-                ? 'rgba(34,197,94,0.25)' 
-                : 'rgba(255,255,255,0.2)',
-              borderRadius: '24px',
-              marginBottom: '24px',
-              border: `1px solid ${
-                driverStatus === 'online' 
-                  ? 'rgba(34,197,94,0.4)' 
-                  : 'rgba(255,255,255,0.3)'
-              }`
-            }}>
-              <div style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: driverStatus === 'online' ? '#22c55e' : '#fbbf24',
-                boxShadow: driverStatus === 'online' ? '0 0 12px rgba(34,197,94,0.6)' : 'none',
-                animation: driverStatus === 'online' ? 'pulse 2s infinite' : 'none'
-              }}></div>
-              <span style={{color: 'white', fontSize: '13px', fontWeight: 600, letterSpacing: '0.3px'}}>
-                {driverStatus === 'online' ? 'Online • Accepting Rides' : 'Offline • Tap to Go Online'}
-              </span>
-            </div>
-
-            {/* Available Balance Card - Premium Glass Effect */}
-            <div style={{
-              background: 'rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              borderRadius: '24px',
-              padding: '28px',
-              border: '1px solid rgba(255,255,255,0.25)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
-            }}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px'}}>
-                <div>
-                  <div style={{
-                    color: 'rgba(255,255,255,0.75)', 
-                    fontSize: '11px', 
-                    fontWeight: 600, 
-                    letterSpacing: '1.5px',
-                    textTransform: 'uppercase',
-                    marginBottom: '8px'
-                  }}>
-                    Available Balance
-                  </div>
-                  <div style={{
-                    fontSize: '36px', 
-                    fontWeight: 800, 
-                    color: 'white', 
-                    ...numberStyle,
-                    letterSpacing: '-1px',
-                    lineHeight: 1.1
-                  }}>
-                    ₦{availableBalance.toLocaleString()}
-                  </div>
-                </div>
-                <button
-                  onClick={() => router.visit('/driver_wallet')}
-                  style={{
-                    padding: '12px 20px',
-                    background: 'rgba(255,255,255,0.25)',
-                    border: '1px solid rgba(255,255,255,0.35)',
-                    borderRadius: '14px',
-                    color: 'white',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    letterSpacing: '0.3px',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.35)';
-                    (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.25)';
-                    (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-                  }}
-                >
-                  <i className="fas fa-arrow-up" style={{fontSize: '11px'}}></i>
-                  Withdraw
-                </button>
-              </div>
-              
-              <div style={{
-                fontSize: '14px', 
-                color: 'rgba(255,255,255,0.8)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <i className="fas fa-chart-line" style={{fontSize: '12px'}}></i>
-                <span style={{fontWeight: 500}}>₦{todayEarnings.toLocaleString()} earned today</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{padding: '20px', marginTop: '-10px', position: 'relative', zIndex: 2}}>
-          {/* Stats Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '12px',
-            marginBottom: '20px'
-          }}>
-            {[
-              { label: "Today's Earnings", value: todayEarnings, icon: 'fa-naira-sign', color: '#16a34a' },
-              { label: "Today's Rides", value: todayRides, icon: 'fa-car', color: '#0284c7' },
-              { label: 'Rating', value: `${avgRating.toFixed(1)} (${totalReviews})`, icon: 'fa-star', color: '#d97706' },
-              { label: 'Total Rides', value: completedRides, icon: 'fa-check-circle', color: '#9333ea' }
-            ].map((stat, idx) => (
-              <div key={idx} style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '18px 16px',
-                boxShadow: '0 4px 20px rgba(255,94,0,0.15)',
-                border: '1px solid rgba(255,94,0,0.1)'
-              }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: `${stat.color}15`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px'
-                }}>
-                  <i className={`fas ${stat.icon}`} style={{color: stat.color, fontSize: '14px'}}></i>
-                </div>
-                <div style={{fontSize: '18px', fontWeight: 700, color: '#111', marginBottom: '4px', ...numberStyle}}>
-                  {typeof stat.value === 'string' ? stat.value : `₦${stat.value.toLocaleString()}`}
-                </div>
-                <div style={{fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Status Toggle */}
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '20px',
-            boxShadow: '0 4px 20px rgba(255,94,0,0.15)',
-            border: '1px solid rgba(255,94,0,0.1)',
-            marginBottom: '20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <div style={{fontSize: '14px', fontWeight: 600, color: '#111', marginBottom: '4px'}}>Driver Status</div>
-              <div style={{fontSize: '12px', color: '#888'}}>
-                {driverStatus === 'online' ? 'You are accepting ride requests' : 'Go online to start earning'}
-              </div>
-            </div>
-            <button
-              onClick={toggleDriverStatus}
-              style={{
-                padding: '10px 24px',
-                background: driverStatus === 'online' 
-                  ? 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)' 
-                  : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <i className={`fas fa-${driverStatus === 'online' ? 'pause' : 'play'}`}></i>
-              {driverStatus === 'online' ? 'Go Offline' : 'Go Online'}
-            </button>
-          </div>
-
-          {/* Pending Ride Requests */}
-          {pendingRides.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '20px',
-              boxShadow: '0 4px 20px rgba(255,94,0,0.15)',
-              border: '1px solid rgba(255,94,0,0.1)',
-              marginBottom: '20px'
-            }}>
-              <h3 style={{fontSize: '16px', fontWeight: 600, color: '#111', margin: '0 0 16px 0'}}>
-                <i className="fas fa-bell" style={{color: '#ff5e00', marginRight: '8px'}}></i>
-                Ride Requests ({pendingRides.length})
-              </h3>
-              {pendingRides.map((ride) => (
-                <div key={ride.id} style={{
-                  padding: '16px',
-                  background: '#f8f8f8',
-                  borderRadius: '12px',
-                  marginBottom: '12px',
-                  border: '1px solid #f0f0f0'
-                }}>
-                  <div style={{marginBottom: '12px'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px'}}>
-                      <i className="fas fa-circle" style={{color: '#22c55e', fontSize: '8px'}}></i>
-                      <span style={{fontSize: '13px', color: '#333'}}>{ride.pickup_address}</span>
+        const result = await Swal.fire({
+            title: 'Complete Ride?',
+            html: `
+                <p>Have you completed this ride?</p>
+                <p class="mt-2 font-bold text-green-600">You will earn: ₦${payout.toLocaleString()}</p>
+                <div class="mt-4">
+                    <label class="block text-sm text-gray-600 mb-2">Rate the client (optional)</label>
+                    <div class="flex justify-center gap-2 text-2xl rating-stars">
+                        <i class="far fa-star rating-star" data-rating="1"></i>
+                        <i class="far fa-star rating-star" data-rating="2"></i>
+                        <i class="far fa-star rating-star" data-rating="3"></i>
+                        <i class="far fa-star rating-star" data-rating="4"></i>
+                        <i class="far fa-star rating-star" data-rating="5"></i>
                     </div>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                      <i className="fas fa-map-marker-alt" style={{color: '#ff5e00', fontSize: '10px'}}></i>
-                      <span style={{fontSize: '13px', color: '#333'}}>{ride.destination_address}</span>
-                    </div>
-                  </div>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <div style={{fontSize: '16px', fontWeight: 700, color: '#111', ...numberStyle}}>
-                      ₦{parseFloat(ride.total_fare || ride.estimated_fare || '0').toLocaleString()}
-                    </div>
-                    <div style={{display: 'flex', gap: '8px'}}>
-                      <button style={{
-                        padding: '8px 16px',
-                        background: '#f8f8f8',
-                        border: '1px solid #e8e8e8',
-                        borderRadius: '10px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        color: '#666'
-                      }}>
-                        Decline
-                      </button>
-                      <button
-                        onClick={() => router.visit(`/ride/${ride.id}`)}
-                        style={{
-                          padding: '8px 16px',
-                          background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          color: 'white'
-                        }}
-                      >
-                        Accept
-                      </button>
-                    </div>
-                  </div>
                 </div>
-              ))}
-              <Link href="/ride_requests" style={{
-                display: 'block',
-                textAlign: 'center',
-                padding: '12px',
-                color: '#ff5e00',
-                fontSize: '14px',
-                fontWeight: 600,
-                textDecoration: 'none'
-              }}>
-                View All Requests →
-              </Link>
-            </div>
-          )}
+                <textarea id="review-comment" class="swal2-textarea mt-4" placeholder="Leave a comment (optional)"></textarea>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, complete',
+            cancelButtonText: 'Cancel',
+            didOpen: () => {
+                const stars = document.querySelectorAll('.rating-star');
+                
+                stars.forEach((star) => {
+                    star.addEventListener('mouseover', () => {
+                        const rating = parseInt(star.getAttribute('data-rating') || '0');
+                        stars.forEach((s, idx) => {
+                            if (idx < rating) {
+                                s.className = 'fas fa-star rating-star text-yellow-400';
+                            } else {
+                                s.className = 'far fa-star rating-star';
+                            }
+                        });
+                    });
+                    
+                    star.addEventListener('click', () => {
+                        selectedRating = parseInt(star.getAttribute('data-rating') || '0');
+                        stars.forEach((s, idx) => {
+                            if (idx < selectedRating) {
+                                s.className = 'fas fa-star rating-star text-yellow-400';
+                            } else {
+                                s.className = 'far fa-star rating-star';
+                            }
+                        });
+                    });
+                });
+                
+                const starsContainer = document.querySelector('.rating-stars');
+                starsContainer?.addEventListener('mouseleave', () => {
+                    stars.forEach((s, idx) => {
+                        if (idx < selectedRating) {
+                            s.className = 'fas fa-star rating-star text-yellow-400';
+                        } else {
+                            s.className = 'far fa-star rating-star';
+                        }
+                    });
+                });
+            }
+        });
 
-          {/* Verification Status */}
-          {verificationStatus !== 'verified' && (
-            <div style={{
-              background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px'
-            }}>
-              <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px'}}>
-                <i className="fas fa-shield-alt" style={{color: '#d97706', fontSize: '20px'}}></i>
-                <div>
-                  <div style={{fontSize: '14px', fontWeight: 600, color: '#111'}}>Verification Pending</div>
-                  <div style={{fontSize: '12px', color: '#666'}}>Complete KYC to start earning</div>
+        if (result.isConfirmed) {
+            reviewComment = (document.getElementById('review-comment') as HTMLTextAreaElement)?.value || '';
+
+            try {
+                const response = await fetch('/SERVER/API/complete_ride.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ride_id: rideId,
+                        rating: selectedRating > 0 ? selectedRating : null,
+                        comment: reviewComment
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Ride Completed!',
+                        html: `
+                            <p>Ride completed successfully</p>
+                            <p class="mt-2 font-bold text-green-600">Earned: ₦${(data.earnings || payout).toLocaleString()}</p>
+                        `,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        fetchDashboardData();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Failed to complete ride',
+                        icon: 'error',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to complete ride',
+                    icon: 'error',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        }
+    };
+
+    // Cancel active ride
+    const cancelActiveRide = async (rideId: string) => {
+        const result = await Swal.fire({
+            title: 'Cancel Ride?',
+            text: 'Are you sure you want to cancel this ride? This may affect your acceptance rate.',
+            icon: 'warning',
+            input: 'select',
+            inputOptions: {
+                'emergency': 'Emergency',
+                'vehicle_issue': 'Vehicle Issue',
+                'traffic': 'Heavy Traffic',
+                'client_no_show': 'Client Not at Pickup',
+                'other': 'Other Reason'
+            },
+            inputPlaceholder: 'Select a reason',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, cancel ride',
+            cancelButtonText: 'No, keep ride',
+            preConfirm: (reason) => {
+                if (!reason) {
+                    Swal.showValidationMessage('Please select a reason');
+                    return false;
+                }
+                return reason;
+            }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('/SERVER/API/cancel_ride.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ride_id: rideId, reason: result.value })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Cancelled',
+                        text: 'Ride cancelled successfully',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        fetchDashboardData();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Failed to cancel ride',
+                        icon: 'error',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to cancel ride',
+                    icon: 'error',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        }
+    };
+
+    // Withdraw funds
+    const withdrawFunds = () => {
+        const availableBalance = earnings.available_balance;
+
+        if (availableBalance < 1000) {
+            Swal.fire({
+                title: 'Insufficient Balance',
+                text: 'Minimum withdrawal amount is ₦1,000',
+                icon: 'warning',
+                confirmButtonColor: '#ff5e00'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Withdraw Funds',
+            html: `
+                <p class="mb-4">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
+                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${availableBalance}" step="100">
+                <select id="bank-name" class="swal2-input">
+                    <option value="">Select Bank</option>
+                    <option value="Access Bank">Access Bank</option>
+                    <option value="GTBank">GTBank</option>
+                    <option value="First Bank">First Bank</option>
+                    <option value="UBA">UBA</option>
+                    <option value="Zenith">Zenith Bank</option>
+                </select>
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
+                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Withdraw',
+            confirmButtonColor: '#ff5e00',
+            preConfirm: () => {
+                const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
+                const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
+                const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
+                const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
+
+                if (!amount || amount < 1000) {
+                    Swal.showValidationMessage('Minimum withdrawal is ₦1,000');
+                    return false;
+                }
+                if (amount > availableBalance) {
+                    Swal.showValidationMessage('Insufficient balance');
+                    return false;
+                }
+                if (!bank) {
+                    Swal.showValidationMessage('Please select a bank');
+                    return false;
+                }
+                if (!account || account.length !== 10 || !/^\d+$/.test(account)) {
+                    Swal.showValidationMessage('Please enter a valid 10-digit account number');
+                    return false;
+                }
+                if (!name) {
+                    Swal.showValidationMessage('Please enter account name');
+                    return false;
+                }
+                return { amount, bank, account, name };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Withdrawal Request Submitted',
+                    html: `
+                        <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
+                        <p>Bank: ${result.value.bank}</p>
+                        <p>Account: ${result.value.account} (${result.value.name})</p>
+                        <p class="mt-4 text-sm text-gray-500">Your withdrawal will be processed within 24-48 hours.</p>
+                    `,
+                    icon: 'success',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        });
+    };
+
+    // Call client
+    const callClient = (phone: string) => {
+        if (phone) {
+            window.location.href = `tel:${phone}`;
+        } else {
+            Swal.fire({
+                title: 'No Phone Number',
+                text: 'Client phone number is not available',
+                icon: 'info',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
+    };
+
+    // Navigate to location
+    const navigateTo = (lat: number | null, lng: number | null) => {
+        if (lat && lng) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+        } else {
+            Swal.fire({
+                title: 'Location Unavailable',
+                text: 'Pickup location coordinates are not available',
+                icon: 'info',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
+    };
+
+    // Show detailed stats
+    const showDetailedStats = () => {
+        Swal.fire({
+            title: 'Detailed Statistics',
+            html: `
+                <div class="mobile-stats-grid">
+                    <div class="mobile-stat-item"><div class="stat-label">Total Rides</div><div class="stat-value">${stats.total_rides}</div></div>
+                    <div class="mobile-stat-item"><div class="stat-label">Completed</div><div class="stat-value text-green-600">${stats.completed_rides}</div></div>
+                    <div class="mobile-stat-item"><div class="stat-label">Cancelled</div><div class="stat-value text-red-600">${stats.cancelled_rides}</div></div>
+                    <div class="mobile-stat-item"><div class="stat-label">Acceptance Rate</div><div class="stat-value">${stats.acceptance_rate}%</div></div>
+                    <div class="mobile-stat-item"><div class="stat-label">Total Fare</div><div class="stat-value">₦${earnings.total_earnings.toLocaleString()}</div></div>
+                    <div class="mobile-stat-item"><div class="stat-label">Avg. Rating</div><div class="stat-value flex items-center gap-1">${driverData?.avg_rating || 0} <i class="fas fa-star text-yellow-400"></i></div></div>
                 </div>
-              </div>
-              <Link href="/kyc" style={{
-                display: 'inline-block',
-                padding: '10px 20px',
-                background: '#d97706',
-                color: 'white',
-                borderRadius: '10px',
-                fontSize: '13px',
-                fontWeight: 600,
-                textDecoration: 'none'
-              }}>
-                Complete KYC
-              </Link>
-            </div>
-          )}
-        </div>
+            `,
+            confirmButtonColor: '#ff5e00',
+            width: '450px'
+        });
+    };
 
-        <DriverNavMobile />
-      </div>
+    // Check notifications
+    const checkNotifications = async () => {
+        try {
+            const response = await fetch('/SERVER/API/get_notifications.php');
+            const data = await response.json();
 
-      {/* DESKTOP VIEW */}
-      <div className="desktop-view">
-        <DriverSidebarDesktop userName={userName} />
-        <div className="desktop-main">
-          {/* Hero Header - Original Orange Gradient */}
-          <div className="cd-hero">
-            <div className="cd-hero-pattern"></div>
+            if (data.success && data.notifications && data.notifications.length > 0) {
+                let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
+                data.notifications.forEach((notif: any) => {
+                    html += `
+                        <div style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <p><strong>${notif.title || 'Notification'}</strong></p>
+                            <p style="font-size: 13px;">${notif.message || ''}</p>
+                            <p style="font-size: 11px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+
+                Swal.fire({
+                    title: `Notifications (${data.notifications.length})`,
+                    html: html,
+                    icon: 'info',
+                    confirmButtonColor: '#ff5e00'
+                });
+            } else {
+                Swal.fire({
+                    title: 'Notifications',
+                    text: 'No new notifications',
+                    icon: 'info',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                title: 'Notifications',
+                text: 'No new notifications',
+                icon: 'info',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
+    };
+
+    // Start countdown for pending ride
+    useEffect(() => {
+        if (pendingRide && !activeRide) {
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+            }
             
-            {/* Top Row: Greeting + Notification */}
-            <div className="cd-hero-top">
-              <div className="cd-user-greeting">
-                <span className="cd-wave">👋</span>
-                <div className="cd-user-text">
-                  <span className="cd-greeting-text">Welcome back,</span>
-                  <h1>{userName}!</h1>
-                </div>
-              </div>
-              <div className="cd-header-actions">
-                <button className="cd-notification-btn" onClick={() => router.visit('/driver_settings')}>
-                  <i className="fas fa-bell"></i>
-                  {notificationCount > 0 && (
-                    <span className="cd-notification-badge">{notificationCount}</span>
-                  )}
-                </button>
-                <div className="cd-avatar" onClick={() => router.visit('/driver_settings')}>
-                  {userAvatar ? (
-                    <img src={userAvatar} alt={userName} />
-                  ) : (
-                    <span>{userName.charAt(0)}</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            setCountdown(30);
+            
+            countdownIntervalRef.current = setInterval(() => {
+                setCountdown((prev) => {
+                    if (prev <= 1) {
+                        if (countdownIntervalRef.current) {
+                            clearInterval(countdownIntervalRef.current);
+                        }
+                        if (pendingRide) {
+                            declineRide(pendingRide.id);
+                        }
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        
+        return () => {
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+            }
+        };
+    }, [pendingRide, activeRide]);
 
-            {/* Wallet Card */}
-            <div className="cd-wallet-card">
-              <div className="cd-wallet-header">
-                <div className="cd-wallet-label">Available Balance</div>
-                <div className="cd-tier-badge">
-                  <span className={`cd-status-indicator ${driverStatus}`}></span> 
-                  {driverStatus === 'online' ? 'Online' : 'Offline'}
-                </div>
-              </div>
-              <div className="cd-wallet-amount">₦{availableBalance.toLocaleString()}</div>
-              <div className="cd-wallet-change-wrap">
-                <span className="cd-wallet-change"><i className="fas fa-arrow-up"></i> ₦{todayEarnings.toLocaleString()} today</span>
-              </div>
-              <div className="cd-wallet-actions">
-                <button className="cd-wallet-btn" onClick={() => router.visit('/driver_wallet')}>
-                  <i className="fas fa-plus"></i> Withdraw
-                </button>
-                <button className="cd-wallet-btn-outline" onClick={toggleDriverStatus}>
-                  <i className={`fas fa-${driverStatus === 'online' ? 'pause' : 'play'}`}></i> 
-                  {driverStatus === 'online' ? 'Go Offline' : 'Go Online'}
-                </button>
-              </div>
-            </div>
-          </div>
+    const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+    const firstName = driverData?.fullname?.split(' ')[0] || 'Driver';
 
-          {/* Stats Cards */}
-          <div className="cd-stats-grid">
-            <div className="cd-stat-card cd-stat-active">
-              <div className="cd-stat-icon">
-                <i className="fas fa-naira-sign"></i>
-              </div>
-              <div className="cd-stat-info">
-                <span className="cd-stat-value">₦{todayEarnings.toLocaleString()}</span>
-                <span className="cd-stat-label">Today's Earnings</span>
-              </div>
-              <div className="cd-stat-trend">
-                <i className="fas fa-arrow-up"></i> +{todayRides} rides
-              </div>
-            </div>
+    if (loading || preloaderLoading) {
+        return <MobilePreloader />;
+    }
 
-            <div className="cd-stat-card">
-              <div className="cd-stat-icon">
-                <i className="fas fa-chart-line"></i>
-              </div>
-              <div className="cd-stat-info">
-                <span className="cd-stat-value">₦{totalEarnings.toLocaleString()}</span>
-                <span className="cd-stat-label">Total Earnings</span>
-              </div>
-              <div className="cd-stat-meta">
-                Since joining
-              </div>
-            </div>
-
-            <div className="cd-stat-card">
-              <div className="cd-stat-icon">
-                <i className="fas fa-car"></i>
-              </div>
-              <div className="cd-stat-info">
-                <span className="cd-stat-value">{todayRides}</span>
-                <span className="cd-stat-label">Today's Rides</span>
-              </div>
-              <div className="cd-stat-meta">
-                Completed today
-              </div>
-            </div>
-
-            <div className="cd-stat-card">
-              <div className="cd-stat-icon">
-                <i className="fas fa-star"></i>
-              </div>
-              <div className="cd-stat-info">
-                <span className="cd-stat-value">{avgRating.toFixed(1)}</span>
-                <span className="cd-stat-label">Rating ({totalReviews} reviews)</span>
-              </div>
-              <div className="cd-stat-meta">
-                Driver Score
-              </div>
-            </div>
-          </div>
-
-          {/* Dashboard Grid */}
-          <div className="dashboard-grid">
-            <div className="dashboard-card pending-rides">
-              <h3><i className="fas fa-bell"></i> Pending Ride Requests</h3>
-              {pendingRides.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-inbox"></i>
-                  <p>No pending ride requests</p>
-                </div>
-              ) : (
-                <div className="ride-list">
-                  {pendingRides.slice(0, 5).map((ride) => (
-                    <div key={ride.id} className="ride-item">
-                      <div className="ride-details">
-                        <div className="ride-route">
-                          <span><i className="fas fa-circle text-green"></i> {ride.pickup_address}</span>
-                          <span><i className="fas fa-arrow-down"></i></span>
-                          <span><i className="fas fa-map-marker text-orange"></i> {ride.destination_address}</span>
+    return (
+        <div className="mobile-driver-container">
+            <div className="mobile-driver-view">
+                {/* Header */}
+                <div className="mobile-driver-header">
+                    <div className="mobile-driver-user-info">
+                        <h1>Welcome, {firstName}!</h1>
+                        <div className="mobile-driver-status">
+                            <span className={`status-text-mobile ${driverStatus === 'online' ? 'online' : 'offline'}`}>
+                                {driverStatus === 'online' ? '● Online' : '○ Offline'}
+                            </span>
+                            <span>• {stats.today_rides} rides today</span>
                         </div>
-                        <div className="ride-meta">
-                          <span className="ride-fare">₦{parseFloat(ride.total_fare || ride.estimated_fare || '0').toLocaleString()}</span>
-                          <span className="ride-distance">{ride.distance || 0} km</span>
-                        </div>
-                      </div>
-                      <button className="accept-btn" onClick={() => router.visit(`/ride/${ride.id}`)}>
-                        Accept
-                      </button>
                     </div>
-                  ))}
+                    <button className="mobile-driver-notification-btn" onClick={checkNotifications}>
+                        <i className="fas fa-bell"></i>
+                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                    </button>
                 </div>
-              )}
-              <Link href="/driver/book-history" className="view-all">View All Requests</Link>
-            </div>
 
-            <div className="dashboard-card quick-actions">
-              <h3><i className="fas fa-bolt"></i> Quick Actions</h3>
-              <div className="action-grid">
-                <Link href="/driver/location" className="action-item">
-                  <i className="fas fa-map-marker-alt"></i>
-                  <span>Update Location</span>
-                </Link>
-                <Link href="/driver-wallet" className="action-item">
-                  <i className="fas fa-wallet"></i>
-                  <span>Withdraw</span>
-                </Link>
-                <Link href="/driver/profile" className="action-item">
-                  <i className="fas fa-user"></i>
-                  <span>Profile</span>
-                </Link>
-                <Link href="/driver/settings" className="action-item">
-                  <i className="fas fa-cog"></i>
-                  <span>Settings</span>
-                </Link>
-              </div>
-            </div>
+                {/* Balance Card */}
+                <div className="mobile-driver-balance-card">
+                    <div className="balance-header">
+                        <div>
+                            <h2>Available Balance</h2>
+                            <div className="balance-amount">{formatCurrency(earnings.available_balance)}</div>
+                            <p className="total-earnings">Total Earnings: {formatCurrency(earnings.total_earnings)}</p>
+                        </div>
+                        <i className="fas fa-wallet"></i>
+                    </div>
+                    <div className="today-earnings">
+                        <i className="fas fa-arrow-up"></i>
+                        <span>+{formatCurrency(earnings.today_earnings)} today</span>
+                    </div>
+                </div>
 
-            <div className="dashboard-card verification-status">
-              <h3><i className="fas fa-shield-alt"></i> Verification Status</h3>
-              <div className="status-item">
-                <span className={`status-badge ${verificationStatus}`}>
-                  {verificationStatus === 'verified' ? 'Verified' : 'Pending Verification'}
-                </span>
-              </div>
-              {verificationStatus !== 'verified' && (
-                <Link href="/kyc" className="complete-kyc-btn">
-                  Complete KYC Verification
-                </Link>
-              )}
+                {/* Status Toggle Button */}
+                <button 
+                    className={`mobile-status-toggle-btn ${driverStatus}`} 
+                    onClick={toggleDriverStatus} 
+                    disabled={verificationStatus !== 'approved'}
+                >
+                    <i className="fas fa-power-off"></i>
+                    <span>Go {driverStatus === 'online' ? 'Offline' : 'Online'}</span>
+                </button>
+                {verificationStatus !== 'approved' && (
+                    <p className="verification-warning">Complete KYC to go online</p>
+                )}
+
+                {/* Withdraw Button */}
+                <button className="mobile-withdraw-btn" onClick={withdrawFunds}>
+                    <i className="fas fa-hand-holding-usd"></i>
+                    <span>Withdraw Earnings ({formatCurrency(earnings.available_balance)})</span>
+                </button>
+
+                {/* Active Ride or Pending Ride */}
+                {activeRide && (
+                    <div className="mobile-active-ride-card">
+                        <div className="ride-header active">
+                            <span><i className="fas fa-check-circle"></i> ACTIVE RIDE</span>
+                            <span className="live-badge">● Live</span>
+                        </div>
+                        <div className="ride-content">
+                            <h3>{activeRide.pickup_address}</h3>
+                            <div className="ride-info">
+                                <p><i className="fas fa-user"></i> {activeRide.client_name}</p>
+                                <p><i className="fas fa-phone"></i> {activeRide.client_phone}</p>
+                            </div>
+                            <p className="destination"><i className="fas fa-flag-checkered"></i> To: {activeRide.destination_address}</p>
+                            <div className="ride-meta">
+                                <span>Fare: {formatCurrency(activeRide.total_fare)}</span>
+                                <span>Started: {activeRide.formatted_time}</span>
+                            </div>
+                        </div>
+                        <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: '33%' }}></div>
+                        </div>
+                        <div className="ride-actions">
+                            <button className="action-complete" onClick={() => completeRide(activeRide.id, activeRide.driver_payout)}>
+                                <i className="fas fa-check-circle"></i> Complete
+                            </button>
+                            <button className="action-cancel" onClick={() => cancelActiveRide(activeRide.id)}>
+                                <i className="fas fa-times-circle"></i> Cancel
+                            </button>
+                            <button className="action-call" onClick={() => callClient(activeRide.client_phone)}>
+                                <i className="fas fa-phone-alt"></i>
+                            </button>
+                            <button className="action-navigate" onClick={() => navigateTo(activeRide.pickup_latitude, activeRide.pickup_longitude)}>
+                                <i className="fas fa-map-marked-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {pendingRide && !activeRide && (
+                    <div className={`mobile-pending-ride-card ${pendingRide.request_type === 'private' ? 'private' : 'public'}`}>
+                        <div className={`ride-header ${pendingRide.request_type === 'private' ? 'private' : 'public'}`}>
+                            <span><i className={`fas fa-${pendingRide.request_type === 'private' ? 'user-tag' : 'clock'}`}></i> {pendingRide.request_type === 'private' ? 'PRIVATE RIDE' : 'NEW RIDE'}</span>
+                            <span className="action-badge">Action required</span>
+                        </div>
+                        <div className="ride-content">
+                            <h3>
+                                {pendingRide.pickup_address}
+                                <span className={`ride-type-badge ${pendingRide.request_type}`}>
+                                    {pendingRide.request_type.toUpperCase()}
+                                </span>
+                            </h3>
+                            <div className="ride-info">
+                                <p><i className="fas fa-user"></i> {pendingRide.client_name}</p>
+                                <p><i className="fas fa-road"></i> {pendingRide.distance_km} km</p>
+                            </div>
+                            <p className="destination"><i className="fas fa-flag-checkered"></i> To: {pendingRide.destination_address}</p>
+                            <div className="ride-meta">
+                                <span className="fare">{formatCurrency(pendingRide.total_fare)}</span>
+                                <span>Est. {Math.round((pendingRide.distance_km || 0) / 30 * 60)} min</span>
+                            </div>
+                        </div>
+                        <div className="countdown-timer">
+                            <i className="fas fa-hourglass-half"></i> Accept within: <span className="timer-value">{countdown}s</span>
+                        </div>
+                        <div className="ride-actions">
+                            <button className="action-accept" onClick={() => acceptRide(pendingRide.id)}>
+                                <i className="fas fa-check"></i> Accept Ride
+                            </button>
+                            <button className="action-decline" onClick={() => declineRide(pendingRide.id)}>
+                                <i className="fas fa-times"></i> Decline
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {!activeRide && !pendingRide && (
+                    <div className="mobile-no-ride-card">
+                        <i className="fas fa-clock"></i>
+                        <h3>No Active Rides</h3>
+                        <p>Go online to receive ride requests</p>
+                        {driverStatus !== 'online' && verificationStatus === 'approved' && (
+                            <button className="go-online-btn" onClick={toggleDriverStatus}>
+                                <i className="fas fa-power-off"></i> Go Online
+                            </button>
+                        )}
+                        {verificationStatus !== 'approved' && (
+                            <button className="kyc-btn" disabled>Complete KYC First</button>
+                        )}
+                    </div>
+                )}
+
+                {/* Completed Rides Card */}
+                <div className="mobile-completed-card">
+                    <div className="completed-header">
+                        <h2>Completed Rides</h2>
+                        <span className="today-badge">+{stats.today_rides} today</span>
+                    </div>
+                    <div className="completed-count">{stats.completed_rides}</div>
+                    <div className="rating-display">
+                        <div className="stars">
+                            {[...Array(5)].map((_, i) => (
+                                <i key={i} className={`fas fa-star ${i < Math.floor(driverData?.avg_rating || 0) ? 'text-yellow-400' : 'far fa-star text-yellow-400'}`}></i>
+                            ))}
+                        </div>
+                        <span className="rating-value">{driverData?.avg_rating || 0}</span>
+                        <span className="rating-count">({driverData?.total_reviews || 0} reviews)</span>
+                    </div>
+                    <button className="stats-btn" onClick={showDetailedStats}>
+                        <i className="fas fa-chart-line"></i> View Stats
+                    </button>
+                </div>
+
+                {/* Quick Actions Grid */}
+                <div className="mobile-quick-actions">
+                    <button className="mobile-action-btn" onClick={toggleDriverStatus} disabled={verificationStatus !== 'approved'}>
+                        <div className="action-icon"><i className={`fas fa-toggle-${driverStatus === 'online' ? 'on' : 'off'}`}></i></div>
+                        <span>Go {driverStatus === 'online' ? 'Offline' : 'Online'}</span>
+                    </button>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/ride-history')}>
+                        <div className="action-icon"><i className="fas fa-calendar-check"></i></div>
+                        <span>History</span>
+                    </button>
+                    <button className="mobile-action-btn" onClick={showDetailedStats}>
+                        <div className="action-icon"><i className="fas fa-chart-line"></i></div>
+                        <span>Earnings</span>
+                    </button>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/support')}>
+                        <div className="action-icon"><i className="fas fa-headset"></i></div>
+                        <span>Support</span>
+                    </button>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/driver-settings')}>
+                        <div className="action-icon"><i className="fas fa-cog"></i></div>
+                        <span>Settings</span>
+                    </button>
+                </div>
+
+                {/* Recent Rides */}
+                <div className="mobile-recent-section">
+                    <div className="section-header">
+                        <div className="section-title">🕒 Recent Rides</div>
+                        <button className="see-all-btn" onClick={() => router.visit('/ride-history')}>See All</button>
+                    </div>
+                    <div className="recent-rides-list">
+                        {recentRides.length > 0 ? (
+                            recentRides.map((ride) => (
+                                <div key={ride.id} className="recent-ride-item" onClick={() => router.visit(`/generate-receipt?ride_id=${ride.id}`)}>
+                                    <div className="ride-icon success">
+                                        <i className="fas fa-check-circle"></i>
+                                    </div>
+                                    <div className="ride-details">
+                                        <h4>{ride.pickup_address?.substring(0, 25)} → {ride.destination_address?.substring(0, 20)}</h4>
+                                        <p>{ride.formatted_time} • {ride.client_name}</p>
+                                        <p className="commission">Commission: {formatCurrency(ride.platform_commission)}</p>
+                                    </div>
+                                    <div className="ride-amount positive">+{formatCurrency(ride.driver_payout)}</div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="no-recent">
+                                <i className="fas fa-history"></i>
+                                <p>No recent rides</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Bottom Navigation */}
+                <DriverNavMobile />
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  );
-}
+    );
+};
+
+export default DriverDashboardMobile;

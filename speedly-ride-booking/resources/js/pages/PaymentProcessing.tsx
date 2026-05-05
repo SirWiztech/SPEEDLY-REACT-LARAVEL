@@ -1,85 +1,131 @@
-import { useState, useEffect } from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import { api } from '../services/api';
+import '../../css/PaymentProcessing.css';
 
-export default function PaymentProcessing() {
-    const [status, setStatus] = useState<'processing' | 'success' | 'failed'>('processing');
-    const [message, setMessage] = useState('Please do not close this window...');
-    const loading = usePreloader(1000);
+const PaymentProcessing: React.FC = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const [status, setStatus] = useState<'processing' | 'success' | 'error' | 'expired'>('processing');
+    const [amount, setAmount] = useState<number>(0);
+    const [reference, setReference] = useState<string>('');
+    
+    const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const reference = urlParams.get('reference');
-        const amount = urlParams.get('amount');
-
-        if (!reference) {
-            setStatus('failed');
-            setMessage('Invalid payment reference.');
+        const ref = searchParams.get('reference');
+        const amt = parseFloat(searchParams.get('amount') || '0');
+        
+        if (!ref) {
+            navigate('/wallet');
             return;
         }
+        
+        setReference(ref);
+        setAmount(amt);
+        
+        let attempts = 0;
+        const maxAttempts = 30;
+        
+        const checkStatus = async () => {
+            attempts++;
+            
+            try {
+                const response = await fetch(`/SERVER/API/check_transaction_status.php?reference=${ref}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    setStatus('success');
+                    setTimeout(() => {
+                        navigate(`/wallet?payment_status=completed&reference=${ref}`);
+                    }, 1000);
+                } else if (data.status === 'failed') {
+                    setStatus('error');
+                } else if (data.status === 'expired') {
+                    setStatus('expired');
+                } else if (attempts >= maxAttempts) {
+                    setStatus('error');
+                } else {
+                    setTimeout(checkStatus, 2000);
+                }
+            } catch (error) {
+                if (attempts >= maxAttempts) {
+                    setStatus('error');
+                } else {
+                    setTimeout(checkStatus, 2000);
+                }
+            }
+        };
+        
+        setTimeout(checkStatus, 1000);
+        
+        const timeout = setTimeout(() => {
+            if (status === 'processing') {
+                setStatus('error');
+            }
+        }, 60000);
+        
+        return () => clearTimeout(timeout);
+    }, [searchParams, navigate]);
 
-        const timer = setTimeout(() => {
-            api.payment.verify(reference)
-                .then(data => {
-                    if (data.success) {
-                        setStatus('success');
-                        setMessage('Payment verified successfully!');
-                        setTimeout(() => {
-                            window.location.href = `/payment/callback?paymentId=${reference}`;
-                        }, 2000);
-                    } else {
-                        setStatus('failed');
-                        setMessage(data.message || 'Payment verification failed.');
-                    }
-                })
-                .catch(() => {
-                    setStatus('failed');
-                    setMessage('Connection error. Please try again.');
-                });
-        }, 3000);
-
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (loading) {
+    if (preloaderLoading) {
         return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
     }
 
     return (
-        <>
-            <Head title="Processing Payment" />
-            <div className="payment-processing-page">
-                <div className="processing-container">
-                    <div className="processing-icon">
-                        {status === 'processing' && (
-                            <div className="spinner">⏳</div>
-                        )}
-                        {status === 'success' && '✅'}
-                        {status === 'failed' && '❌'}
-                    </div>
-                    <h1>
-                        {status === 'processing' && 'Processing Payment'}
-                        {status === 'success' && 'Payment Verified!'}
-                        {status === 'failed' && 'Payment Failed'}
-                    </h1>
-                    <p>{message}</p>
-                    
-                    {status === 'success' && (
-                        <p className="redirect-notice">Redirecting to confirmation page...</p>
-                    )}
-                    
-                    {status === 'failed' && (
-                        <a href="/client/wallet" className="btn-premium">
-                            Try Again
-                        </a>
-                    )}
+        <div className="payment-processing-container">
+            {status === 'processing' && (
+                <div className="processing-card">
+                    <div className="spinner"></div>
+                    <h2>Processing Payment</h2>
+                    <div className="amount">₦{amount.toLocaleString()}</div>
+                    <p className="status-text">Verifying your payment...</p>
+                    <div className="reference">Ref: {reference.substring(0, 20)}...</div>
                 </div>
-            </div>
-        </>
+            )}
+            
+            {status === 'success' && (
+                <div className="processing-card success">
+                    <div className="success-icon">
+                        <i className="fas fa-check"></i>
+                    </div>
+                    <h2>Payment Successful!</h2>
+                    <div className="amount" id="successAmount">₦{amount.toLocaleString()}</div>
+                    <p className="status-text">Redirecting to wallet...</p>
+                </div>
+            )}
+            
+            {status === 'error' && (
+                <div className="processing-card error">
+                    <div className="error-icon">
+                        <i className="fas fa-times"></i>
+                    </div>
+                    <h2>Payment Failed</h2>
+                    <p className="status-text">Your payment could not be processed</p>
+                    <button onClick={() => navigate('/wallet')} className="back-btn">
+                        Back to Wallet
+                    </button>
+                </div>
+            )}
+            
+            {status === 'expired' && (
+                <div className="processing-card expired">
+                    <div className="error-icon">
+                        <i className="fas fa-clock"></i>
+                    </div>
+                    <h2>Payment Expired</h2>
+                    <p className="status-text">This payment session has expired</p>
+                    <button onClick={() => navigate('/wallet')} className="back-btn">
+                        Back to Wallet
+                    </button>
+                </div>
+            )}
+        </div>
     );
-}
+};
+
+export default PaymentProcessing;

@@ -1,92 +1,139 @@
-import { useState } from 'react';
-import { Head } from '@inertiajs/react';
-import { useForm } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import '../../css/AdminLogin.css';
+import '../../css/ForgotAdminPassword.css';
 
-interface ForgotAdminPasswordForm {
-    email: string;
-}
-
-export default function ForgotAdminPassword() {
-    const [success, setSuccess] = useState(false);
-    const loading = usePreloader(1000);
+const ForgotAdminPassword: React.FC = () => {
+    const [email, setEmail] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(false);
+    const [message, setMessage] = useState<string>('');
+    const [error, setError] = useState<string>('');
+    
+    const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
-    const { data, setData, post, processing, errors } = useForm<ForgotAdminPasswordForm>({
-        email: '',
-    });
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        post('/admin/forgot-password', {
-            onSuccess: () => setSuccess(true),
-        });
+        
+        if (!email) {
+            setError('Please enter your email address');
+            return;
+        }
+        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setError('Please enter a valid email address');
+            return;
+        }
+        
+        setLoading(true);
+        setError('');
+        setMessage('');
+        
+        const formData = new FormData();
+        formData.append('email', email);
+        
+        try {
+            const response = await fetch('/SERVER/API/admin_forgot_password.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                setMessage(data.message);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Reset Link Sent!',
+                    text: 'Check your email for password reset instructions.',
+                    confirmButtonColor: '#ff5e00'
+                });
+                setEmail('');
+            } else {
+                setError(data.message || 'Failed to send reset link');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to send reset link',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        } catch (err) {
+            setError('Connection error. Please try again.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Connection Error',
+                text: 'Unable to connect to the server.',
+                confirmButtonColor: '#ff5e00'
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (loading) {
+    if (preloaderLoading) {
         return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
     }
 
     return (
-        <>
-            <Head title="Admin Forgot Password" />
-            <div className="admin-login-page">
-                <div className="admin-login-container">
-                    <div className="admin-login-brand">
-                        <div className="logo">
-                            <img src="/main-assets/logo.png" alt="Speedly" />
+        <div className="forgot-admin-container">
+            <div className="forgot-admin-card">
+                <div className="forgot-admin-header">
+                    <div className="logo-wrapper">
+                        <img src="/main-assets/logo-no-background.png" alt="Speedly Logo" className="logo-image" />
+                    </div>
+                    <h1>Admin Password Reset</h1>
+                    <p>Reset your admin account password</p>
+                </div>
+                
+                <div className="forgot-admin-content">
+                    {message && (
+                        <div className="alert-message success">
+                            <i className="fas fa-check-circle"></i> {message}
                         </div>
-                        <h1>SPEEDLY</h1>
-                        <p>Admin Portal - Forgot Password</p>
-                    </div>
-
-                    <div className="admin-login-form">
-                        <h2>Forgot Password?</h2>
-                        <p className="subtitle">Enter your admin email to reset your password.</p>
-
-                        {success ? (
-                            <div className="success-message">
-                                <span>✅</span>
-                                <p>Password reset instructions sent to admin email.</p>
-                                <a href="/admin/login" className="btn-login" style={{ display: 'inline-block', textAlign: 'center', marginTop: '16px' }}>
-                                    Back to Login
-                                </a>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="admin-login-form">
-                                <div className="form-group">
-                                    <label htmlFor="email">Admin Email</label>
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        value={data.email}
-                                        onChange={(e) => setData('email', e.target.value)}
-                                        placeholder="Enter admin email"
-                                        autoComplete="email"
-                                    />
-                                    {errors.email && (
-                                        <span className="error-text">{errors.email}</span>
-                                    )}
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    className="btn-login"
-                                    disabled={processing}
-                                >
-                                    {processing ? 'Sending...' : 'Send Reset Link'}
-                                </button>
-
-                                <a href="/admin/login" className="back-link">Back to Login</a>
-                            </form>
-                        )}
-                    </div>
+                    )}
+                    {error && (
+                        <div className="alert-message error">
+                            <i className="fas fa-exclamation-circle"></i> {error}
+                        </div>
+                    )}
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="input-group">
+                            <i className="fas fa-envelope"></i>
+                            <input
+                                type="email"
+                                className="input-field"
+                                placeholder="Admin Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <button type="submit" className="submit-btn" disabled={loading}>
+                            {loading ? (
+                                <>
+                                    <i className="fas fa-spinner fa-spin"></i> Sending...
+                                </>
+                            ) : (
+                                <>
+                                    <span>Send Reset Link</span>
+                                    <i className="fas fa-paper-plane"></i>
+                                </>
+                            )}
+                        </button>
+                        <div className="back-link">
+                            <a href="/admin-login">
+                                <i className="fas fa-arrow-left"></i> Back to Admin Login
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </>
+        </div>
     );
-}
+};
+
+export default ForgotAdminPassword;

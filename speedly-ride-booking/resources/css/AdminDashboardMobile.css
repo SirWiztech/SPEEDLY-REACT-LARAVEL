@@ -1,0 +1,258 @@
+/* Admin Dashboard Mobile Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.mobile-admin-container {
+    width: 100%;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    overflow-x: hidden;
+}
+
+.mobile-admin-view {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 20px;
+    scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+.mobile-admin-view::-webkit-scrollbar {
+    width: 4px;
+}
+
+.mobile-admin-view::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.mobile-admin-view::-webkit-scrollbar-thumb {
+    background: #ff5e00;
+    border-radius: 10px;
+}
+
+/* Header */
+.mobile-admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.mobile-admin-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.mobile-admin-header p {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.mobile-notification-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Stats Grid */
+.mobile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+.mobile-stat-card {
+    background: white;
+    padding: 16px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-size: 20px;
+}
+
+.stat-icon.users {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.stat-icon.drivers {
+    background: #fff3e0;
+    color: #ff9800;
+}
+
+.stat-icon.rides {
+    background: #e8f5e9;
+    color: #4caf50;
+}
+
+.stat-icon.revenue {
+    background: #f3e5f5;
+    color: #9c27b0;
+}
+
+.mobile-stat-card .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.mobile-stat-card .stat-label {
+    font-size: 11px;
+    color: #888;
+}
+
+/* Tabs */
+.mobile-tabs {
+    display: flex;
+    background: white;
+    padding: 8px 16px;
+    gap: 4px;
+    border-bottom: 1px solid #f0f0f0;
+    position: sticky;
+    top: 72px;
+    z-index: 10;
+}
+
+.mobile-tab {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.mobile-tab.active {
+    background: #fff5f0;
+    color: #ff5e00;
+}
+
+/* Cards */
+.mobile-card {
+    background: white;
+    margin: 16px;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.card-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.refresh-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #f5f5f5;
+    border: none;
+    cursor: pointer;
+    color: #666;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 32px;
+    color: #9ca3af;
+}
+
+/* Logout Button */
+.mobile-logout-btn {
+    width: calc(100% - 32px);
+    margin: 16px;
+    padding: 16px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.mobile-logout-btn:active {
+    transform: scale(0.98);
+}
+
+/* Safe Area Support */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .mobile-admin-view {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+}

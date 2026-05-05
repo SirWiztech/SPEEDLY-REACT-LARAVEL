@@ -1,652 +1,295 @@
-import { useState, useEffect } from 'react';
-import { router, usePage, Link } from '@inertiajs/react';
-import DriverSidebarDesktop from '@/components/navbars/DriverSidebarDesktop';
-import DriverNavMobile from '@/components/navbars/DriverNavMobile';
-import MobilePreloader from '@/components/preloader/MobilePreloader';
+import React, { useState, useEffect, useCallback } from 'react';
+import { router } from '@inertiajs/react';
+import DriverNavMobile from '../../components/navbars/DriverNavMobile';
+import Swal from 'sweetalert2';
+import { usePreloader } from '../../hooks/usePreloader';
+import MobilePreloader from '../../components/preloader/MobilePreloader';
+import '../../../css/DriverWalletMobile.css';
 
-interface UserData {
-  id?: number;
-  full_name?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  avatar?: string;
-  profile_picture?: string;
-  driver_status?: string;
-  is_verified?: boolean;
-  avg_rating?: number;
-  total_reviews?: number;
-  driver?: {
-    vehicle_type?: string;
-    vehicle_model?: string;
-    vehicle_year?: string;
-    license_plate?: string;
-    vehicle_plate?: string;
-  };
-  bank?: {
-    bank_name?: string;
-    account_number?: string;
-    account_name?: string;
-  };
-  notifications?: Array<{ is_read: boolean }>;
+// Types
+interface RideEarning {
+    id: string;
+    ride_number: string;
+    total_fare: number;
+    driver_payout: number;
+    created_at: string;
+    formatted_date: string;
+    formatted_time: string;
+    pickup_address: string;
+    client_name: string;
 }
 
 interface Withdrawal {
-  id?: number;
-  amount?: number;
-  status?: string;
-  created_at?: string;
+    id: string;
+    amount: number;
+    bank_name: string;
+    status: 'pending' | 'approved' | 'paid' | 'rejected';
+    created_at: string;
+    formatted_date: string;
 }
 
-interface Ride {
-  id?: number;
-  status?: string;
-  total_fare?: string;
-  completed_at?: string;
-  created_at?: string;
+interface WalletStats {
+    wallet_balance: number;
+    total_earnings: number;
+    total_withdrawn: number;
+    today_earnings: number;
+    week_earnings: number;
 }
 
-interface PageProps extends Record<string, unknown> {
-    auth: {
-        user?: UserData;
+const DriverWalletMobile: React.FC = () => {
+    // State
+    const [userData, setUserData] = useState<any>(null);
+    const [stats, setStats] = useState<WalletStats>({
+        wallet_balance: 0,
+        total_earnings: 0,
+        total_withdrawn: 0,
+        today_earnings: 0,
+        week_earnings: 0
+    });
+    const [recentRides, setRecentRides] = useState<RideEarning[]>([]);
+    const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+    const [notificationCount, setNotificationCount] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    const preloaderLoading = usePreloader(1000);
+
+    // Fetch wallet data
+    const fetchWalletData = useCallback(async () => {
+        try {
+            const response = await fetch('/SERVER/API/driver_wallet_data.php');
+            const data = await response.json();
+
+            if (data.success) {
+                setUserData(data.user);
+                setStats(data.stats);
+                setRecentRides(data.recent_rides || []);
+                setWithdrawals(data.withdrawals || []);
+                setNotificationCount(data.notification_count || 0);
+            } else {
+                console.error('Failed to fetch wallet data:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching wallet data:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Withdraw funds
+    const withdrawFunds = () => {
+        if (stats.wallet_balance < 1000) {
+            Swal.fire({
+                title: 'Insufficient Balance',
+                text: `Minimum withdrawal is ₦1,000. Balance: ₦${stats.wallet_balance.toLocaleString()}`,
+                icon: 'warning',
+                confirmButtonColor: '#ff5e00'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Withdraw Funds',
+            html: `
+                <p class="mb-4">Available: <strong>₦${stats.wallet_balance.toLocaleString()}</strong></p>
+                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Amount" min="1000" max="${stats.wallet_balance}">
+                <select id="bank-name" class="swal2-input">
+                    <option value="">Select Bank</option>
+                    <option value="Access Bank">Access Bank</option>
+                    <option value="GTBank">GTBank</option>
+                    <option value="First Bank">First Bank</option>
+                    <option value="UBA">UBA</option>
+                    <option value="Zenith">Zenith Bank</option>
+                </select>
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number (10 digits)" maxlength="10">
+                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Withdraw',
+            confirmButtonColor: '#ff5e00',
+            preConfirm: () => {
+                const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
+                const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
+                const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
+                const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
+                
+                if (!amount || amount < 1000) {
+                    Swal.showValidationMessage('Minimum withdrawal is ₦1,000');
+                    return false;
+                }
+                if (amount > stats.wallet_balance) {
+                    Swal.showValidationMessage('Insufficient balance');
+                    return false;
+                }
+                if (!bank) {
+                    Swal.showValidationMessage('Select a bank');
+                    return false;
+                }
+                if (!account || account.length !== 10 || !/^\d+$/.test(account)) {
+                    Swal.showValidationMessage('Valid 10-digit account number required');
+                    return false;
+                }
+                if (!name || name.length < 3) {
+                    Swal.showValidationMessage('Enter valid account name');
+                    return false;
+                }
+                return { amount, bank, account, name };
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('amount', result.value.amount.toString());
+                formData.append('bank_name', result.value.bank);
+                formData.append('account_number', result.value.account);
+                formData.append('account_name', result.value.name);
+                
+                Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                try {
+                    const response = await fetch('/SERVER/API/request_withdrawal.php', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            title: 'Success!',
+                            html: `<p>Withdrawal request submitted!</p><p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p><p class="mt-2 text-sm">Processed within 24-48 hours.</p>`,
+                            icon: 'success',
+                            confirmButtonColor: '#ff5e00'
+                        }).then(() => fetchWalletData());
+                    } else {
+                        Swal.fire({ title: 'Error', text: data.message || 'Failed to submit', icon: 'error', confirmButtonColor: '#ff5e00' });
+                    }
+                } catch (error) {
+                    Swal.fire({ title: 'Error', text: 'Network error', icon: 'error', confirmButtonColor: '#ff5e00' });
+                }
+            }
+        });
     };
-}
 
-export default function DriverWallet() {
-  const { props } = usePage<PageProps>();
-  const [loading, setLoading] = useState(true);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [todayEarnings, setTodayEarnings] = useState(0);
-  const [weekEarnings, setWeekEarnings] = useState(0);
-  const [totalEarnings, setTotalEarnings] = useState(0);
-  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [userData, setUserData] = useState<UserData | null>(null);
+    // View history
+    const viewHistory = () => router.visit('/book-history');
 
-  useEffect(() => {
-    fetchWalletData();
-  }, []);
-
-  const fetchWalletData = async () => {
-    try {
-      const authUser = (props as unknown as { auth?: { user?: UserData } }).auth?.user;
-      if (authUser) {
-        setUserData(authUser);
-        setNotificationCount(authUser.notifications?.filter(n => !n.is_read).length || 0);
-      }
-
-      setWalletBalance(25000);
-      setTotalWithdrawn(50000);
-      setWithdrawals([
-        { id: 1, amount: 15000, status: 'completed', created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: 2, amount: 20000, status: 'pending', created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-      ]);
-
-      const mockRides: Ride[] = [
-        { id: 1, status: 'completed', total_fare: '5000', completed_at: new Date().toISOString() },
-        { id: 2, status: 'completed', total_fare: '3500', completed_at: new Date().toISOString() },
-        { id: 3, status: 'completed', total_fare: '7000', completed_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-      ];
-
-      const today = new Date().toDateString();
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const completedRides = mockRides.filter(r => r.status === 'completed');
-      const todayRides = completedRides.filter(r => new Date(r.completed_at || r.created_at || '').toDateString() === today);
-      const weekRides = completedRides.filter(r => new Date(r.completed_at || r.created_at || '') >= weekAgo);
-
-      setTodayEarnings(todayRides.reduce((sum, r) => sum + (parseFloat(r.total_fare || '0') || 0), 0));
-      setWeekEarnings(weekRides.reduce((sum, r) => sum + (parseFloat(r.total_fare || '0') || 0), 0));
-      setTotalEarnings(completedRides.reduce((sum, r) => sum + (parseFloat(r.total_fare || '0') || 0), 0));
-    } catch (err) {
-      console.error('Error fetching wallet data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWithdraw = () => {
-    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) return;
-    if (parseFloat(withdrawAmount) > walletBalance) {
-      alert('Insufficient balance');
-      return;
-    }
-    setShowWithdrawModal(false);
-    setWithdrawAmount('');
-    fetchWalletData();
-    alert('Withdrawal request submitted successfully');
-  };
-
-  const numberStyle = { fontFamily: 'Outfit, sans-serif' };
-
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-20px); }
-      }
-      @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
+    // Check notifications
+    const checkNotifications = async () => {
+        try {
+            const response = await fetch('/SERVER/API/get_notifications.php');
+            const data = await response.json();
+            
+            if (data.success && data.notifications?.length > 0) {
+                let html = '<div style="text-align: left;">';
+                data.notifications.forEach((notif: any) => {
+                    html += `<div style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${notif.title}</strong><p>${notif.message}</p></div>`;
+                });
+                html += '</div>';
+                Swal.fire({ title: `Notifications (${data.notifications.length})`, html: html, confirmButtonColor: '#ff5e00' });
+            } else {
+                Swal.fire({ title: 'Notifications', text: 'No new notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
+            }
+        } catch (error) {
+            Swal.fire({ title: 'Notifications', text: 'No notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
+        }
     };
-  }, []);
 
-  if (loading) return <MobilePreloader />;
+    const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+    const firstName = userData?.fullname?.split(' ')[0] || 'Driver';
 
-  const userName = userData?.full_name?.split(' ')[0] || 'Driver';
+    useEffect(() => {
+        fetchWalletData();
+    }, [fetchWalletData]);
 
-  return (
-    <div className="dashboard-container">
-      {/* MOBILE VIEW - FULL WIDTH FINTECH DESIGN */}
-      <div className="mobile-view" style={{paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh'}}>
-        {/* Hero Balance Card - Full Width */}
-        <div style={{
-          background: 'linear-gradient(135deg, #ff5e00 0%, #ff7a1a 40%, #ff8c3a 70%, #ffaa5c 100%)',
-          padding: '60px 24px 40px',
-          position: 'relative',
-          overflow: 'hidden',
-          marginBottom: '-20px'
-        }}>
-          {/* Animated Background Circles */}
-          <div style={{
-            position: 'absolute',
-            top: '-30%',
-            right: '-15%',
-            width: '300px',
-            height: '300px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)',
-            borderRadius: '50%',
-            animation: 'float 6s ease-in-out infinite'
-          }}></div>
-          <div style={{
-            position: 'absolute',
-            bottom: '-20%',
-            left: '-10%',
-            width: '200px',
-            height: '200px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
-            borderRadius: '50%',
-            animation: 'float 8s ease-in-out infinite reverse'
-          }}></div>
+    if (loading || preloaderLoading) {
+        return <MobilePreloader />;
+    }
 
-          <div style={{position: 'relative', zIndex: 2}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
-              <div>
-                <div style={{color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: 500, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px'}}>
-                  Available Balance
-                </div>
-                <h1 style={{fontSize: '48px', fontWeight: 800, color: 'white', margin: 0, ...numberStyle, letterSpacing: '-1px'}}>
-                  ₦{walletBalance.toLocaleString()}
-                </h1>
-              </div>
-              <div onClick={() => setShowWithdrawModal(true)} style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '16px',
-                background: 'rgba(255,255,255,0.25)',
-                backdropFilter: 'blur(10px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                border: '2px solid rgba(255,255,255,0.4)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)'}
-              >
-                <i className="fas fa-arrow-up" style={{color: 'white', fontSize: '20px'}}></i>
-              </div>
-            </div>
-
-            {/* Quick Stats Pills */}
-            <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-              {[
-                { label: 'Today', value: todayEarnings, color: '#22c55e' },
-                { label: 'This Week', value: weekEarnings, color: '#3b82f6' },
-                { label: 'Total', value: totalEarnings, color: '#ff5e00' }
-              ].map((stat, idx) => (
-                <div key={idx} style={{
-                  padding: '8px 14px',
-                  background: 'rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(255,255,255,0.2)'
-                }}>
-                  <span style={{fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginRight: '6px'}}>{stat.label}</span>
-                  <span style={{fontSize: '13px', fontWeight: 700, color: 'white', ...numberStyle}}>₦{stat.value.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div style={{padding: '24px 16px', position: 'relative', zIndex: 3}}>
-          {/* Action Buttons */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '12px',
-            marginBottom: '24px'
-          }}>
-            {[
-              { icon: 'fa-arrow-up', label: 'Withdraw', action: () => setShowWithdrawModal(true) },
-              { icon: 'fa-history', label: 'History', action: () => router.visit('/driver/book-history') },
-              { icon: 'fa-wallet', label: 'Add Money', action: () => {} },
-              { icon: 'fa-chart-line', label: 'Analytics', action: () => {} }
-            ].map((action, idx) => (
-              <div key={idx} onClick={action.action} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '16px 8px',
-                background: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                border: '1px solid rgba(255,94,0,0.1)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(255,94,0,0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
-              }}
-              >
-                <div style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <i className={`fas ${action.icon}`} style={{color: 'white', fontSize: '16px'}}></i>
-                </div>
-                <span style={{fontSize: '11px', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.3px'}}>{action.label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Earnings Overview Card */}
-          <div style={{
-            background: 'white',
-            borderRadius: '20px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-            border: '1px solid rgba(255,94,0,0.08)'
-          }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-              <h3 style={{fontSize: '16px', fontWeight: 700, color: '#111', margin: 0}}>
-                <i className="fas fa-chart-pie" style={{color: '#ff5e00', marginRight: '8px'}}></i>
-                Earnings Overview
-              </h3>
-              <span style={{fontSize: '12px', color: '#888', fontWeight: 500}}>This Week</span>
-            </div>
-
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px'}}>
-              {[
-                { label: 'Today', value: todayEarnings, icon: 'fa-sun', color: '#22c55e', bg: '#dcfce7' },
-                { label: 'This Week', value: weekEarnings, icon: 'fa-calendar-week', color: '#3b82f6', bg: '#dbeafe' },
-                { label: 'Total Earned', value: totalEarnings, icon: 'fa-coins', color: '#ff5e00', bg: '#fff5f0' },
-                { label: 'Withdrawn', value: totalWithdrawn, icon: 'fa-arrow-up', color: '#8b5cf6', bg: '#f3e8ff' }
-              ].map((stat, idx) => (
-                <div key={idx} style={{
-                  padding: '14px',
-                  background: stat.bg,
-                  borderRadius: '14px',
-                  border: `1px solid ${stat.color}20`
-                }}>
-                  <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px'}}>
-                    <i className={`fas ${stat.icon}`} style={{color: stat.color, fontSize: '12px'}}></i>
-                  </div>
-                  <div style={{fontSize: '18px', fontWeight: 700, color: '#111', marginBottom: '2px', ...numberStyle}}>
-                    ₦{stat.value.toLocaleString()}
-                  </div>
-                  <div style={{fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Transactions */}
-          <div style={{
-            background: 'white',
-            borderRadius: '20px',
-            padding: '20px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-            border: '1px solid rgba(255,94,0,0.08)'
-          }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-              <h3 style={{fontSize: '16px', fontWeight: 700, color: '#111', margin: 0}}>
-                <i className="fas fa-exchange-alt" style={{color: '#ff5e00', marginRight: '8px'}}></i>
-                Recent Transactions
-              </h3>
-              {withdrawals.length > 0 && (
-                <span style={{fontSize: '12px', color: '#ff5e00', fontWeight: 600, cursor: 'pointer'}}>See All</span>
-              )}
-            </div>
-
-            {withdrawals.length === 0 ? (
-              <div style={{textAlign: 'center', padding: '40px 20px'}}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: '#f5f5f5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 12px'
-                }}>
-                  <i className="fas fa-inbox" style={{fontSize: '24px', color: '#ccc'}}></i>
-                </div>
-                <p style={{fontSize: '14px', color: '#888', margin: 0}}>No transactions yet</p>
-              </div>
-            ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
-                {withdrawals.slice(0, 5).map((w, idx) => (
-                  <div key={idx} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '14px 12px',
-                    background: idx % 2 === 0 ? '#fafafa' : 'white',
-                    borderRadius: '12px',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#fff5f0'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#fafafa' : 'white'}
-                  >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: w.status === 'completed' ? '#dcfce7' : '#fef3c7',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <i className={`fas ${w.status === 'completed' ? 'fa-check' : 'fa-clock'}`} style={{
-                          color: w.status === 'completed' ? '#16a34a' : '#d97706',
-                          fontSize: '14px'
-                        }}></i>
-                      </div>
-                      <div>
-                        <div style={{fontSize: '14px', fontWeight: 600, color: '#111'}}>Withdrawal</div>
-                        <div style={{fontSize: '11px', color: '#888'}}>{new Date(w.created_at || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                      </div>
+    return (
+        <div className="mobile-driver-wallet-container">
+            <div className="mobile-driver-wallet-view">
+                {/* Header */}
+                <div className="mobile-driver-wallet-header">
+                    <div className="mobile-driver-wallet-user-info">
+                        <h1>Wallet</h1>
+                        <p>{firstName}'s earnings</p>
                     </div>
-                    <div style={{textAlign: 'right'}}>
-                      <div style={{fontSize: '15px', fontWeight: 700, color: '#111', ...numberStyle}}>₦{(w.amount || 0).toLocaleString()}</div>
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        background: w.status === 'completed' ? '#dcfce7' : '#fef3c7',
-                        color: w.status === 'completed' ? '#16a34a' : '#d97706'
-                      }}>
-                        {w.status}
-                      </span>
+                    <button className="mobile-driver-wallet-notification-btn" onClick={checkNotifications}>
+                        <i className="fas fa-bell"></i>
+                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                    </button>
+                </div>
+
+                {/* Balance Card */}
+                <div className="mobile-wallet-balance-card">
+                    <div className="balance-card-content">
+                        <div>
+                            <p className="balance-label">Available Balance</p>
+                            <p className="balance-amount">{formatCurrency(stats.wallet_balance)}</p>
+                            <p className="total-earnings">Lifetime: {formatCurrency(stats.total_earnings)}</p>
+                        </div>
+                        <i className="fas fa-wallet balance-icon"></i>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <DriverNavMobile />
-      </div>
-
-      {/* DESKTOP VIEW */}
-      <div className="desktop-view">
-        <DriverSidebarDesktop userName={userName} />
-        <div className="desktop-main">
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px'}}>
-            <div>
-              <h1 style={{fontSize: '32px', fontWeight: 800, letterSpacing: '-1px', color: '#111', marginBottom: '4px'}}>
-                <i className="fas fa-wallet" style={{color: '#ff5e00', marginRight: '12px'}}></i>
-                My Wallet
-              </h1>
-              <p style={{fontSize: '14px', color: '#9ca3af'}}>Manage your earnings and withdrawals</p>
-            </div>
-            <button
-              onClick={() => router.visit('/driver_settings')}
-              style={{
-                width: '48px',
-                height: '48px',
-                background: 'white',
-                borderRadius: '14px',
-                border: '1px solid rgba(255,94,0,0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 12px rgba(255,94,0,0.15)',
-                color: '#ff5e00',
-                fontSize: '18px',
-                cursor: 'pointer',
-                position: 'relative'
-              }}
-            >
-              <i className="fas fa-bell"></i>
-              {notificationCount > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-6px',
-                  right: '-6px',
-                  width: '20px',
-                  height: '20px',
-                  background: '#ff5e00',
-                  color: 'white',
-                  borderRadius: '50%',
-                  fontSize: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700
-                }}>
-                  {notificationCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Balance Card */}
-          <div style={{
-            background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 50%, #ffaa5c 100%)',
-            borderRadius: '24px',
-            padding: '40px',
-            marginBottom: '32px',
-            position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 20px 60px rgba(255,94,0,0.3)'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '-30%',
-              right: '-10%',
-              width: '300px',
-              height: '300px',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)',
-              borderRadius: '50%'
-            }}></div>
-            <div style={{position: 'relative', zIndex: 1}}>
-              <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px'}}>
-                <i className="fas fa-wallet" style={{color: 'white', fontSize: '20px'}}></i>
-                <span style={{color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontWeight: 500}}>Available Balance</span>
-              </div>
-              <div style={{fontSize: '56px', fontWeight: 800, color: 'white', marginBottom: '16px', ...numberStyle}}>
-                ₦{walletBalance.toLocaleString()}
-              </div>
-              <button
-                onClick={() => setShowWithdrawModal(true)}
-                style={{
-                  padding: '14px 32px',
-                  background: 'rgba(255,255,255,0.2)',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderRadius: '12px',
-                  color: 'white',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '15px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                <i className="fas fa-arrow-up"></i>
-                Withdraw Earnings
-              </button>
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '20px',
-            marginBottom: '32px'
-          }}>
-            {[
-              { label: 'Today', value: todayEarnings, icon: 'fa-sun' },
-              { label: 'This Week', value: weekEarnings, icon: 'fa-calendar-week' },
-              { label: 'Total Earned', value: totalEarnings, icon: 'fa-coins' },
-              { label: 'Withdrawn', value: totalWithdrawn, icon: 'fa-arrow-up' }
-            ].map((stat, idx) => (
-              <div key={idx} style={{
-                background: 'white',
-                borderRadius: '20px',
-                padding: '24px',
-                boxShadow: '0 4px 24px rgba(255,94,0,0.12)',
-                border: '1px solid rgba(255,94,0,0.1)'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '14px',
-                  background: 'rgba(255,94,0,0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '16px'
-                }}>
-                  <i className={`fas ${stat.icon}`} style={{color: '#ff5e00', fontSize: '18px'}}></i>
+                    <div className="balance-actions">
+                        <button className="withdraw-btn" onClick={withdrawFunds}>
+                            <i className="fas fa-hand-holding-usd"></i> Withdraw
+                        </button>
+                        <button className="history-btn" onClick={viewHistory}>
+                            <i className="fas fa-history"></i> History
+                        </button>
+                    </div>
                 </div>
-                <div style={{fontSize: '28px', fontWeight: 700, color: '#111', marginBottom: '4px', ...numberStyle}}>
-                  ₦{stat.value.toLocaleString()}
-                </div>
-                <div style={{fontSize: '12px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600}}>
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* Withdraw Modal */}
-      {showWithdrawModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '24px',
-            padding: '32px',
-            maxWidth: '400px',
-            width: '100%',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }}>
-            <h2 style={{fontSize: '24px', fontWeight: 700, color: '#111', marginBottom: '8px'}}>Withdraw Earnings</h2>
-            <p style={{fontSize: '14px', color: '#888', marginBottom: '24px'}}>Enter amount to withdraw (Min: ₦1,000)</p>
-            <input
-              type="number"
-              value={withdrawAmount}
-              onChange={(e) => setWithdrawAmount(e.target.value)}
-              placeholder="Enter amount"
-              style={{
-                width: '100%',
-                padding: '16px 20px',
-                border: '2px solid rgba(255,94,0,0.2)',
-                borderRadius: '14px',
-                fontSize: '16px',
-                outline: 'none',
-                marginBottom: '20px',
-                fontFamily: 'inherit',
-                transition: 'border-color 0.3s ease'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#ff5e00'}
-              onBlur={(e) => e.target.style.borderColor = 'rgba(255,94,0,0.2)'}
-            />
-            <div style={{display: 'flex', gap: '12px'}}>
-              <button
-                onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  background: '#f8f8f8',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleWithdraw}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  color: 'white',
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Withdraw
-              </button>
+                {/* Stats Grid */}
+                <div className="mobile-stats-grid">
+                    <div className="mobile-stat-card">
+                        <div className="stat-label">Today</div>
+                        <div className="stat-value">{formatCurrency(stats.today_earnings)}</div>
+                        <div className={`stat-status ${stats.today_earnings > 0 ? 'active' : 'inactive'}`}>
+                            {stats.today_earnings > 0 ? 'Active' : 'No rides'}
+                        </div>
+                    </div>
+                    <div className="mobile-stat-card">
+                        <div className="stat-label">This Week</div>
+                        <div className="stat-value">{formatCurrency(stats.week_earnings)}</div>
+                        <div className="stat-status">Weekly</div>
+                    </div>
+                    <div className="mobile-stat-card">
+                        <div className="stat-label">Total</div>
+                        <div className="stat-value">{formatCurrency(stats.total_earnings)}</div>
+                        <div className="stat-status">Lifetime</div>
+                    </div>
+                </div>
+
+                {/* Recent Earnings */}
+                <div className="mobile-recent-earnings">
+                    <h2 className="section-title">Recent Ride Earnings</h2>
+                    <div className="earnings-list">
+                        {recentRides.length > 0 ? (
+                            recentRides.map((ride) => (
+                                <div key={ride.id} className="earning-item">
+                                    <div className="earning-info">
+                                        <div className="earning-date">{ride.formatted_date} • {ride.formatted_time}</div>
+                                        <div className="earning-title">Ride #{ride.ride_number?.substring(-8) || ride.id.substring(-8)}</div>
+                                        <div className="earning-location">{ride.pickup_address?.substring(0, 25)}...</div>
+                                        {ride.client_name && <div className="earning-client">Client: {ride.client_name}</div>}
+                                    </div>
+                                    <div className="earning-amount">
+                                        <div className="amount-positive">+{formatCurrency(ride.driver_payout)}</div>
+                                        <div className="amount-subtext">Fare: {formatCurrency(ride.total_fare)}</div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="empty-state">
+                                <i className="fas fa-coins"></i>
+                                <p>No earnings yet</p>
+                                <span>Complete rides to see earnings</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Bottom Navigation */}
+                <DriverNavMobile />
             </div>
-          </div>
         </div>
-      )}
-    </div>
-  );
-}
+    );
+};
+
+export default DriverWalletMobile;
