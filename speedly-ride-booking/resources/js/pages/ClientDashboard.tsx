@@ -726,7 +726,7 @@ const ClientDashboard: React.FC = () => {
                     {/* Stats Cards */}
                     <div className="grid grid-cols-3 gap-6 mt-6">
                         <div className="desktop-card bg-gradient-to-br from-[#ff5e00] to-[#ff8c3a] text-white">
-                            <h3 className="text-lg font-medium opacity-90">Active Rides</h3>
+                            <h3 className="text-lg font-medium opacity-100" style={{color: 'white'}}>Active Rides</h3>
                             <div className="text-4xl font-bold mt-2">{rideStats.active_count}</div>
                             <div className="mt-4 text-sm opacity-75">
                                 <i className="fas fa-arrow-up"></i> +{Math.abs(rideStats.monthly_change)} from last month

@@ -30,13 +30,13 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
   };
 
   const navItems = [
-    { path: '/client-dashboard', name: 'Dashboard', icon: 'fas fa-home' },
-    { path: '/book-ride', name: 'Book Ride', icon: 'fas fa-car' },
-    { path: '/ride-history', name: 'Ride History', icon: 'fas fa-history' },
-    { path: '/wallet', name: 'Wallet', icon: 'fas fa-wallet' },
-    { path: '/location', name: 'Locations', icon: 'fas fa-map-marker-alt' },
-    { path: '/ai-assistant', name: 'AI Assistant', icon: 'fas fa-robot' },
-    { path: '/settings', name: 'Settings', icon: 'fas fa-cog' },
+    { path: '/clientdashboard', name: 'Dashboard', icon: 'fas fa-home' },
+    { path: '/clientbookride', name: 'Book Ride', icon: 'fas fa-car' },
+    { path: '/clientridehistory', name: 'Ride History', icon: 'fas fa-history' },
+    { path: '/clientwallet', name: 'Wallet', icon: 'fas fa-wallet' },
+    { path: '/clientlocation', name: 'Locations', icon: 'fas fa-map-marker-alt' },
+    { path: '/clientaiassistant', name: 'AI Assistant', icon: 'fas fa-robot' },
+    { path: '/clientsettings', name: 'Settings', icon: 'fas fa-cog' },
   ];
 
   const getInitial = (name: string): string => {

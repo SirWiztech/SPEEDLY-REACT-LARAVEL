@@ -507,3 +507,134 @@
         gap: 16px;
     }
 }
+
+/* Add these missing styles to DriverBookHistory.css */
+
+/* Text color utilities */
+.text-green-600 {
+    color: #10b981 !important;
+}
+
+.text-red-600 {
+    color: #ef4444 !important;
+}
+
+.text-gray-600 {
+    color: #6b7280 !important;
+}
+
+.text-yellow-300 {
+    color: #fcd34d !important;
+}
+
+.text-\[\#ff5e00\] {
+    color: #ff5e00 !important;
+}
+
+/* Sidebar placeholder styles */
+.driver-sidebar-placeholder {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 50;
+}
+
+/* Ensure main content doesn't overlap sidebar */
+.driver-book-history-desktop-main {
+    margin-left: 280px;
+}
+
+@media (max-width: 1024px) {
+    .driver-book-history-desktop-main {
+        margin-left: 0;
+    }
+}
+
+/* Empty state improvements */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px !important;
+    color: #9ca3af;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.empty-subtext {
+    font-size: 12px;
+    color: #b0b0b0;
+}
+
+/* Status badge improvements */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.pending {
+    background: #fff3e0;
+    color: #f97316;
+}
+
+.status-badge.accepted {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.status-badge.cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* Declined badge improvements */
+.declined-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.declined-badge.auto {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.declined-badge.manual {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Ride row hover effect */
+.ride-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.ride-row:hover {
+    background: #fafafa;
+}
+
+/* Loading state */
+.loading-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}

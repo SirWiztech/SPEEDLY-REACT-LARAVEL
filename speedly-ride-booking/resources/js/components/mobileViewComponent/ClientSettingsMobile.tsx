@@ -595,17 +595,20 @@ const ClientSettingsMobile: React.FC = () => {
                             <button className={`mobile-lang-btn ${userSettings.language === 'fr' ? 'active' : ''}`} onClick={() => setLanguage('fr')}>🇫🇷 Français</button>
                             <button className={`mobile-lang-btn ${userSettings.language === 'es' ? 'active' : ''}`} onClick={() => setLanguage('es')}>🇪🇸 Español</button>
                         </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="mobile-action-buttons">
+                        <br/>
+                        {/* Action Buttons */}
+                    
                         <button className="mobile-logout-btn" onClick={logout}>
                             <i className="fas fa-sign-out-alt"></i> Log Out
                         </button>
+                        <br/>
                         <button className="mobile-delete-account-btn" onClick={deleteAccount}>
                             <i className="fas fa-trash-alt"></i> Delete Account
                         </button>
                     </div>
+
+                    
+                
                 </div>
 
                 {/* Bottom Navigation */}

@@ -20,12 +20,12 @@ const ClientNavMobile: React.FC<ClientNavMobileProps> = () => {
   };
 
   const navItems = [
-    { path: '/client-dashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/client-dashboard'] },
-    { path: '/book-ride', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/book-ride'] },
-    { path: '/wallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/wallet'] },
-    { path: '/location', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/location'] },
-    { path: '/ai-assistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/ai-assistant'] },
-    { path: '/settings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/client-profile', '/settings'] },
+    { path: '/clientdashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/client-dashboard'] },
+    { path: '/clientbookride', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/client-book-ride'] },
+    { path: '/clientwallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/client-wallet'] },
+    { path: '/clientlocation', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/client-location'] },
+    { path: '/clientaiassistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/client-ai-assistant'] },
+    { path: '/clientsettings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/client-profile', '/settings'] },
   ];
 
   return (

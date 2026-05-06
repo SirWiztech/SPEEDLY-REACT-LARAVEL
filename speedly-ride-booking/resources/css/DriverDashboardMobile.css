@@ -1,41 +1,39 @@
 /* Driver Dashboard Mobile Styles */
-/* ALL SELECTORS HAVE "mobile-" PREFIX */
-
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-.mobile-driver-container {
+.mobile-driver-dashboard-container {
     width: 100%;
     min-height: 100vh;
-    background-color: #fff;
+    background-color: #f8f9fa;
     overflow-x: hidden;
 }
 
-.mobile-driver-view {
+.mobile-driver-dashboard-view {
     display: block;
     width: 100%;
     min-height: 100vh;
-    max-height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: 80px;
+    padding-bottom: 90px;
     scroll-behavior: smooth;
+    background-color: #f8f9fa;
 }
 
 /* Custom Scrollbar */
-.mobile-driver-view::-webkit-scrollbar {
+.mobile-driver-dashboard-view::-webkit-scrollbar {
     width: 4px;
 }
 
-.mobile-driver-view::-webkit-scrollbar-track {
+.mobile-driver-dashboard-view::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
 
-.mobile-driver-view::-webkit-scrollbar-thumb {
+.mobile-driver-dashboard-view::-webkit-scrollbar-thumb {
     background: #ff5e00;
     border-radius: 10px;
 }
@@ -111,6 +109,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* API Alert */
+.mobile-api-alert {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 10px 16px;
+    margin: 12px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
 }
 
 /* Balance Card */
@@ -450,8 +461,9 @@
     text-align: center;
     padding: 32px 24px;
     margin: 16px;
-    background: #f9fafb;
+    background: white;
     border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .mobile-no-ride-card i {
@@ -471,8 +483,7 @@
     margin-bottom: 16px;
 }
 
-.go-online-btn,
-.kyc-btn {
+.go-online-btn {
     background: #ff5e00;
     color: white;
     border: none;
@@ -488,15 +499,25 @@
 
 .kyc-btn {
     background: #9ca3af;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: not-allowed;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* Completed Card */
 .mobile-completed-card {
-    background: #f3f4f6;
+    background: white;
     margin: 16px;
     padding: 20px;
     border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .completed-header {
@@ -651,14 +672,15 @@
     align-items: center;
     gap: 12px;
     padding: 14px;
-    background: #fafafa;
+    background: white;
     border-radius: 16px;
     cursor: pointer;
     transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .recent-ride-item:active {
-    background: #f5f5f5;
+    background: #fafafa;
     transform: scale(0.98);
 }
 
@@ -710,38 +732,14 @@
 .no-recent {
     text-align: center;
     padding: 32px;
+    background: white;
+    border-radius: 16px;
     color: #9ca3af;
 }
 
 .no-recent i {
     font-size: 40px;
     margin-bottom: 10px;
-}
-
-/* Utility Classes */
-.mobile-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-}
-
-.mobile-stat-item {
-    background: #f9fafb;
-    padding: 12px;
-    border-radius: 12px;
-    text-align: center;
-}
-
-.mobile-stat-item .stat-label {
-    font-size: 11px;
-    color: #6b7280;
-    margin-bottom: 4px;
-}
-
-.mobile-stat-item .stat-value {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1a1a1a;
 }
 
 /* Responsive */
@@ -770,7 +768,7 @@
 
 /* Safe Area Support */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    .mobile-driver-view {
-        padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    .mobile-driver-dashboard-view {
+        padding-bottom: calc(90px + env(safe-area-inset-bottom));
     }
 }

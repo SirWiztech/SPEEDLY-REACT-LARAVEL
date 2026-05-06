@@ -16,12 +16,12 @@ const DriverNavMobile: React.FC<DriverNavMobileProps> = () => {
   };
 
   const navItems = [
-    { path: '/driver-dashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/driver-dashboard'] },
-    { path: '/book-history', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/book-history', '/book-ride'] },
-    { path: '/driver-wallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/driver-wallet'] },
-    { path: '/driver-location', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/driver-location'] },
-    { path: '/driver-ai-assistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/driver-ai-assistant'] },
-    { path: '/driver-settings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/driver-settings', '/driver-profile', '/kyc'] },
+    { path: '/driverdashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/driverdashboard'] },
+    { path: '/driverbookhistory', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/driverbookhistory'] },
+    { path: '/driverwallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/driverwallet'] },
+    { path: '/driverlocation', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/driverlocation'] },
+    { path: '/driveraiassistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/driveraiassistant'] },
+    { path: '/driversettings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/driversettings', '/driver-profile', '/kyc'] },
   ];
 
   return (

@@ -27,6 +27,19 @@ Route::inertia('/driveraiassistant', 'DriverAIAssistant')->name('driveraiassista
 Route::inertia('/driverkyc', 'DriverKyc')->name('driverkyc');
 Route::inertia('/driversettings', 'DriverSettings')->name('driversettings');
 
+Route::inertia('/verifyotp', 'VerifyOtp')->name('verifyotp');
+Route::inertia('/forgotpassword', 'ForgotPassword')->name('passwordrequest');
+Route::inertia('/resetpassword', 'ResetPassword')->name('passwordreset');
+Route::inertia('/generatereceipt', 'GenerateReceipt')->name('generatereceipt');
+Route::inertia('/paymentcallback', 'PaymentCallback')->name('paymentcallback');
+Route::inertia('/paymentprocessing', 'PaymentProcessing')->name('paymentprocess');
+Route::inertia('/adminlogin', 'AdminLogin')->name('adminlogin');
+Route::inertia('/admindashboard', 'AdminDashboard')->name('admindashboard');
+Route::inertia('/driversupport', 'DriverSupport')->name('driversupport');
+Route::inertia('/clientsupport', 'ClientSupport')->name('clientsupport');
+Route::inertia('/forgotadminpassword', 'ForgotAdminPassword')->name('forgotadminpassword');
+
+
 
 Route::middleware(['guest'])->group(function () {
     Route::inertia('/login', 'Form')->name('login');

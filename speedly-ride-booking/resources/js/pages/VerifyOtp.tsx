@@ -59,8 +59,8 @@ export default function VerifyOtp() {
                 <div className="otp-container">
                     <div className="otp-header">
                         <img src="/main-assets/logo.png" alt="Speedly" className="otp-logo" />
-                        <h1>Verify Your Number</h1>
-                        <p>We've sent a 6-digit code to your phone number</p>
+                        <h1>Verify Your Email</h1>
+                        <p>We've sent a 6-digit code to your email address</p>
                     </div>
 
                     {error && (
@@ -81,7 +81,7 @@ export default function VerifyOtp() {
                                 className="otp-input"
                                 autoComplete="one-time-code"
                             />
-                            <p className="otp-hint">Enter the 6-digit code sent to your phone</p>
+                            <p className="otp-hint">Enter the 6-digit code sent to your email</p>
                         </div>
 
                         <button

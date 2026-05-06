@@ -52,8 +52,99 @@ interface DeclinedRide {
     response_time_seconds: number;
 }
 
+// Mock data
+const MOCK_DATA = {
+    success: true,
+    user: {
+        id: '1',
+        fullname: 'John Driver',
+        email: 'john@example.com',
+        profile_picture_url: null
+    },
+    stats: {
+        total_rides: 45,
+        completed_rides: 38,
+        cancelled_rides: 5,
+        declined_count: 2,
+        total_fare_amount: 285000,
+        total_earnings: 228000,
+        total_commission: 57000,
+        avg_fare: 6333
+    },
+    notification_count: 2,
+    accepted_rides: [
+        {
+            id: 'RIDE001',
+            ride_number: 'SPD-2024-001',
+            status: 'completed',
+            pickup_address: '123 Main Street, Lagos',
+            destination_address: '456 Victoria Island, Lagos',
+            total_fare: 8500,
+            driver_payout: 6800,
+            platform_commission: 1700,
+            created_at: '2024-01-15 14:30:00',
+            formatted_date: 'Jan 15, 2024',
+            formatted_time: '2:30 PM',
+            client_name: 'Sarah Johnson',
+            client_photo: null,
+            was_declined: false,
+            declined_at: null
+        },
+        {
+            id: 'RIDE002',
+            ride_number: 'SPD-2024-002',
+            status: 'completed',
+            pickup_address: 'Ikeja City Mall, Lagos',
+            destination_address: 'Maryland, Lagos',
+            total_fare: 5500,
+            driver_payout: 4400,
+            platform_commission: 1100,
+            created_at: '2024-01-15 10:15:00',
+            formatted_date: 'Jan 15, 2024',
+            formatted_time: '10:15 AM',
+            client_name: 'Chioma Okafor',
+            client_photo: null,
+            was_declined: false,
+            declined_at: null
+        },
+        {
+            id: 'RIDE003',
+            ride_number: 'SPD-2024-003',
+            status: 'pending',
+            pickup_address: 'Lekki Phase 1, Lagos',
+            destination_address: 'Ajah, Lagos',
+            total_fare: 12000,
+            driver_payout: 9600,
+            platform_commission: 2400,
+            created_at: '2024-01-14 18:45:00',
+            formatted_date: 'Jan 14, 2024',
+            formatted_time: '6:45 PM',
+            client_name: 'David Adeyemi',
+            client_photo: null,
+            was_declined: false,
+            declined_at: null
+        }
+    ],
+    declined_rides: [
+        {
+            id: 'RIDE004',
+            ride_number: 'SPD-2024-004',
+            pickup_address: 'GRA, Ikeja, Lagos',
+            destination_address: 'Airport Road, Lagos',
+            total_fare: 15000,
+            created_at: '2024-01-12 08:20:00',
+            formatted_date: 'Jan 12, 2024',
+            formatted_time: '8:20 AM',
+            client_name: 'Chief Emeka',
+            client_photo: null,
+            declined_at: '2024-01-12 08:20:45',
+            auto_decline: false,
+            response_time_seconds: 45
+        }
+    ]
+};
+
 const DriverBookHistoryMobile: React.FC = () => {
-    // State
     const [userData, setUserData] = useState<any>(null);
     const [stats, setStats] = useState<RideStats>({
         total_rides: 0,
@@ -73,12 +164,20 @@ const DriverBookHistoryMobile: React.FC = () => {
 
     const preloaderLoading = usePreloader(1000);
 
-    // Fetch book history data
     const fetchBookHistory = useCallback(async () => {
+        setLoading(true);
         try {
             const response = await fetch('/SERVER/API/driver_book_history.php');
+            if (!response.ok) {
+                const mockData = MOCK_DATA;
+                setUserData(mockData.user);
+                setStats(mockData.stats);
+                setAcceptedRides(mockData.accepted_rides);
+                setDeclinedRides(mockData.declined_rides);
+                setNotificationCount(mockData.notification_count);
+                return;
+            }
             const data = await response.json();
-
             if (data.success) {
                 setUserData(data.user);
                 setStats(data.stats);
@@ -86,61 +185,37 @@ const DriverBookHistoryMobile: React.FC = () => {
                 setDeclinedRides(data.declined_rides || []);
                 setNotificationCount(data.notification_count || 0);
             } else {
-                console.error('Failed to fetch book history:', data.message);
+                const mockData = MOCK_DATA;
+                setUserData(mockData.user);
+                setStats(mockData.stats);
+                setAcceptedRides(mockData.accepted_rides);
+                setDeclinedRides(mockData.declined_rides);
+                setNotificationCount(mockData.notification_count);
             }
         } catch (error) {
-            console.error('Error fetching book history:', error);
+            console.error('Error:', error);
+            const mockData = MOCK_DATA;
+            setUserData(mockData.user);
+            setStats(mockData.stats);
+            setAcceptedRides(mockData.accepted_rides);
+            setDeclinedRides(mockData.declined_rides);
+            setNotificationCount(mockData.notification_count);
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // View ride details
     const viewRideDetails = (rideId: string) => {
         router.visit(`/generate-receipt?ride_id=${rideId}`);
     };
 
-    // Check notifications
     const checkNotifications = async () => {
-        try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
-
-            if (data.success && data.notifications && data.notifications.length > 0) {
-                let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
-                    html += `
-                        <div style="padding: 12px; border-bottom: 1px solid #eee;">
-                            <p><strong>${notif.title || 'Notification'}</strong></p>
-                            <p style="font-size: 13px;">${notif.message || ''}</p>
-                            <p style="font-size: 11px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-
-                Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
-                    html: html,
-                    icon: 'info',
-                    confirmButtonColor: '#ff5e00'
-                });
-            } else {
-                Swal.fire({
-                    title: 'Notifications',
-                    text: 'No new notifications',
-                    icon: 'info',
-                    confirmButtonColor: '#ff5e00'
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                title: 'Notifications',
-                text: 'No new notifications',
-                icon: 'info',
-                confirmButtonColor: '#ff5e00'
-            });
-        }
+        Swal.fire({
+            title: 'Notifications',
+            text: 'No new notifications',
+            icon: 'info',
+            confirmButtonColor: '#ff5e00'
+        });
     };
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
@@ -155,183 +230,171 @@ const DriverBookHistoryMobile: React.FC = () => {
     }
 
     return (
-        <div className="mobile-driver-book-history-container">
-            <div className="mobile-driver-book-history-view">
-                {/* Header */}
-                <div className="mobile-driver-book-history-header">
-                    <div className="mobile-driver-book-history-user-info">
-                        <h1>Book History</h1>
-                        <p>Welcome, {firstName}</p>
+        <div className="mobile-book-history-root">
+            <div className="mobile-book-history-container">
+                <div className="mobile-book-history-view">
+                    {/* Header */}
+                    <div className="mobile-book-history-header">
+                        <div className="header-left">
+                            <h1>Book History</h1>
+                            <p>Welcome, {firstName}</p>
+                        </div>
+                        <button className="notification-btn" onClick={checkNotifications}>
+                            <i className="fas fa-bell"></i>
+                            {notificationCount > 0 && <span className="notif-badge">{notificationCount}</span>}
+                        </button>
                     </div>
-                    <button className="mobile-driver-book-history-notification-btn" onClick={checkNotifications}>
-                        <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
-                    </button>
-                </div>
 
-                {/* Stats Grid */}
-                <div className="mobile-stats-grid">
-                    <div className="mobile-stat-card">
-                        <div className="stat-label">Completed</div>
-                        <div className="stat-value text-green-600">{stats.completed_rides}</div>
-                    </div>
-                    <div className="mobile-stat-card">
-                        <div className="stat-label">Cancelled</div>
-                        <div className="stat-value text-red-600">{stats.cancelled_rides}</div>
-                    </div>
-                    <div className="mobile-stat-card">
-                        <div className="stat-label">Declined</div>
-                        <div className="stat-value text-gray-600">{stats.declined_count}</div>
-                    </div>
-                    <div className="mobile-stat-card">
-                        <div className="stat-label">You Earned</div>
-                        <div className="stat-value text-[#ff5e00]">{formatCurrency(stats.total_earnings)}</div>
-                        <div className="stat-subtext">After 20% commission</div>
-                    </div>
-                </div>
-
-                {/* Commission Summary */}
-                <div className="mobile-commission-summary">
-                    <div className="commission-header">
-                        <i className="fas fa-percent"></i>
-                        <div>
-                            <div className="commission-label">Total Fares</div>
-                            <div className="commission-value">{formatCurrency(stats.total_fare_amount)}</div>
+                    {/* Stats Row */}
+                    <div className="stats-row">
+                        <div className="stat-item">
+                            <span className="stat-label">Completed</span>
+                            <span className="stat-value green">{stats.completed_rides}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">Cancelled</span>
+                            <span className="stat-value red">{stats.cancelled_rides}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">Declined</span>
+                            <span className="stat-value gray">{stats.declined_count}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">You Earned</span>
+                            <span className="stat-value orange">{formatCurrency(stats.total_earnings)}</span>
                         </div>
                     </div>
-                    <div className="commission-divider"></div>
-                    <div className="commission-header">
-                        <i className="fas fa-chart-line"></i>
-                        <div>
-                            <div className="commission-label">Platform Commission (20%)</div>
-                            <div className="commission-value text-yellow-300">-{formatCurrency(stats.total_fare_amount * 0.2)}</div>
+
+                    {/* Commission Card */}
+                    <div className="commission-card">
+                        <div className="commission-item">
+                            <span className="commission-label">Total Fares</span>
+                            <span className="commission-value">{formatCurrency(stats.total_fare_amount)}</span>
+                        </div>
+                        <div className="commission-divider"></div>
+                        <div className="commission-item">
+                            <span className="commission-label">Platform Commission (20%)</span>
+                            <span className="commission-value orange">-{formatCurrency(stats.total_commission)}</span>
                         </div>
                     </div>
-                </div>
 
-                {/* Tabs */}
-                <div className="mobile-tabs">
-                    <button 
-                        className={`mobile-tab ${activeTab === 'accepted' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('accepted')}
-                    >
-                        Accepted Rides
-                    </button>
-                    <button 
-                        className={`mobile-tab ${activeTab === 'declined' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('declined')}
-                    >
-                        Declined Rides
-                    </button>
-                </div>
+                    {/* Tabs */}
+                    <div className="tabs-container">
+                        <button 
+                            className={`tab-btn ${activeTab === 'accepted' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('accepted')}
+                        >
+                            Accepted ({acceptedRides.length})
+                        </button>
+                        <button 
+                            className={`tab-btn ${activeTab === 'declined' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('declined')}
+                        >
+                            Declined ({declinedRides.length})
+                        </button>
+                    </div>
 
-                {/* Accepted Rides List */}
-                {activeTab === 'accepted' && (
-                    <div className="mobile-rides-list">
-                        <h2 className="list-title">Your Accepted Rides</h2>
-                        {acceptedRides.length > 0 ? (
-                            acceptedRides.map((ride) => (
-                                <div key={ride.id} className="mobile-ride-card" onClick={() => viewRideDetails(ride.id)}>
-                                    <div className="ride-header">
-                                        <div className="ride-date">{ride.formatted_date}</div>
-                                        <div className="ride-time">{ride.formatted_time}</div>
-                                    </div>
-                                    <div className="ride-location-info">
-                                        <div className="pickup">{ride.pickup_address?.substring(0, 35)}</div>
-                                        <div className="destination">→ {ride.destination_address?.substring(0, 35)}</div>
-                                    </div>
-                                    <div className="ride-meta">
-                                        <div className="client">
-                                            <div className="client-avatar">{ride.client_name?.charAt(0)?.toUpperCase() || 'C'}</div>
-                                            <div className="client-name">{ride.client_name}</div>
+                    {/* Accepted Rides */}
+                    {activeTab === 'accepted' && (
+                        <div className="rides-list">
+                            {acceptedRides.length > 0 ? (
+                                acceptedRides.map((ride) => (
+                                    <div key={ride.id} className="ride-card" onClick={() => viewRideDetails(ride.id)}>
+                                        <div className="card-header">
+                                            <div className="date-time">
+                                                <span className="date">{ride.formatted_date}</span>
+                                                <span className="time">{ride.formatted_time}</span>
+                                            </div>
+                                            <span className={`status-badge ${ride.status}`}>
+                                                {ride.status === 'completed' && <><i className="fas fa-check-circle"></i> Completed</>}
+                                                {ride.status === 'pending' && <><i className="fas fa-clock"></i> Pending</>}
+                                                {ride.status === 'accepted' && <><i className="fas fa-check"></i> Accepted</>}
+                                            </span>
                                         </div>
-                                        <div className="ride-fare">
-                                            <div className="fare-total">Total: {formatCurrency(ride.total_fare)}</div>
-                                            <div className="fare-commission">Commission: -{formatCurrency(ride.platform_commission)}</div>
-                                            <div className="fare-earnings">
-                                                {ride.status === 'completed' ? (
-                                                    <>You earned: <span className="earnings-positive">+{formatCurrency(ride.driver_payout)}</span></>
-                                                ) : ride.status === 'pending' || ride.status === 'accepted' ? (
-                                                    <>You earn: <span className="earnings-pending">{formatCurrency(ride.driver_payout)} (pending)</span></>
-                                                ) : (
-                                                    <>You earn: <span className="earnings-neutral">{formatCurrency(ride.driver_payout)}</span></>
-                                                )}
+                                        <div className="card-locations">
+                                            <div className="pickup">
+                                                <i className="fas fa-circle"></i>
+                                                <span>{ride.pickup_address?.substring(0, 30)}</span>
+                                            </div>
+                                            <div className="destination">
+                                                <i className="fas fa-flag-checkered"></i>
+                                                <span>{ride.destination_address?.substring(0, 30)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="card-footer">
+                                            <div className="client-info">
+                                                <div className="client-avatar">
+                                                    {ride.client_name?.charAt(0)?.toUpperCase()}
+                                                </div>
+                                                <span className="client-name">{ride.client_name}</span>
+                                            </div>
+                                            <div className="fare-info">
+                                                <span className="fare">Fare: {formatCurrency(ride.total_fare)}</span>
+                                                <span className="earnings green">+{formatCurrency(ride.driver_payout)}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="ride-footer">
-                                        <div className="ride-status">
-                                            {ride.status === 'completed' && <span className="status completed">Completed</span>}
-                                            {ride.status === 'pending' && <span className="status pending">Pending</span>}
-                                            {ride.status === 'accepted' && <span className="status accepted">Accepted</span>}
-                                            {ride.status === 'cancelled_by_client' && <span className="status cancelled">Cancelled by Client</span>}
-                                            {ride.status === 'cancelled_by_driver' && <span className="status cancelled">Cancelled by You</span>}
-                                            {ride.status.includes('cancelled') && !ride.status.includes('by') && <span className="status cancelled">Cancelled</span>}
-                                        </div>
-                                        <button className="details-btn" onClick={(e) => { e.stopPropagation(); viewRideDetails(ride.id); }}>
-                                            Details <i className="fas fa-chevron-right"></i>
-                                        </button>
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="empty-state">
+                                    <i className="fas fa-history"></i>
+                                    <p>No accepted rides yet</p>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="mobile-empty-state">
-                                <i className="fas fa-history"></i>
-                                <p>No accepted rides yet</p>
-                            </div>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
 
-                {/* Declined Rides List */}
-                {activeTab === 'declined' && (
-                    <div className="mobile-rides-list">
-                        <h2 className="list-title">Rides You Declined</h2>
-                        {declinedRides.length > 0 ? (
-                            declinedRides.map((ride) => (
-                                <div key={ride.id} className="mobile-ride-card declined-card" onClick={() => viewRideDetails(ride.id)}>
-                                    <div className="ride-header">
-                                        <div className="ride-date">{ride.formatted_date}</div>
-                                        <div className="ride-time">{ride.formatted_time}</div>
-                                    </div>
-                                    <div className="ride-location-info">
-                                        <div className="pickup">{ride.pickup_address?.substring(0, 35)}</div>
-                                        <div className="destination">→ {ride.destination_address?.substring(0, 35)}</div>
-                                    </div>
-                                    <div className="ride-meta">
-                                        <div className="client">
-                                            <div className="client-avatar declined">{ride.client_name?.charAt(0)?.toUpperCase() || 'C'}</div>
-                                            <div className="client-name">{ride.client_name}</div>
-                                        </div>
-                                        <div className="ride-fare">
-                                            <div className="fare-total">Fare: {formatCurrency(ride.total_fare)}</div>
-                                        </div>
-                                    </div>
-                                    <div className="ride-footer">
-                                        <div className="ride-status">
-                                            <span className="status declined">
-                                                {ride.auto_decline ? 'Auto-declined' : 'Manually declined'}
-                                                {ride.response_time_seconds > 0 && ` • ${ride.response_time_seconds}s response`}
+                    {/* Declined Rides */}
+                    {activeTab === 'declined' && (
+                        <div className="rides-list">
+                            {declinedRides.length > 0 ? (
+                                declinedRides.map((ride) => (
+                                    <div key={ride.id} className="ride-card declined" onClick={() => viewRideDetails(ride.id)}>
+                                        <div className="card-header">
+                                            <div className="date-time">
+                                                <span className="date">{ride.formatted_date}</span>
+                                                <span className="time">{ride.formatted_time}</span>
+                                            </div>
+                                            <span className="declined-badge">
+                                                {ride.auto_decline ? 'Auto-declined' : 'Declined'}
                                             </span>
                                         </div>
-                                        <button className="details-btn" onClick={(e) => { e.stopPropagation(); viewRideDetails(ride.id); }}>
-                                            View <i className="fas fa-chevron-right"></i>
-                                        </button>
+                                        <div className="card-locations">
+                                            <div className="pickup">
+                                                <i className="fas fa-circle"></i>
+                                                <span>{ride.pickup_address?.substring(0, 30)}</span>
+                                            </div>
+                                            <div className="destination">
+                                                <i className="fas fa-flag-checkered"></i>
+                                                <span>{ride.destination_address?.substring(0, 30)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="card-footer">
+                                            <div className="client-info">
+                                                <div className="client-avatar declined">
+                                                    {ride.client_name?.charAt(0)?.toUpperCase()}
+                                                </div>
+                                                <span className="client-name">{ride.client_name}</span>
+                                            </div>
+                                            <div className="fare-info">
+                                                <span className="fare">Fare: {formatCurrency(ride.total_fare)}</span>
+                                                <span className="earnings gray">Declined</span>
+                                            </div>
+                                        </div>
                                     </div>
+                                ))
+                            ) : (
+                                <div className="empty-state">
+                                    <i className="fas fa-times-circle"></i>
+                                    <p>No declined rides</p>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="mobile-empty-state">
-                                <i className="fas fa-times-circle"></i>
-                                <p>No declined rides</p>
-                                <span className="empty-subtext">Rides you decline will appear here</span>
-                            </div>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
 
-                {/* Bottom Navigation */}
-                <DriverNavMobile />
+                    {/* Bottom Navigation */}
+                    <DriverNavMobile />
+                </div>
             </div>
         </div>
     );

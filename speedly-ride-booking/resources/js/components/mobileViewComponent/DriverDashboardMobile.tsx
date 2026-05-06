@@ -65,6 +65,80 @@ interface RecentRide {
     formatted_time: string;
 }
 
+// Mock data for development
+const MOCK_DATA = {
+    success: true,
+    driver: {
+        id: '1',
+        fullname: 'Michael Okafor',
+        email: 'michael.o@example.com',
+        phone_number: '+234 805 678 9012',
+        profile_picture_url: null,
+        driver_status: 'offline',
+        verification_status: 'approved',
+        avg_rating: 4.8,
+        total_reviews: 42
+    },
+    earnings: {
+        today_earnings: 12500,
+        total_earnings: 425000,
+        available_balance: 45800,
+        total_withdrawn: 379200
+    },
+    stats: {
+        total_rides: 128,
+        completed_rides: 120,
+        cancelled_rides: 8,
+        today_rides: 3,
+        acceptance_rate: 94
+    },
+    active_ride: null,
+    pending_ride: {
+        id: 'RIDE001',
+        status: 'pending',
+        request_type: 'public',
+        pickup_address: '123 Main Street, Lagos',
+        destination_address: '456 Victoria Island, Lagos',
+        total_fare: 8500,
+        driver_payout: 6800,
+        platform_commission: 1700,
+        distance_km: 12.5,
+        created_at: '2024-01-15 14:30:00',
+        client_name: 'Sarah Johnson',
+        client_phone: '+234 802 345 6789',
+        client_photo: null,
+        pickup_latitude: 6.5244,
+        pickup_longitude: 3.3792,
+        formatted_date: 'Jan 15, 2024',
+        formatted_time: '2:30 PM'
+    },
+    recent_rides: [
+        {
+            id: 'RIDE002',
+            pickup_address: 'Ikeja City Mall',
+            destination_address: 'Maryland, Lagos',
+            total_fare: 5500,
+            driver_payout: 4400,
+            platform_commission: 1100,
+            created_at: '2024-01-14 10:15:00',
+            client_name: 'Chioma Okafor',
+            formatted_time: '10:15 AM'
+        },
+        {
+            id: 'RIDE003',
+            pickup_address: 'Lekki Phase 1',
+            destination_address: 'Ajah, Lagos',
+            total_fare: 12000,
+            driver_payout: 9600,
+            platform_commission: 2400,
+            created_at: '2024-01-13 18:45:00',
+            client_name: 'David Adeyemi',
+            formatted_time: '6:45 PM'
+        }
+    ],
+    notification_count: 2
+};
+
 const DriverDashboardMobile: React.FC = () => {
     // State
     const [driverData, setDriverData] = useState<DriverData | null>(null);
@@ -88,6 +162,7 @@ const DriverDashboardMobile: React.FC = () => {
     const [verificationStatus, setVerificationStatus] = useState<string>('pending');
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
+    const [apiError, setApiError] = useState<string | null>(null);
     const [countdown, setCountdown] = useState<number>(30);
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,8 +170,28 @@ const DriverDashboardMobile: React.FC = () => {
 
     // Fetch driver dashboard data
     const fetchDashboardData = useCallback(async () => {
+        setLoading(true);
+        setApiError(null);
+        
         try {
             const response = await fetch('/SERVER/API/driver_dashboard_data.php');
+            
+            if (!response.ok) {
+                console.warn('API not available, using mock data');
+                const mockData = MOCK_DATA;
+                setDriverData(mockData.driver);
+                setEarnings(mockData.earnings);
+                setStats(mockData.stats);
+                setActiveRide(mockData.active_ride || null);
+                setPendingRide(mockData.pending_ride || null);
+                setRecentRides(mockData.recent_rides || []);
+                setDriverStatus(mockData.driver.driver_status);
+                setVerificationStatus(mockData.driver.verification_status);
+                setNotificationCount(mockData.notification_count);
+                setApiError('Using demo data');
+                return;
+            }
+            
             const data = await response.json();
 
             if (data.success) {
@@ -111,9 +206,31 @@ const DriverDashboardMobile: React.FC = () => {
                 setNotificationCount(data.notification_count || 0);
             } else {
                 console.error('Failed to fetch dashboard data:', data.message);
+                const mockData = MOCK_DATA;
+                setDriverData(mockData.driver);
+                setEarnings(mockData.earnings);
+                setStats(mockData.stats);
+                setActiveRide(mockData.active_ride || null);
+                setPendingRide(mockData.pending_ride || null);
+                setRecentRides(mockData.recent_rides || []);
+                setDriverStatus(mockData.driver.driver_status);
+                setVerificationStatus(mockData.driver.verification_status);
+                setNotificationCount(mockData.notification_count);
+                setApiError('Using demo data');
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+            setApiError('Network error. Using demo data.');
+            const mockData = MOCK_DATA;
+            setDriverData(mockData.driver);
+            setEarnings(mockData.earnings);
+            setStats(mockData.stats);
+            setActiveRide(mockData.active_ride || null);
+            setPendingRide(mockData.pending_ride || null);
+            setRecentRides(mockData.recent_rides || []);
+            setDriverStatus(mockData.driver.driver_status);
+            setVerificationStatus(mockData.driver.verification_status);
+            setNotificationCount(mockData.notification_count);
         } finally {
             setLoading(false);
         }
@@ -293,10 +410,10 @@ const DriverDashboardMobile: React.FC = () => {
             title: 'Complete Ride?',
             html: `
                 <p>Have you completed this ride?</p>
-                <p class="mt-2 font-bold text-green-600">You will earn: ₦${payout.toLocaleString()}</p>
-                <div class="mt-4">
-                    <label class="block text-sm text-gray-600 mb-2">Rate the client (optional)</label>
-                    <div class="flex justify-center gap-2 text-2xl rating-stars">
+                <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">You will earn: ₦${payout.toLocaleString()}</p>
+                <div class="mt-4" style="margin-top: 16px;">
+                    <label class="block text-sm text-gray-600 mb-2" style="display: block; font-size: 13px; color: #666; margin-bottom: 8px;">Rate the client (optional)</label>
+                    <div class="flex justify-center gap-2 text-2xl rating-stars" style="display: flex; justify-content: center; gap: 8px; font-size: 24px;">
                         <i class="far fa-star rating-star" data-rating="1"></i>
                         <i class="far fa-star rating-star" data-rating="2"></i>
                         <i class="far fa-star rating-star" data-rating="3"></i>
@@ -304,7 +421,7 @@ const DriverDashboardMobile: React.FC = () => {
                         <i class="far fa-star rating-star" data-rating="5"></i>
                     </div>
                 </div>
-                <textarea id="review-comment" class="swal2-textarea mt-4" placeholder="Leave a comment (optional)"></textarea>
+                <textarea id="review-comment" class="swal2-textarea mt-4" placeholder="Leave a comment (optional)" style="margin-top: 16px; width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd;"></textarea>
             `,
             showCancelButton: true,
             confirmButtonColor: '#10b981',
@@ -319,6 +436,7 @@ const DriverDashboardMobile: React.FC = () => {
                         stars.forEach((s, idx) => {
                             if (idx < rating) {
                                 s.className = 'fas fa-star rating-star text-yellow-400';
+                                s.setAttribute('style', 'color: #fbbf24;');
                             } else {
                                 s.className = 'far fa-star rating-star';
                             }
@@ -330,6 +448,7 @@ const DriverDashboardMobile: React.FC = () => {
                         stars.forEach((s, idx) => {
                             if (idx < selectedRating) {
                                 s.className = 'fas fa-star rating-star text-yellow-400';
+                                s.setAttribute('style', 'color: #fbbf24;');
                             } else {
                                 s.className = 'far fa-star rating-star';
                             }
@@ -342,6 +461,7 @@ const DriverDashboardMobile: React.FC = () => {
                     stars.forEach((s, idx) => {
                         if (idx < selectedRating) {
                             s.className = 'fas fa-star rating-star text-yellow-400';
+                            s.setAttribute('style', 'color: #fbbf24;');
                         } else {
                             s.className = 'far fa-star rating-star';
                         }
@@ -370,7 +490,7 @@ const DriverDashboardMobile: React.FC = () => {
                         title: 'Ride Completed!',
                         html: `
                             <p>Ride completed successfully</p>
-                            <p class="mt-2 font-bold text-green-600">Earned: ₦${(data.earnings || payout).toLocaleString()}</p>
+                            <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">Earned: ₦${(data.earnings || payout).toLocaleString()}</p>
                         `,
                         icon: 'success',
                         timer: 2000,
@@ -482,9 +602,9 @@ const DriverDashboardMobile: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p class="mb-4">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
-                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${availableBalance}" step="100">
-                <select id="bank-name" class="swal2-input">
+                <p class="mb-4" style="margin-bottom: 16px;">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
+                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${availableBalance}" step="100" style="margin-bottom: 12px;">
+                <select id="bank-name" class="swal2-input" style="margin-bottom: 12px;">
                     <option value="">Select Bank</option>
                     <option value="Access Bank">Access Bank</option>
                     <option value="GTBank">GTBank</option>
@@ -492,7 +612,7 @@ const DriverDashboardMobile: React.FC = () => {
                     <option value="UBA">UBA</option>
                     <option value="Zenith">Zenith Bank</option>
                 </select>
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" style="margin-bottom: 12px;">
                 <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
             `,
             showCancelButton: true,
@@ -534,7 +654,7 @@ const DriverDashboardMobile: React.FC = () => {
                         <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
                         <p>Bank: ${result.value.bank}</p>
                         <p>Account: ${result.value.account} (${result.value.name})</p>
-                        <p class="mt-4 text-sm text-gray-500">Your withdrawal will be processed within 24-48 hours.</p>
+                        <p class="mt-4 text-sm" style="margin-top: 16px; font-size: 12px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
                     `,
                     icon: 'success',
                     confirmButtonColor: '#ff5e00'
@@ -576,13 +696,13 @@ const DriverDashboardMobile: React.FC = () => {
         Swal.fire({
             title: 'Detailed Statistics',
             html: `
-                <div class="mobile-stats-grid">
-                    <div class="mobile-stat-item"><div class="stat-label">Total Rides</div><div class="stat-value">${stats.total_rides}</div></div>
-                    <div class="mobile-stat-item"><div class="stat-label">Completed</div><div class="stat-value text-green-600">${stats.completed_rides}</div></div>
-                    <div class="mobile-stat-item"><div class="stat-label">Cancelled</div><div class="stat-value text-red-600">${stats.cancelled_rides}</div></div>
-                    <div class="mobile-stat-item"><div class="stat-label">Acceptance Rate</div><div class="stat-value">${stats.acceptance_rate}%</div></div>
-                    <div class="mobile-stat-item"><div class="stat-label">Total Fare</div><div class="stat-value">₦${earnings.total_earnings.toLocaleString()}</div></div>
-                    <div class="mobile-stat-item"><div class="stat-label">Avg. Rating</div><div class="stat-value flex items-center gap-1">${driverData?.avg_rating || 0} <i class="fas fa-star text-yellow-400"></i></div></div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Total Rides</div><div style="font-size: 16px; font-weight: 700;">${stats.total_rides}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Completed</div><div style="font-size: 16px; font-weight: 700; color: #10b981;">${stats.completed_rides}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Cancelled</div><div style="font-size: 16px; font-weight: 700; color: #ef4444;">${stats.cancelled_rides}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Acceptance Rate</div><div style="font-size: 16px; font-weight: 700;">${stats.acceptance_rate}%</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Total Fare</div><div style="font-size: 16px; font-weight: 700;">₦${earnings.total_earnings.toLocaleString()}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Avg. Rating</div><div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px;">${driverData?.avg_rating || 0} <i class="fas fa-star" style="color: #fbbf24;"></i></div></div>
                 </div>
             `,
             confirmButtonColor: '#ff5e00',
@@ -665,6 +785,10 @@ const DriverDashboardMobile: React.FC = () => {
         };
     }, [pendingRide, activeRide]);
 
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
     const firstName = driverData?.fullname?.split(' ')[0] || 'Driver';
 
@@ -673,8 +797,8 @@ const DriverDashboardMobile: React.FC = () => {
     }
 
     return (
-        <div className="mobile-driver-container">
-            <div className="mobile-driver-view">
+        <div className="mobile-driver-dashboard-container">
+            <div className="mobile-driver-dashboard-view">
                 {/* Header */}
                 <div className="mobile-driver-header">
                     <div className="mobile-driver-user-info">
@@ -691,6 +815,14 @@ const DriverDashboardMobile: React.FC = () => {
                         {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
                     </button>
                 </div>
+
+                {/* API Error Alert */}
+                {apiError && (
+                    <div className="mobile-api-alert">
+                        <i className="fas fa-info-circle"></i>
+                        <span>{apiError}</span>
+                    </div>
+                )}
 
                 {/* Balance Card */}
                 <div className="mobile-driver-balance-card">
@@ -829,7 +961,7 @@ const DriverDashboardMobile: React.FC = () => {
                     <div className="rating-display">
                         <div className="stars">
                             {[...Array(5)].map((_, i) => (
-                                <i key={i} className={`fas fa-star ${i < Math.floor(driverData?.avg_rating || 0) ? 'text-yellow-400' : 'far fa-star text-yellow-400'}`}></i>
+                                <i key={i} className={`fas fa-star ${i < Math.floor(driverData?.avg_rating || 0) ? 'text-yellow-400' : 'far fa-star text-yellow-400'}`} style={{ color: '#fbbf24' }}></i>
                             ))}
                         </div>
                         <span className="rating-value">{driverData?.avg_rating || 0}</span>
