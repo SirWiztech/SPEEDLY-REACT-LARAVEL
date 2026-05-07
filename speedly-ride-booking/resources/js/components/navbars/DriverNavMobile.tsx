@@ -21,6 +21,7 @@ const DriverNavMobile: React.FC<DriverNavMobileProps> = () => {
     { path: '/driverwallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/driverwallet'] },
     { path: '/driverlocation', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/driverlocation'] },
     { path: '/driveraiassistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/driveraiassistant'] },
+    { path: '/driversupport', name: 'Support', icon: 'fas fa-headset', matchPaths: ['/driversupport'] },
     { path: '/driversettings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/driversettings', '/driver-profile', '/kyc'] },
   ];
 
@@ -29,7 +30,7 @@ const DriverNavMobile: React.FC<DriverNavMobileProps> = () => {
       {navItems.map((item) => (
         <Link
           key={item.path}
-          to={item.path}
+          href={item.path}
           className={`nav-item ${isActive(item.path, item.matchPaths) ? 'active' : ''}`}
         >
           <div className="nav-icon-wrapper">

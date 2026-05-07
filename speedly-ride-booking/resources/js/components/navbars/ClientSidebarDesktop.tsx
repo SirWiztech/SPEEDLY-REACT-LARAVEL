@@ -36,6 +36,7 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
     { path: '/clientwallet', name: 'Wallet', icon: 'fas fa-wallet' },
     { path: '/clientlocation', name: 'Locations', icon: 'fas fa-map-marker-alt' },
     { path: '/clientaiassistant', name: 'AI Assistant', icon: 'fas fa-robot' },
+    { path: '/clientsupport', name: 'ClientSupport', icon: 'fas fa-headset' },
     { path: '/clientsettings', name: 'Settings', icon: 'fas fa-cog' },
   ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { router } from '@inertiajs/react';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -7,8 +7,6 @@ import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/PaymentProcessing.css';
 
 const PaymentProcessing: React.FC = () => {
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
     const [status, setStatus] = useState<'processing' | 'success' | 'error' | 'expired'>('processing');
     const [amount, setAmount] = useState<number>(0);
     const [reference, setReference] = useState<string>('');
@@ -17,11 +15,12 @@ const PaymentProcessing: React.FC = () => {
     const isMobile = useMobile();
 
     useEffect(() => {
-        const ref = searchParams.get('reference');
-        const amt = parseFloat(searchParams.get('amount') || '0');
+        const urlParams = new URLSearchParams(window.location.search);
+        const ref = urlParams.get('reference');
+        const amt = parseFloat(urlParams.get('amount') || '0');
         
         if (!ref) {
-            navigate('/wallet');
+            router.visit('/wallet');
             return;
         }
         
@@ -41,7 +40,7 @@ const PaymentProcessing: React.FC = () => {
                 if (data.status === 'success') {
                     setStatus('success');
                     setTimeout(() => {
-                        navigate(`/wallet?payment_status=completed&reference=${ref}`);
+                        router.visit(`/wallet?payment_status=completed&reference=${ref}`);
                     }, 1000);
                 } else if (data.status === 'failed') {
                     setStatus('error');
@@ -70,7 +69,7 @@ const PaymentProcessing: React.FC = () => {
         }, 60000);
         
         return () => clearTimeout(timeout);
-    }, [searchParams, navigate]);
+    }, []);
 
     if (preloaderLoading) {
         return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
@@ -106,7 +105,7 @@ const PaymentProcessing: React.FC = () => {
                     </div>
                     <h2>Payment Failed</h2>
                     <p className="status-text">Your payment could not be processed</p>
-                    <button onClick={() => navigate('/wallet')} className="back-btn">
+                    <button onClick={() => router.visit('/wallet')} className="back-btn">
                         Back to Wallet
                     </button>
                 </div>
@@ -119,7 +118,7 @@ const PaymentProcessing: React.FC = () => {
                     </div>
                     <h2>Payment Expired</h2>
                     <p className="status-text">This payment session has expired</p>
-                    <button onClick={() => navigate('/wallet')} className="back-btn">
+                    <button onClick={() => router.visit('/wallet')} className="back-btn">
                         Back to Wallet
                     </button>
                 </div>

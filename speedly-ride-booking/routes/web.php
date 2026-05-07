@@ -33,7 +33,7 @@ Route::inertia('/resetpassword', 'ResetPassword')->name('passwordreset');
 Route::inertia('/generatereceipt', 'GenerateReceipt')->name('generatereceipt');
 Route::inertia('/paymentcallback', 'PaymentCallback')->name('paymentcallback');
 Route::inertia('/paymentprocessing', 'PaymentProcessing')->name('paymentprocess');
-Route::inertia('/adminlogin', 'AdminLogin')->name('adminlogin');
+Route::inertia('/adminlogin', 'Admin-Login')->name('adminlogin');
 Route::inertia('/admindashboard', 'AdminDashboard')->name('admindashboard');
 Route::inertia('/driversupport', 'DriverSupport')->name('driversupport');
 Route::inertia('/clientsupport', 'ClientSupport')->name('clientsupport');

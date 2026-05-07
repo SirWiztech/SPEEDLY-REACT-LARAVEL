@@ -4,7 +4,7 @@ import ClientNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
-import '../../../css/ClientSupportMobile.css';
+import '../../../css/DriverSupportMobile.css';
 
 // Types
 interface FaqItem {

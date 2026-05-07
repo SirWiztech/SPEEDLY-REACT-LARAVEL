@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import html2pdf from 'html2pdf.js';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -26,10 +27,17 @@ interface RideData {
     client_phone: string;
 }
 
-const GenerateReceipt: React.FC = () => {
-    const { rideId } = useParams<{ rideId: string }>();
-    const navigate = useNavigate();
+interface PaymentData {
+    reference: string;
+    amount: number;
+    status: string;
+}
+
+const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) => {
+    const { props } = usePage();
+    const rideId = propRideId || (props.rideId as string) || new URLSearchParams(window.location.search).get('rideId') || '';
     const [ride, setRide] = useState<RideData | null>(null);
+    const [payment, setPayment] = useState<PaymentData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
     
@@ -51,6 +59,7 @@ const GenerateReceipt: React.FC = () => {
 
                 if (data.success && data.ride) {
                     setRide(data.ride);
+                    setPayment(data.payment || null);
                 } else {
                     setError(data.message || 'Failed to load ride details');
                 }
@@ -114,7 +123,7 @@ const GenerateReceipt: React.FC = () => {
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
-    const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+    const formatCurrency = (amount: number) => `₦${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const formatDate = (dateString: string) => new Date(dateString).toLocaleString();
 
     if (preloaderLoading) {
@@ -135,7 +144,7 @@ const GenerateReceipt: React.FC = () => {
             <div className="receipt-error">
                 <i className="fas fa-exclamation-circle"></i>
                 <p>{error || 'Ride not found'}</p>
-                <button onClick={() => navigate('/ride-history')} className="btn-primary">
+                <button onClick={() => router.visit('/ride-history')} className="btn-primary">
                     Back to Ride History
                 </button>
             </div>
@@ -145,6 +154,8 @@ const GenerateReceipt: React.FC = () => {
     const baseFare = 500;
     const distanceFare = (ride.distance_km || 0) * 1000;
     const serviceFee = ride.total_fare * 0.05;
+    const platformCommission = ride.total_fare * 0.2;
+    const driverPayout = ride.total_fare - platformCommission;
     const driverInitial = ride.driver_name?.charAt(0)?.toUpperCase() || 'D';
     const clientInitial = ride.client_name?.charAt(0)?.toUpperCase() || 'C';
 
@@ -156,32 +167,43 @@ const GenerateReceipt: React.FC = () => {
                     <div className="logo-wrapper">
                         <img src="/main-assets/logo-no-background.png" alt="Speedly" className="logo-image" />
                     </div>
+                    <div className="header-badge">
+                        <span className="badge-premium">OFFICIAL RECEIPT</span>
+                    </div>
                     <h1>RIDE RECEIPT</h1>
                     <p>Your trusted ride partner</p>
                 </div>
 
                 {/* Content */}
-                <div className="receipt-content">
+                <div className="receipt-content-inner">
                     {/* Receipt Info */}
                     <div className="receipt-section">
                         <div className="section-title">
                             <i className="fas fa-receipt"></i> Receipt Information
                         </div>
-                        <div className="info-row">
-                            <span className="label">Receipt Number:</span>
-                            <span className="value">#{ride.ride_number}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Date & Time:</span>
-                            <span className="value">{formatDate(ride.created_at)}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Payment Method:</span>
-                            <span className="value">Speedly Wallet</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Payment Status:</span>
-                            <span className="value status-paid">✓ PAID</span>
+                        <div className="info-grid">
+                            <div className="info-row">
+                                <span className="label">Receipt Number:</span>
+                                <span className="value">#{ride.ride_number}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Date & Time:</span>
+                                <span className="value">{formatDate(ride.created_at)}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Payment Method:</span>
+                                <span className="value">Speedly Wallet</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Transaction ID:</span>
+                                <span className="value">{payment?.reference || `WAL-${ride.ride_number?.substring(0, 8)}`}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Payment Status:</span>
+                                <span className="value">
+                                    <span className="status-paid">✓ PAID</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -190,21 +212,27 @@ const GenerateReceipt: React.FC = () => {
                         <div className="section-title">
                             <i className="fas fa-map-marker-alt"></i> Ride Details
                         </div>
-                        <div className="info-row">
-                            <span className="label">Ride Type:</span>
-                            <span className="value">{ride.ride_type?.charAt(0).toUpperCase() + ride.ride_type?.slice(1) || 'Economy'}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Pickup Location:</span>
-                            <span className="value">{ride.pickup_address}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Destination:</span>
-                            <span className="value">{ride.destination_address}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Distance:</span>
-                            <span className="value">{ride.distance_km?.toFixed(1) || 0} km</span>
+                        <div className="info-grid">
+                            <div className="info-row">
+                                <span className="label">Ride Type:</span>
+                                <span className="value">{ride.ride_type?.charAt(0).toUpperCase() + ride.ride_type?.slice(1) || 'Economy'}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Pickup Location:</span>
+                                <span className="value">{ride.pickup_address}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Destination:</span>
+                                <span className="value">{ride.destination_address}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Distance:</span>
+                                <span className="value">{ride.distance_km?.toFixed(1) || 0} km</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Duration:</span>
+                                <span className="value">{Math.floor((ride.distance_km || 0) * 2)} mins</span>
+                            </div>
                         </div>
                     </div>
 
@@ -218,7 +246,8 @@ const GenerateReceipt: React.FC = () => {
                             <div className="driver-info">
                                 <div className="driver-name">{ride.driver_name || 'Driver'}</div>
                                 <div className="driver-rating">
-                                    <i className="fas fa-star"></i> 4.8 • Driver
+                                    <i className="fas fa-star"></i> 4.8 
+                                    <span className="driver-role">• Professional Driver</span>
                                 </div>
                                 {ride.driver_phone && (
                                     <div className="driver-phone">
@@ -227,13 +256,15 @@ const GenerateReceipt: React.FC = () => {
                                 )}
                             </div>
                         </div>
-                        <div className="info-row">
-                            <span className="label">Vehicle:</span>
-                            <span className="value">{ride.vehicle_model} • {ride.vehicle_color}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Plate Number:</span>
-                            <span className="value">{ride.plate_number}</span>
+                        <div className="info-grid">
+                            <div className="info-row">
+                                <span className="label">Vehicle:</span>
+                                <span className="value">{ride.vehicle_model} • {ride.vehicle_color}</span>
+                            </div>
+                            <div className="info-row">
+                                <span className="label">Plate Number:</span>
+                                <span className="value">{ride.plate_number}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -242,7 +273,7 @@ const GenerateReceipt: React.FC = () => {
                         <div className="section-title">
                             <i className="fas fa-user"></i> Client Details
                         </div>
-                        <div className="driver-card">
+                        <div className="driver-card client-card">
                             <div className="driver-avatar client">{clientInitial}</div>
                             <div className="driver-info">
                                 <div className="driver-name">{ride.client_name || 'Client'}</div>
@@ -267,24 +298,56 @@ const GenerateReceipt: React.FC = () => {
                         </div>
                         <div className="fare-card">
                             <div className="fare-row">
-                                <span>Base Fare:</span>
+                                <span>Base Fare</span>
                                 <span>{formatCurrency(baseFare)}</span>
                             </div>
                             <div className="fare-row">
-                                <span>Distance Fare ({ride.distance_km?.toFixed(1) || 0} km):</span>
+                                <span>Distance Fare ({ride.distance_km?.toFixed(1) || 0} km @ ₦1000/km)</span>
                                 <span>{formatCurrency(distanceFare)}</span>
                             </div>
                             <div className="fare-row">
-                                <span>Time Fare:</span>
+                                <span>Time Fare</span>
                                 <span>{formatCurrency(0)}</span>
                             </div>
                             <div className="fare-row">
-                                <span>Service Fee (5%):</span>
+                                <span>Service Fee (5%)</span>
                                 <span>{formatCurrency(serviceFee)}</span>
                             </div>
+                            <div className="fare-divider"></div>
                             <div className="fare-row total">
-                                <span>Total Amount:</span>
+                                <span>Total Amount</span>
                                 <span>{formatCurrency(ride.total_fare)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Breakdown */}
+                    <div className="receipt-section">
+                        <div className="section-title">
+                            <i className="fas fa-chart-pie"></i> Payment Breakdown
+                        </div>
+                        <div className="payment-card">
+                            <div className="payment-item">
+                                <div className="payment-label">
+                                    <i className="fas fa-wallet"></i>
+                                    <span>Paid via Speedly Wallet</span>
+                                </div>
+                                <div className="payment-amount">{formatCurrency(ride.total_fare)}</div>
+                            </div>
+                            <div className="payment-divider"></div>
+                            <div className="payment-item">
+                                <div className="payment-label">
+                                    <i className="fas fa-charging-station"></i>
+                                    <span>Platform Commission (20%)</span>
+                                </div>
+                                <div className="payment-amount text-muted">{formatCurrency(platformCommission)}</div>
+                            </div>
+                            <div className="payment-item highlight">
+                                <div className="payment-label">
+                                    <i className="fas fa-user-check"></i>
+                                    <span>Driver Payout</span>
+                                </div>
+                                <div className="payment-amount driver-payout">{formatCurrency(driverPayout)}</div>
                             </div>
                         </div>
                     </div>
@@ -292,12 +355,12 @@ const GenerateReceipt: React.FC = () => {
                     {/* QR Code */}
                     <div className="qr-section">
                         <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
                                 `SPEEDLY RIDE\nReceipt: ${ride.ride_number}\nAmount: ${formatCurrency(ride.total_fare)}\nDate: ${formatDate(ride.created_at)}`
                             )}`} 
                             alt="QR Code" 
                         />
-                        <p>Scan to verify receipt authenticity</p>
+                        <p>Scan QR code to verify receipt authenticity</p>
                     </div>
 
                     {/* Thank You Message */}
@@ -309,9 +372,12 @@ const GenerateReceipt: React.FC = () => {
 
                     {/* Footer */}
                     <div className="receipt-footer">
-                        <p>For any inquiries, contact support@speedly.com or call +234 800 000 0000</p>
+                        <p className="support-line">
+                            <i className="fas fa-envelope"></i> support@speedly.com &nbsp;|&nbsp; 
+                            <i className="fas fa-phone-alt"></i> +234 800 000 0000
+                        </p>
                         <p>© {new Date().getFullYear()} Speedly. All rights reserved.</p>
-                        <p>This is a computer generated receipt. No signature required.</p>
+                        <p className="disclaimer">This is a computer generated receipt. No signature required.</p>
                     </div>
                 </div>
             </div>
@@ -327,10 +393,10 @@ const GenerateReceipt: React.FC = () => {
                 <button className="btn-secondary" onClick={shareWhatsApp}>
                     <i className="fab fa-whatsapp"></i> Share
                 </button>
-                <button className="btn-primary" onClick={() => navigate('/ride-history')}>
+                <button className="btn-primary" onClick={() => router.visit('/ride-history')}>
                     <i className="fas fa-history"></i> Ride History
                 </button>
-                <button className="btn-primary" onClick={() => navigate('/book-ride')}>
+                <button className="btn-primary" onClick={() => router.visit('/book-ride')}>
                     <i className="fas fa-car"></i> Book Another Ride
                 </button>
             </div>

@@ -2077,331 +2077,153 @@ a {
    SCROLL REVEAL ANIMATIONS - FIXED
    ============================================ */
 
-/* Initial hidden state - all scroll-reveal elements start invisible */
+/* ============================================
+   SCROLL REVEAL ANIMATIONS — GPU OPTIMISED
+   Only opacity + transform are animated.
+   No filter:blur, no transition:all.
+   Both are compositor-only and run off the
+   main thread, so they never lag the page.
+   ============================================ */
+
+/* --- Base hidden state --- */
 .scroll-reveal {
     opacity: 0;
-    transform: translateY(50px);
-    filter: blur(8px);
-    transition: all 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-    will-change: transform, opacity, filter;
+    transform: translateY(48px);
+    /* Explicit properties only — never "all" */
+    transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    /* Hint to browser: promote these to their own composite layer */
+    will-change: transform, opacity;
+    /* Force GPU layer even before animation starts */
+    backface-visibility: hidden;
 }
 
-/* Revealed state - becomes visible when scrolled into view */
+/* --- Revealed state --- */
 .scroll-reveal.revealed {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
 }
 
-/* Different animation types for variety */
-.scroll-reveal[data-reveal="left"] {
-    transform: translateX(-60px);
-}
+/* --- Direction variants --- */
+.scroll-reveal[data-reveal="left"]  { transform: translateX(-56px); }
+.scroll-reveal[data-reveal="right"] { transform: translateX(56px);  }
+.scroll-reveal[data-reveal="top"]   { transform: translateY(-48px); }
+.scroll-reveal[data-reveal="scale"] { transform: scale(0.92) translateY(24px); }
 
-.scroll-reveal[data-reveal="left"].revealed {
-    transform: translateX(0);
-}
-
-.scroll-reveal[data-reveal="right"] {
-    transform: translateX(60px);
-}
-
-.scroll-reveal[data-reveal="right"].revealed {
-    transform: translateX(0);
-}
-
-.scroll-reveal[data-reveal="scale"] {
-    transform: scale(0.9);
-}
-
+.scroll-reveal[data-reveal="left"].revealed,
+.scroll-reveal[data-reveal="right"].revealed,
+.scroll-reveal[data-reveal="top"].revealed,
 .scroll-reveal[data-reveal="scale"].revealed {
-    transform: scale(1);
+    opacity: 1;
+    transform: translateY(0) translateX(0) scale(1);
 }
 
-/* Staggered children animation */
-.scroll-reveal.stagger-children > * {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+/* --- Section-specific directions --- */
+#services.scroll-reveal  { transform: translateX(-48px); }
+#about.scroll-reveal     { transform: translateX(48px);  }
+#features.scroll-reveal  { transform: translateY(48px);  }
+#download.scroll-reveal  { transform: translateY(32px);  } /* was scale(0.9) — scale causes repaint */
+#contact.scroll-reveal   { transform: translateY(48px);  }
+
+#services.scroll-reveal.revealed,
+#about.scroll-reveal.revealed,
+#features.scroll-reveal.revealed,
+#download.scroll-reveal.revealed,
+#contact.scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
 }
 
-.scroll-reveal.revealed.stagger-children > *:nth-child(1) { transition-delay: 0.05s; opacity: 1; transform: translateY(0); }
-.scroll-reveal.revealed.stagger-children > *:nth-child(2) { transition-delay: 0.1s; opacity: 1; transform: translateY(0); }
-.scroll-reveal.revealed.stagger-children > *:nth-child(3) { transition-delay: 0.15s; opacity: 1; transform: translateY(0); }
-.scroll-reveal.revealed.stagger-children > *:nth-child(4) { transition-delay: 0.2s; opacity: 1; transform: translateY(0); }
-.scroll-reveal.revealed.stagger-children > *:nth-child(5) { transition-delay: 0.25s; opacity: 1; transform: translateY(0); }
-.scroll-reveal.revealed.stagger-children > *:nth-child(6) { transition-delay: 0.3s; opacity: 1; transform: translateY(0); }
-
-/* Ensure navbar and hero are always visible */
-.navbar {
-    opacity: 1 !important;
-    transform: none !important;
+/* Explore banner */
+.explore-banner.scroll-reveal {
+    transform: translateY(28px);
+    transition-duration: 0.65s;
 }
-
-.hero {
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-}
-
-/* Reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-    .scroll-reveal {
-        transition: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-        filter: none !important;
-    }
-}
-
-/* ============================================
-   SCROLL REVEAL ANIMATIONS - WORKING VERSION
-   ============================================ */
-
-/* Initial hidden state - only for elements with scroll-reveal class */
-.scroll-reveal {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, opacity;
-}
-
-/* Revealed state - becomes visible */
-.scroll-reveal.revealed {
+.explore-banner.scroll-reveal.revealed {
     opacity: 1;
     transform: translateY(0);
 }
 
-/* Hero section - always visible (no scroll reveal) */
-.hero {
-    opacity: 1;
-    transform: none;
-}
-
-/* Navbar - always visible */
-.navbar {
-    opacity: 1;
-    transform: none;
-}
-
-/* Optional: Add delay for staggered effect on children */
-.services-grid .service-card,
-.feature-card {
-    transition-delay: calc(var(--order, 0) * 0.1s);
-}
-
-.services-grid .service-card:nth-child(1) { --order: 1; }
-.services-grid .service-card:nth-child(2) { --order: 2; }
-.services-grid .service-card:nth-child(3) { --order: 3; }
-.feature-card:nth-child(1) { --order: 1; }
-.feature-card:nth-child(2) { --order: 2; }
-.feature-card:nth-child(3) { --order: 3; }
-.feature-card:nth-child(4) { --order: 4; }
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-    .scroll-reveal {
-        transition: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-    }
-}
-
-/* Mobile optimization */
-@media (max-width: 768px) {
-    .scroll-reveal {
-        transform: translateY(30px);
-        transition-duration: 0.5s;
-    }
-}
-
-/* Slower staggered animations */
-.services-grid .service-card,
-.feature-card {
-    transition-delay: calc(var(--order, 0) * 0.15s);  /* Increased from 0.1s to 0.15s */
-    transition-duration: 1s;  /* Add this for slower card animations */
-}
-
-/* ============================================
-   SLIDE IN & SLIDE OUT ANIMATIONS
-   ============================================ */
-
-/* Base state - hidden and positioned for slide animation */
-.scroll-reveal {
-    opacity: 0;
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, opacity;
-}
-
-/* Slide from Bottom (default) */
-.scroll-reveal {
-    transform: translateY(60px);
-}
-
-/* Slide from Left variation */
-.scroll-reveal[data-reveal="left"] {
-    transform: translateX(-80px);
-}
-
-/* Slide from Right variation */
-.scroll-reveal[data-reveal="right"] {
-    transform: translateX(80px);
-}
-
-/* Slide from Top variation */
-.scroll-reveal[data-reveal="top"] {
-    transform: translateY(-60px);
-}
-
-/* Scale + Slide variation */
-.scroll-reveal[data-reveal="scale"] {
-    transform: scale(0.8) translateY(40px);
-}
-
-/* Revealed state - slides in */
-.scroll-reveal.revealed {
-    opacity: 1;
-    transform: translateX(0) translateY(0) scale(1);
-}
-
-/* Staggered children animations */
+/* --- Staggered children --- */
 .scroll-reveal.stagger-children > * {
     opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(28px);
+    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    backface-visibility: hidden;
 }
 
-.scroll-reveal.revealed.stagger-children > *:nth-child(1) { 
-    transition-delay: 0.05s; 
-    opacity: 1; 
-    transform: translateY(0); 
-}
-.scroll-reveal.revealed.stagger-children > *:nth-child(2) { 
-    transition-delay: 0.1s; 
-    opacity: 1; 
-    transform: translateY(0); 
-}
-.scroll-reveal.revealed.stagger-children > *:nth-child(3) { 
-    transition-delay: 0.15s; 
-    opacity: 1; 
-    transform: translateY(0); 
-}
-.scroll-reveal.revealed.stagger-children > *:nth-child(4) { 
-    transition-delay: 0.2s; 
-    opacity: 1; 
-    transform: translateY(0); 
-}
-.scroll-reveal.revealed.stagger-children > *:nth-child(5) { 
-    transition-delay: 0.25s; 
-    opacity: 1; 
-    transform: translateY(0); 
-}
-.scroll-reveal.revealed.stagger-children > *:nth-child(6) { 
-    transition-delay: 0.3s; 
-    opacity: 1; 
-    transform: translateY(0); 
-}
+.scroll-reveal.revealed.stagger-children > *:nth-child(1) { transition-delay: 0.04s;  opacity: 1; transform: translateY(0); }
+.scroll-reveal.revealed.stagger-children > *:nth-child(2) { transition-delay: 0.09s;  opacity: 1; transform: translateY(0); }
+.scroll-reveal.revealed.stagger-children > *:nth-child(3) { transition-delay: 0.14s;  opacity: 1; transform: translateY(0); }
+.scroll-reveal.revealed.stagger-children > *:nth-child(4) { transition-delay: 0.19s;  opacity: 1; transform: translateY(0); }
+.scroll-reveal.revealed.stagger-children > *:nth-child(5) { transition-delay: 0.24s;  opacity: 1; transform: translateY(0); }
+.scroll-reveal.revealed.stagger-children > *:nth-child(6) { transition-delay: 0.29s;  opacity: 1; transform: translateY(0); }
 
-/* Card animations with delays */
+/* --- Card stagger delays --- */
 .services-grid .service-card {
-    transition-delay: calc(var(--order, 0) * 0.1s);
+    transition-delay: calc(var(--order, 0) * 0.09s);
+    transition-duration: 0.55s;
 }
-
 .services-grid .service-card:nth-child(1) { --order: 1; }
 .services-grid .service-card:nth-child(2) { --order: 2; }
 .services-grid .service-card:nth-child(3) { --order: 3; }
 
 .feature-card {
-    transition-delay: calc(var(--order, 0) * 0.1s);
+    transition-delay: calc(var(--order, 0) * 0.09s);
+    transition-duration: 0.55s;
 }
-
 .feature-card:nth-child(1) { --order: 1; }
 .feature-card:nth-child(2) { --order: 2; }
 .feature-card:nth-child(3) { --order: 3; }
 .feature-card:nth-child(4) { --order: 4; }
 
-/* Different slide directions for specific sections */
-#services.scroll-reveal { transform: translateX(-60px); }
-#services.scroll-reveal.revealed { transform: translateX(0); }
-
-#about.scroll-reveal { transform: translateX(60px); }
-#about.scroll-reveal.revealed { transform: translateX(0); }
-
-#features.scroll-reveal { transform: translateY(50px); }
-#features.scroll-reveal.revealed { transform: translateY(0); }
-
-#download.scroll-reveal { transform: scale(0.9); }
-#download.scroll-reveal.revealed { transform: scale(1); }
-
-#contact.scroll-reveal { transform: translateY(60px); }
-#contact.scroll-reveal.revealed { transform: translateY(0); }
-
-/* Explore banner specific animation */
-.explore-banner.scroll-reveal { 
-    transform: scale(0.95) translateY(30px);
-    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.explore-banner.scroll-reveal.revealed { 
-    transform: scale(1) translateY(0);
-}
-
-/* Ensure navbar and hero are always visible */
+/* --- Always-visible elements --- */
 .navbar,
 .hero {
     opacity: 1 !important;
     transform: none !important;
+    will-change: auto;
 }
 
-/* Smooth scroll behavior for better slide animations */
-html {
-    scroll-behavior: smooth;
+/* --- Hover — keep transition explicit, not "all" --- */
+.service-card:hover,
+.feature-card:hover {
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
-/* Reduced motion preference */
+/* --- Page entrance --- */
+@keyframes pageSlideIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0);    }
+}
+
+.home-main {
+    animation: pageSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* --- Mobile: shorter distance, same speed feel --- */
+@media (max-width: 768px) {
+    .scroll-reveal {
+        transform: translateY(32px);
+        transition-duration: 0.42s;
+    }
+
+    .scroll-reveal[data-reveal="left"]  { transform: translateX(-32px); }
+    .scroll-reveal[data-reveal="right"] { transform: translateX(32px);  }
+    .scroll-reveal[data-reveal="top"]   { transform: translateY(-32px); }
+}
+
+/* --- Smooth scroll --- */
+html { scroll-behavior: smooth; }
+
+/* --- Reduced motion: skip all animation --- */
 @media (prefers-reduced-motion: reduce) {
     .scroll-reveal,
     .scroll-reveal * {
         transition: none !important;
         opacity: 1 !important;
         transform: none !important;
+        will-change: auto !important;
     }
-}
-
-/* Mobile optimization - faster transitions */
-@media (max-width: 768px) {
-    .scroll-reveal {
-        transition-duration: 0.4s;
-        transform: translateY(40px);
-    }
-    
-    .scroll-reveal[data-reveal="left"],
-    .scroll-reveal[data-reveal="right"] {
-        transform: translateX(40px);
-    }
-    
-    .scroll-reveal[data-reveal="top"] {
-        transform: translateY(-40px);
-    }
-}
-
-/* Hover effect for cards - subtle enhancement */
-.service-card:hover,
-.feature-card:hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Entrance animation for page load */
-@keyframes pageSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.home-main {
-    animation: pageSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }

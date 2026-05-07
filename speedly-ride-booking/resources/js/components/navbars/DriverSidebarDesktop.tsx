@@ -28,6 +28,7 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
     { path: '/driverlocation', name: 'Locations', icon: 'fas fa-map-marker-alt' },
     { path: '/driveraiassistant', name: 'AI Assistant', icon: 'fas fa-robot' },
     { path: '/driverkyc', name: 'KYC', icon: 'fas fa-id-card' },
+    { path: '/driversupport', name: 'Support', icon: 'fas fa-headset' },
     { path: '/driversettings', name: 'Settings', icon: 'fas fa-cog' },
   ];
 

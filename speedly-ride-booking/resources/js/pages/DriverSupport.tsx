@@ -6,7 +6,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import ClientSupportMobile from '../components/mobileViewComponent/DriverSupportMobile';
-import '../../css/ClientSupport.css';
+import '../../css/DriverSupport.css';
 
 // Types
 interface SupportTicket {
@@ -22,7 +22,7 @@ interface FaqItem {
     isOpen: boolean;
 }
 
-const ClientSupport: React.FC = () => {
+const DriverSupport: React.FC = () => {
     // State
     const [userData, setUserData] = useState<any>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>('General Inquiry');
@@ -423,4 +423,4 @@ const ClientSupport: React.FC = () => {
     );
 };
 
-export default ClientSupport;
+export default DriverSupport;

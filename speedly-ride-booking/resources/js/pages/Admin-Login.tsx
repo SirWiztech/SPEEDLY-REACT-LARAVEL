@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
@@ -8,7 +8,6 @@ import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/AdminLogin.css';
 
 const AdminLogin: React.FC = () => {
-    const navigate = useNavigate();
     const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [rememberMe, setRememberMe] = useState<boolean>(false);
@@ -26,14 +25,14 @@ const AdminLogin: React.FC = () => {
                 const response = await fetch('/SERVER/API/check_admin_session.php');
                 const data = await response.json();
                 if (data.logged_in) {
-                    navigate('/admin-dashboard');
+                    router.visit('/admin-dashboard');
                 }
             } catch (error) {
                 console.error('Session check failed:', error);
             }
         };
         checkSession();
-    }, [navigate]);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,7 +65,7 @@ const AdminLogin: React.FC = () => {
                     timer: 1500,
                     showConfirmButton: false
                 }).then(() => {
-                    navigate('/admin-dashboard');
+                    router.visit('/admin-dashboard');
                 });
             } else {
                 setError(data.message || 'Invalid username or password');

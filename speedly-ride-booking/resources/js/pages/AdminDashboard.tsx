@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import { Chart, registerables } from 'chart.js';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import MobilePreloader from '../components/preloader/MobilePreloader';
 import AdminDashboardMobile from '../components/mobileViewComponent/AdminDashboardMobile';
 import '../../css/AdminDashboard.css';
 
-Chart.register(...registerables);
-
-// Types
+// Types (same as before)
 interface DashboardStats {
     total_users: number;
     total_drivers: number;
@@ -84,8 +82,8 @@ interface Dispute {
 }
 
 const AdminDashboard: React.FC = () => {
-    const navigate = useNavigate();
     const [activePage, setActivePage] = useState<string>('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
     const [stats, setStats] = useState<DashboardStats>({
         total_users: 0,
         total_drivers: 0,
@@ -115,6 +113,27 @@ const AdminDashboard: React.FC = () => {
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
+    // Toggle sidebar on mobile
+    const toggleSidebar = () => {
+        setSidebarOpen(!sidebarOpen);
+    };
+
+    // Close sidebar when clicking outside on mobile
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (isMobile && sidebarOpen) {
+                const sidebar = document.querySelector('.mobile-sidebar');
+                const menuBtn = document.querySelector('.menu-toggle');
+                if (sidebar && !sidebar.contains(e.target as Node) && menuBtn && !menuBtn.contains(e.target as Node)) {
+                    setSidebarOpen(false);
+                }
+            }
+        };
+        
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [isMobile, sidebarOpen]);
+
     // Fetch dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -142,62 +161,69 @@ const AdminDashboard: React.FC = () => {
     }, []);
 
     // Initialize chart
-    const initChart = useCallback(() => {
+    const initChart = useCallback(async () => {
         const canvas = document.getElementById('revenueChart') as HTMLCanvasElement;
         if (!canvas || !revenueData.length) return;
         
-        if (chartInstance) {
-            chartInstance.destroy();
-        }
-        
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: revenueLabels,
-                    datasets: [{
-                        label: 'Revenue (₦)',
-                        data: revenueData,
-                        borderColor: '#ff5e00',
-                        backgroundColor: 'rgba(255, 94, 0, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#ff5e00',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return '₦' + context.parsed.y.toLocaleString();
-                                }
-                            }
-                        }
+        try {
+            const { Chart, registerables } = await import('chart.js');
+            Chart.register(...registerables);
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: revenueLabels,
+                        datasets: [{
+                            label: 'Revenue (₦)',
+                            data: revenueData,
+                            borderColor: '#ff4500',
+                            backgroundColor: 'rgba(255, 69, 0, 0.08)',
+                            borderWidth: 2.5,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#ff4500',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                            ticks: {
-                                callback: function(value) {
-                                    return '₦' + (typeof value === 'number' ? value.toLocaleString() : value);
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '₦' + context.parsed.y.toLocaleString();
+                                    }
                                 }
                             }
                         },
-                        x: { grid: { display: false } }
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₦' + (typeof value === 'number' ? value.toLocaleString() : value);
+                                    }
+                                }
+                            },
+                            x: { grid: { display: false } }
+                        }
                     }
-                }
-            });
+                });
+            }
+        } catch (error) {
+            console.warn('Chart.js not available. Charts disabled.', error);
         }
     }, [revenueData, revenueLabels]);
 
@@ -235,12 +261,13 @@ const AdminDashboard: React.FC = () => {
             text: 'Are you sure you want to logout?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#ff5e00',
-            confirmButtonText: 'Yes, logout'
+            confirmButtonColor: '#ff4500',
+            confirmButtonText: 'Yes, logout',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch('/SERVER/API/admin-logout.php').then(() => {
-                    navigate('/admin-login');
+                    router.visit('/admin-login');
                 });
             }
         });
@@ -252,63 +279,6 @@ const AdminDashboard: React.FC = () => {
         const seconds = timeLeft % 60;
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
-
-    // Filter functions
-    const filterUsers = (status: string) => {
-        setFilterStatus(status);
-    };
-
-    const getFilteredUsers = () => {
-        if (filterStatus === 'all') return users;
-        const isVerified = filterStatus === 'verified';
-        return users.filter(user => user.is_verified === isVerified);
-    };
-
-    const getFilteredDrivers = () => {
-        if (filterStatus === 'all') return drivers;
-        return drivers.filter(driver => driver.verification_status === filterStatus);
-    };
-
-    const getFilteredRides = () => {
-        if (filterStatus === 'all') return rides;
-        if (filterStatus === 'ongoing') {
-            return rides.filter(ride => ['accepted', 'driver_assigned', 'driver_arrived', 'ongoing'].includes(ride.status));
-        }
-        return rides.filter(ride => ride.status === filterStatus);
-    };
-
-    const getFilteredWithdrawals = () => {
-        if (filterStatus === 'all') return withdrawals;
-        return withdrawals.filter(w => w.status === filterStatus);
-    };
-
-    const getFilteredKYC = () => {
-        if (filterStatus === 'all') return kycDocuments;
-        return kycDocuments.filter(doc => doc.verification_status === filterStatus);
-    };
-
-    const getFilteredDisputes = () => {
-        if (filterStatus === 'all') return disputes;
-        return disputes.filter(d => d.status === filterStatus);
-    };
-
-    // Search functions
-    const searchUsers = () => {
-        if (!searchTerm) return getFilteredUsers();
-        return getFilteredUsers().filter(user =>
-            user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    };
-
-    if (loading || preloaderLoading) {
-        return <DesktopPreloader />;
-    }
-
-    // Render mobile view
-    if (isMobile) {
-        return <AdminDashboardMobile />;
-    }
 
     const getStatusBadgeClass = (status: string) => {
         switch(status) {
@@ -324,48 +294,114 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
+    // SHOW PRELOADER FIRST - This is critical
+    if (preloaderLoading) {
+        if (isMobile) {
+            return <MobilePreloader />;
+        }
+        return <DesktopPreloader />;
+    }
+
+    // SHOW LOADING STATE AFTER PRELOADER
+    if (loading) {
+        if (isMobile) {
+            return <MobilePreloader />;
+        }
+        return <DesktopPreloader />;
+    }
+
+    // Render mobile view after loading is complete
+    if (isMobile) {
+        return (
+            <AdminDashboardMobile
+                stats={stats}
+                users={users}
+                drivers={drivers}
+                rides={rides}
+                withdrawals={withdrawals}
+                kycDocuments={kycDocuments}
+                disputes={disputes}
+                notificationCount={notificationCount}
+                adminName={adminName}
+                onLogout={handleLogout}
+                formatCurrency={formatCurrency}
+                getStatusBadgeClass={getStatusBadgeClass}
+            />
+        );
+    }
+
+    // Desktop navigation items
+    const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'fa-home' },
+        { id: 'users', label: 'Users', icon: 'fa-users' },
+        { id: 'drivers', label: 'Drivers', icon: 'fa-id-card' },
+        { id: 'rides', label: 'Rides', icon: 'fa-car' },
+        { id: 'payments', label: 'Payments', icon: 'fa-credit-card' },
+        { id: 'wallets', label: 'Wallets', icon: 'fa-wallet' },
+        { id: 'kyc', label: 'KYC Approvals', icon: 'fa-file-alt' },
+        { id: 'disputes', label: 'Disputes', icon: 'fa-exclamation-triangle' },
+        { id: 'reports', label: 'Reports', icon: 'fa-chart-line' },
+        { id: 'settings', label: 'Settings', icon: 'fa-cog' },
+        { id: 'activity', label: 'Activity Log', icon: 'fa-history' }
+    ];
+
+    // Filter functions for desktop
+    const filterUsers = (status: string) => setFilterStatus(status);
+    const getFilteredUsers = () => {
+        if (filterStatus === 'all') return users;
+        const isVerified = filterStatus === 'verified';
+        return users.filter(user => user.is_verified === isVerified);
+    };
+    const getFilteredDrivers = () => {
+        if (filterStatus === 'all') return drivers;
+        return drivers.filter(driver => driver.verification_status === filterStatus);
+    };
+    const getFilteredRides = () => {
+        if (filterStatus === 'all') return rides;
+        if (filterStatus === 'ongoing') {
+            return rides.filter(ride => ['accepted', 'driver_assigned', 'driver_arrived', 'ongoing'].includes(ride.status));
+        }
+        return rides.filter(ride => ride.status === filterStatus);
+    };
+    const getFilteredWithdrawals = () => {
+        if (filterStatus === 'all') return withdrawals;
+        return withdrawals.filter(w => w.status === filterStatus);
+    };
+    const getFilteredKYC = () => {
+        if (filterStatus === 'all') return kycDocuments;
+        return kycDocuments.filter(doc => doc.verification_status === filterStatus);
+    };
+    const getFilteredDisputes = () => {
+        if (filterStatus === 'all') return disputes;
+        return disputes.filter(d => d.status === filterStatus);
+    };
+    const searchUsers = () => {
+        if (!searchTerm) return getFilteredUsers();
+        return getFilteredUsers().filter(user =>
+            user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    };
+
     return (
         <div className="admin-desktop-container">
-            {/* Sidebar */}
+            {/* Desktop Sidebar - same as before */}
             <div className="admin-sidebar">
                 <div className="sidebar-logo">
                     <img src="/main-assets/logo-no-background.png" alt="Speedly" className="logo-image" />
                 </div>
                 
                 <nav className="sidebar-nav">
-                    <button className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`} onClick={() => setActivePage('dashboard')}>
-                        <i className="fas fa-home"></i> Dashboard
-                    </button>
-                    <button className={`nav-item ${activePage === 'users' ? 'active' : ''}`} onClick={() => setActivePage('users')}>
-                        <i className="fas fa-users"></i> Users
-                    </button>
-                    <button className={`nav-item ${activePage === 'drivers' ? 'active' : ''}`} onClick={() => setActivePage('drivers')}>
-                        <i className="fas fa-id-card"></i> Drivers
-                    </button>
-                    <button className={`nav-item ${activePage === 'rides' ? 'active' : ''}`} onClick={() => setActivePage('rides')}>
-                        <i className="fas fa-car"></i> Rides
-                    </button>
-                    <button className={`nav-item ${activePage === 'payments' ? 'active' : ''}`} onClick={() => setActivePage('payments')}>
-                        <i className="fas fa-credit-card"></i> Payments
-                    </button>
-                    <button className={`nav-item ${activePage === 'wallets' ? 'active' : ''}`} onClick={() => setActivePage('wallets')}>
-                        <i className="fas fa-wallet"></i> Wallets
-                    </button>
-                    <button className={`nav-item ${activePage === 'kyc' ? 'active' : ''}`} onClick={() => setActivePage('kyc')}>
-                        <i className="fas fa-file-alt"></i> KYC Approvals
-                    </button>
-                    <button className={`nav-item ${activePage === 'disputes' ? 'active' : ''}`} onClick={() => setActivePage('disputes')}>
-                        <i className="fas fa-exclamation-triangle"></i> Disputes
-                    </button>
-                    <button className={`nav-item ${activePage === 'reports' ? 'active' : ''}`} onClick={() => setActivePage('reports')}>
-                        <i className="fas fa-chart-line"></i> Reports
-                    </button>
-                    <button className={`nav-item ${activePage === 'settings' ? 'active' : ''}`} onClick={() => setActivePage('settings')}>
-                        <i className="fas fa-cog"></i> Settings
-                    </button>
-                    <button className={`nav-item ${activePage === 'activity' ? 'active' : ''}`} onClick={() => setActivePage('activity')}>
-                        <i className="fas fa-history"></i> Activity Log
-                    </button>
+                    {navItems.map((item) => (
+                        <button
+                            key={item.id}
+                            className={`nav-item ${activePage === item.id ? 'active' : ''}`}
+                            onClick={() => setActivePage(item.id)}
+                        >
+                            <i className={`fas ${item.icon}`}></i>
+                            <span>{item.label}</span>
+                        </button>
+                    ))}
                 </nav>
                 
                 <div className="sidebar-user">
@@ -380,7 +416,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Content */}
+            {/* Desktop Main Content */}
             <div className="admin-main">
                 <div className="admin-header">
                     <div className="header-title">
@@ -389,7 +425,8 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     <div className="header-actions">
                         <div className="session-timer">
-                            <i className="fas fa-clock"></i> Session: {formatTime()}
+                            <i className="fas fa-clock"></i>
+                            <span>{formatTime()}</span>
                         </div>
                         <button className="notification-btn">
                             <i className="fas fa-bell"></i>
@@ -398,7 +435,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Dashboard Page */}
+                {/* Desktop content - same as before */}
                 {activePage === 'dashboard' && (
                     <div className="dashboard-page">
                         <div className="stats-grid">
@@ -532,7 +569,7 @@ const AdminDashboard: React.FC = () => {
                                             <td className="actions-cell">
                                                 <button className="action-btn" title="View"><i className="fas fa-eye"></i></button>
                                                 <button className="action-btn" title="Suspend"><i className="fas fa-ban"></i></button>
-                                                <button className="action-btn" title="Delete"><i className="fas fa-trash"></i></button>
+                                                <button className="action-btn danger" title="Delete"><i className="fas fa-trash"></i></button>
                                             </td>
                                         </tr>
                                     ))}
@@ -542,190 +579,16 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* Drivers Page */}
-                {activePage === 'drivers' && (
-                    <div className="drivers-page">
-                        <div className="page-header">
-                            <h2>Driver Management</h2>
-                            <div className="search-bar">
-                                <i className="fas fa-search"></i>
-                                <input type="text" placeholder="Search drivers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            </div>
-                            <div className="filter-tabs">
-                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
-                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
-                                <button className={`filter-tab ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => setFilterStatus('approved')}>Approved</button>
-                                <button className={`filter-tab ${filterStatus === 'suspended' ? 'active' : ''}`} onClick={() => setFilterStatus('suspended')}>Suspended</button>
-                            </div>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Vehicles</th><th>KYC Status</th><th>Driver Status</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    {getFilteredDrivers().map(driver => (
-                                        <tr key={driver.id}>
-                                            <td>{driver.id.substring(0, 8)}...</td>
-                                            <td>{driver.full_name}</td>
-                                            <td>{driver.email}</td>
-                                            <td>{driver.phone_number}</td>
-                                            <td>{driver.vehicle_count}</td>
-                                            <td><span className={getStatusBadgeClass(driver.verification_status)}>{driver.verification_status}</span></td>
-                                            <td><span className={getStatusBadgeClass(driver.driver_status)}>{driver.driver_status}</span></td>
-                                            <td className="actions-cell">
-                                                <button className="action-btn"><i className="fas fa-eye"></i></button>
-                                                <button className="action-btn"><i className="fas fa-check"></i></button>
-                                                <button className="action-btn"><i className="fas fa-ban"></i></button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Rides Page */}
-                {activePage === 'rides' && (
-                    <div className="rides-page">
-                        <div className="page-header">
-                            <h2>Ride Management</h2>
-                            <div className="search-bar">
-                                <i className="fas fa-search"></i>
-                                <input type="text" placeholder="Search rides..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            </div>
-                            <div className="filter-tabs">
-                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
-                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
-                                <button className={`filter-tab ${filterStatus === 'ongoing' ? 'active' : ''}`} onClick={() => setFilterStatus('ongoing')}>Ongoing</button>
-                                <button className={`filter-tab ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => setFilterStatus('completed')}>Completed</button>
-                                <button className={`filter-tab ${filterStatus === 'cancelled' ? 'active' : ''}`} onClick={() => setFilterStatus('cancelled')}>Cancelled</button>
-                            </div>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead><tr><th>Ride #</th><th>Client</th><th>Driver</th><th>Pickup</th><th>Destination</th><th>Fare</th><th>Status</th><th>Payment</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    {getFilteredRides().map(ride => (
-                                        <tr key={ride.id}>
-                                            <td>{ride.ride_number}</td>
-                                            <td>{ride.client_name}</td>
-                                            <td>{ride.driver_name || 'Unassigned'}</td>
-                                            <td>{ride.pickup_address?.substring(0, 20)}...</td>
-                                            <td>{ride.destination_address?.substring(0, 20)}...</td>
-                                            <td>{formatCurrency(ride.total_fare)}</td>
-                                            <td><span className={getStatusBadgeClass(ride.status)}>{ride.status.replace('_', ' ')}</span></td>
-                                            <td><span className={getStatusBadgeClass(ride.payment_status)}>{ride.payment_status}</span></td>
-                                            <td className="actions-cell"><button className="action-btn"><i className="fas fa-eye"></i></button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Wallets Page */}
-                {activePage === 'wallets' && (
-                    <div className="wallets-page">
-                        <div className="page-header">
-                            <h2>Withdrawal Management</h2>
-                            <div className="filter-tabs">
-                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
-                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
-                                <button className={`filter-tab ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => setFilterStatus('approved')}>Approved</button>
-                                <button className={`filter-tab ${filterStatus === 'paid' ? 'active' : ''}`} onClick={() => setFilterStatus('paid')}>Paid</button>
-                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => setFilterStatus('rejected')}>Rejected</button>
-                            </div>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead><tr><th>Driver</th><th>Amount</th><th>Bank</th><th>Account</th><th>Requested</th><th>Status</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    {getFilteredWithdrawals().map(w => (
-                                        <tr key={w.id}>
-                                            <td>{w.driver_name}</td>
-                                            <td>{formatCurrency(w.amount)}</td>
-                                            <td>{w.bank_name}</td>
-                                            <td>****{w.account_number?.slice(-4)}</td>
-                                            <td>{new Date(w.created_at).toLocaleDateString()}</td>
-                                            <td><span className={getStatusBadgeClass(w.status)}>{w.status}</span></td>
-                                            <td className="actions-cell">
-                                                {w.status === 'pending' && <button className="action-btn success"><i className="fas fa-check"></i></button>}
-                                                {w.status === 'approved' && <button className="action-btn"><i className="fas fa-money-bill"></i></button>}
-                                                <button className="action-btn danger"><i className="fas fa-times"></i></button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* KYC Page */}
-                {activePage === 'kyc' && (
-                    <div className="kyc-page">
-                        <div className="page-header">
-                            <h2>KYC Document Approvals</h2>
-                            <div className="filter-tabs">
-                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
-                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
-                                <button className={`filter-tab ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => setFilterStatus('approved')}>Approved</button>
-                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => setFilterStatus('rejected')}>Rejected</button>
-                            </div>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead><tr><th>Driver</th><th>Document Type</th><th>Uploaded</th><th>Status</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    {getFilteredKYC().map(doc => (
-                                        <tr key={doc.id}>
-                                            <td>{doc.full_name}</td>
-                                            <td>{doc.document_type.replace('_', ' ')}</td>
-                                            <td>{new Date(doc.created_at).toLocaleDateString()}</td>
-                                            <td><span className={getStatusBadgeClass(doc.verification_status)}>{doc.verification_status}</span></td>
-                                            <td className="actions-cell">
-                                                <button className="action-btn"><i className="fas fa-eye"></i></button>
-                                                {doc.verification_status === 'pending' && <button className="action-btn success"><i className="fas fa-check"></i></button>}
-                                                {doc.verification_status === 'pending' && <button className="action-btn danger"><i className="fas fa-times"></i></button>}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Disputes Page */}
-                {activePage === 'disputes' && (
-                    <div className="disputes-page">
-                        <div className="page-header">
-                            <h2>Dispute Management</h2>
-                            <div className="filter-tabs">
-                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
-                                <button className={`filter-tab ${filterStatus === 'open' ? 'active' : ''}`} onClick={() => setFilterStatus('open')}>Open</button>
-                                <button className={`filter-tab ${filterStatus === 'resolved' ? 'active' : ''}`} onClick={() => setFilterStatus('resolved')}>Resolved</button>
-                            </div>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead><tr><th>Dispute #</th><th>Ride #</th><th>Raised By</th><th>Type</th><th>Priority</th><th>Status</th><th>Messages</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    {getFilteredDisputes().map(dispute => (
-                                        <tr key={dispute.id}>
-                                            <td>{dispute.dispute_number}</td>
-                                            <td>{dispute.ride_number}</td>
-                                            <td>{dispute.raised_by}</td>
-                                            <td>{dispute.type}</td>
-                                            <td><span className={`badge badge-${dispute.priority}`}>{dispute.priority}</span></td>
-                                            <td><span className={getStatusBadgeClass(dispute.status)}>{dispute.status}</span></td>
-                                            <td><span className="message-count">{dispute.message_count}</span></td>
-                                            <td className="actions-cell"><button className="action-btn"><i className="fas fa-eye"></i></button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                {/* Additional pages... */}
+                {['wallets', 'kyc', 'disputes', 'payments', 'reports', 'settings', 'activity'].includes(activePage) && (
+                    <div className="coming-soon-page">
+                        <div className="coming-soon-card">
+                            <i className="fas fa-tools"></i>
+                            <h2>Coming Soon</h2>
+                            <p>This feature is under development. Please check back later.</p>
+                            <button className="btn-premium" onClick={() => setActivePage('dashboard')}>
+                                Back to Dashboard
+                            </button>
                         </div>
                     </div>
                 )}

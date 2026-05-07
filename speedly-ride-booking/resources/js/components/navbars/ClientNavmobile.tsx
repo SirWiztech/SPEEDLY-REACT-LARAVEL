@@ -25,6 +25,7 @@ const ClientNavMobile: React.FC<ClientNavMobileProps> = () => {
     { path: '/clientwallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/client-wallet'] },
     { path: '/clientlocation', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/client-location'] },
     { path: '/clientaiassistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/client-ai-assistant'] },
+    { path: '/clientsupport', name: 'Support', icon: 'fas fa-headset', matchPaths: ['/client-support'] },
     { path: '/clientsettings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/client-profile', '/settings'] },
   ];
 
