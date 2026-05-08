@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -98,13 +99,13 @@ const ClientBookRide: React.FC = () => {
     // Fetch dashboard data
     const fetchData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const profileData = await api.client.profile();
             
-            if (data.success) {
-                setUserData(data.user);
-                setWalletBalance(data.wallet_balance);
-                setNotificationCount(data.notification_count || 0);
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setWalletBalance(profileData.data?.wallet_balance || profileData.wallet_balance || 0);
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -116,10 +117,9 @@ const ClientBookRide: React.FC = () => {
     // Fetch saved locations
     const fetchSavedLocations = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/get_saved_locations.php');
-            const data = await response.json();
-            if (data.success) {
-                setSavedLocations(data.locations || []);
+            const data = await api.client.locations();
+            if (data.success || data.data) {
+                setSavedLocations(data.locations || data.data?.locations || []);
             }
         } catch (error) {
             console.error('Error fetching saved locations:', error);
@@ -344,19 +344,14 @@ const ClientBookRide: React.FC = () => {
     const calculateFare = async () => {
         if (!booking.pickup.lat || !booking.destination.lat) return;
 
-        const formData = new FormData();
-        formData.append('pickup_lat', booking.pickup.lat.toString());
-        formData.append('pickup_lng', booking.pickup.lng.toString());
-        formData.append('dest_lat', booking.destination.lat.toString());
-        formData.append('dest_lng', booking.destination.lng.toString());
-        formData.append('ride_type', booking.plan || 'economy');
-
         try {
-            const response = await fetch('/SERVER/API/calculate_fare.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.rides.calculateFare({
+                pickup_lat: booking.pickup.lat,
+                pickup_lng: booking.pickup.lng,
+                dropoff_lat: booking.destination.lat,
+                dropoff_lng: booking.destination.lng,
+                ride_type: booking.plan || 'economy'
             });
-            const data = await response.json();
 
             if (data.success) {
                 setBooking(prev => ({
@@ -378,19 +373,10 @@ const ClientBookRide: React.FC = () => {
     // Find nearby drivers
     const findNearbyDrivers = async (lat: number, lng: number, rideType: string) => {
         try {
-            const response = await fetch(`/SERVER/API/get_nearby_drivers.php?lat=${lat}&lng=${lng}&ride_type=${rideType}`);
-            const data = await response.json();
+            const data = await api.driver.nearbyDrivers({ lat, lng, radius_km: 5 });
             
-            if (data.success && data.drivers) {
-                setDrivers(data.drivers);
-            } else {
-                // Mock drivers as fallback
-                setDrivers([
-                    { id: '1', name: 'Michael Chen', rating: 4.8, rides: 1242, distance: 2.3, vehicle: 'Black Toyota Prius', plate: 'LAG123AB', type: 'economy' },
-                    { id: '2', name: 'Sarah Johnson', rating: 5.0, rides: 892, distance: 3.1, vehicle: 'White Honda Civic', plate: 'LAG456CD', type: 'comfort' },
-                    { id: '3', name: 'James Wilson', rating: 4.9, rides: 2156, distance: 1.8, vehicle: 'Silver Toyota Camry', plate: 'LAG789EF', type: 'economy' },
-                    { id: '4', name: 'Emma Davis', rating: 4.7, rides: 1876, distance: 2.9, vehicle: 'Blue Hyundai Elantra', plate: 'LAG321FG', type: 'comfort' }
-                ]);
+            if ((data.success || data.data) && (data.drivers || data.data?.drivers)) {
+                setDrivers(data.drivers || data.data?.drivers || []);
             }
         } catch (error) {
             console.error('Error finding drivers:', error);
@@ -602,35 +588,28 @@ const ClientBookRide: React.FC = () => {
     const processBooking = async () => {
         Swal.fire({ title: 'Booking your ride...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        const formData = new FormData();
-        formData.append('pickup_address', booking.pickup.address);
-        formData.append('pickup_lat', booking.pickup.lat?.toString() || '');
-        formData.append('pickup_lng', booking.pickup.lng?.toString() || '');
-        formData.append('pickup_place_id', booking.pickup.placeId || '');
-        formData.append('dest_address', booking.destination.address);
-        formData.append('dest_lat', booking.destination.lat?.toString() || '');
-        formData.append('dest_lng', booking.destination.lng?.toString() || '');
-        formData.append('dest_place_id', booking.destination.placeId || '');
-        formData.append('distance', booking.distance.toString());
-        formData.append('fare', booking.fare.toString());
-        formData.append('driver_id', booking.driverId || '');
-        formData.append('ride_type', booking.plan);
-        formData.append('payment_method', booking.payment);
-
         try {
-            const response = await fetch('/SERVER/API/book_ride.php', { method: 'POST', body: formData });
-            const data = await response.json();
+            const data = await api.rides.book({
+                pickup_location: booking.pickup.address,
+                dropoff_location: booking.destination.address,
+                pickup_lat: booking.pickup.lat || 0,
+                pickup_lng: booking.pickup.lng || 0,
+                dropoff_lat: booking.destination.lat || 0,
+                dropoff_lng: booking.destination.lng || 0,
+                ride_type: booking.plan,
+                notes: booking.driverId ? `Private driver: ${booking.driverId}` : undefined
+            });
             Swal.close();
 
             if (data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Ride Booked Successfully!',
-                    html: `<div><p><strong>Ride Number:</strong> #${data.ride_number}</p><p><strong>Amount Paid:</strong> ₦${booking.fare.toLocaleString()}</p><p><strong>New Balance:</strong> ₦${data.new_balance.toLocaleString()}</p></div>`,
+                    html: `<div><p><strong>Ride Number:</strong> #${data.ride_number || data.data?.ride_number}</p><p><strong>Amount Paid:</strong> ₦${booking.fare.toLocaleString()}</p><p><strong>New Balance:</strong> ₦${(data.new_balance || data.data?.new_balance || 0).toLocaleString()}</p></div>`,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'View Receipt'
                 }).then(() => {
-                    router.visit(`/generate_receipt?ride_id=${data.ride_id}`);
+                    router.visit(`/generate_receipt?ride_id=${data.ride_id || data.data?.ride_id}`);
                 });
             } else if (data.insufficient_balance) {
                 Swal.fire({ icon: 'error', title: 'Insufficient Balance', text: data.message, confirmButtonColor: '#ff5e00' });
@@ -646,17 +625,17 @@ const ClientBookRide: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
             
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `<div style="padding: 10px; border-bottom: 1px solid #eee;"><p><strong>${notif.title}</strong></p><p>${notif.message}</p><p style="font-size: 12px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p></div>`;
                 });
                 html += '</div>';
                 
-                Swal.fire({ icon: 'info', title: `Notifications (${data.notifications.length})`, html: html, confirmButtonColor: '#ff5e00' });
+                Swal.fire({ icon: 'info', title: `Notifications (${notifications.length})`, html: html, confirmButtonColor: '#ff5e00' });
             } else {
                 Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' });
             }

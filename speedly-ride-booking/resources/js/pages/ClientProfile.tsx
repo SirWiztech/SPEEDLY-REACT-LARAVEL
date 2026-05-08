@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -45,14 +46,19 @@ const ClientProfile: React.FC = () => {
     // Fetch user data
     const fetchUserData = async () => {
         try {
-            const response = await fetch('/SERVER/API/client_profile_data.php');
-            const data = await response.json();
+            const [profileData, statsData] = await Promise.all([
+                api.client.profile(),
+                api.client.stats()
+            ]);
             
-            if (data.success) {
-                setUserData(data.user);
-                setStats(data.stats);
-                setEditName(data.user?.full_name || '');
-                setEditPhone(data.user?.phone_number || '');
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setEditName(user?.full_name || '');
+                setEditPhone(user?.phone_number || '');
+            }
+            if (statsData.success || statsData.data) {
+                setStats(statsData.data?.stats || statsData.stats || statsData.data || { total_rides: 0, total_spent: 0, avg_rating: 0 });
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -72,12 +78,7 @@ const ClientProfile: React.FC = () => {
         });
         
         try {
-            const response = await fetch('/SERVER/API/update_profile.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ full_name: editName, phone_number: editPhone })
-            });
-            const data = await response.json();
+            const data = await api.client.updateProfile({ full_name: editName, phone_number: editPhone });
             
             if (data.success) {
                 Swal.fire({
@@ -119,12 +120,10 @@ const ClientProfile: React.FC = () => {
         });
         
         try {
-            const response = await fetch('/SERVER/API/change_password.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+            const data = await api.auth.changePassword({
+                current_password: currentPassword,
+                new_password: newPassword
             });
-            const data = await response.json();
             
             if (data.success) {
                 Swal.fire({
@@ -141,8 +140,8 @@ const ClientProfile: React.FC = () => {
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#ff5e00' });
             }
-        } catch (error) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to change password', confirmButtonColor: '#ff5e00' });
+        } catch (error: any) {
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to change password', confirmButtonColor: '#ff5e00' });
         }
     };
 

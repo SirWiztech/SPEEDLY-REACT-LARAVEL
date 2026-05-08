@@ -35,9 +35,7 @@ class AdminController extends Controller
             'cancelled' => Ride::where('status', 'cancelled')->count(),
         ];
         
-        $totalRevenue = WalletTransaction::where('category', 'platform_commission')
-            ->where('type', 'credit')
-            ->sum('amount');
+        $totalRevenue = Ride::where('status', 'completed')->sum('platform_commission');
             
         $totalPayouts = DriverWithdrawal::where('status', 'completed')->sum('amount');
         
@@ -65,8 +63,7 @@ class AdminController extends Controller
 
     public function payments(Request $request)
     {
-        $query = WalletTransaction::whereIn('category', ['ride_payment', 'platform_commission'])
-            ->with('user');
+        $query = WalletTransaction::with('user');
             
         if ($request->has('from') && $request->has('to')) {
             $query->whereBetween('created_at', [$request->from, $request->to]);
@@ -87,7 +84,7 @@ class AdminController extends Controller
         
         $users->getCollection()->transform(function ($user) {
             $balance = $user->walletTransactions()
-                ->select(DB::raw('SUM(CASE WHEN type = "credit" THEN amount ELSE -amount END) as balance'))
+                ->select(DB::raw('SUM(CASE WHEN transaction_type = "credit" THEN amount ELSE -amount END) as balance'))
                 ->first()->balance ?? 0;
                 
             return [
@@ -124,12 +121,11 @@ class AdminController extends Controller
             ->groupBy(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}')"))
             ->get();
             
-        $revenuePerDay = DB::table('wallet_transactions')
-            ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as date"), DB::raw('SUM(amount) as total'))
-            ->where('category', 'platform_commission')
-            ->where('type', 'credit')
-            ->whereBetween('created_at', [$from, $to])
-            ->groupBy(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}')"))
+        $revenuePerDay = DB::table('rides')
+            ->select(DB::raw("DATE_FORMAT(completed_at, '{$dateFormat}') as date"), DB::raw('SUM(platform_commission) as total'))
+            ->where('status', 'completed')
+            ->whereBetween('completed_at', [$from, $to])
+            ->groupBy(DB::raw("DATE_FORMAT(completed_at, '{$dateFormat}')"))
             ->get();
             
         $newUsersPerDay = DB::table('users')
@@ -224,15 +220,25 @@ class AdminController extends Controller
         
         $withdrawal->update([
             'status' => 'rejected',
-            'admin_notes' => $request->reason,
+            'rejection_reason' => $request->reason,
+            'processed_at' => Carbon::now(),
         ]);
+
+        $user = $withdrawal->driver->user;
+        $lastTx = WalletTransaction::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')->first();
+        $balanceBefore = $lastTx ? $lastTx->balance_after : 0;
+        $balanceAfter = $balanceBefore + $withdrawal->amount;
         
         WalletTransaction::create([
-            'user_id' => $withdrawal->driver->user_id,
+            'id' => Str::uuid(),
+            'user_id' => $user->id,
+            'transaction_type' => 'credit',
             'amount' => $withdrawal->amount,
-            'type' => 'credit',
-            'category' => 'withdrawal_reversal',
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
             'description' => 'Withdrawal reversal - ' . $request->reason,
+            'status' => 'completed',
         ]);
         
         Notification::create([
@@ -255,8 +261,8 @@ class AdminController extends Controller
         
         foreach ($settings as $key => $value) {
             SystemSetting::updateOrCreate(
-                ['key' => $key],
-                ['value' => is_array($value) ? json_encode($value) : $value]
+                ['setting_key' => $key],
+                ['setting_value' => is_array($value) ? json_encode($value) : $value]
             );
         }
         
@@ -273,7 +279,7 @@ class AdminController extends Controller
         
         $formatted = [];
         foreach ($settings as $setting) {
-            $formatted[$setting->key] = $setting->value;
+            $formatted[$setting->setting_key] = $setting->setting_value;
         }
         
         return response()->json([
@@ -288,12 +294,18 @@ class AdminController extends Controller
         $user = User::with(['clientProfile', 'driverProfile.vehicle', 'walletTransactions'])->findOrFail($id);
         
         $balance = $user->walletTransactions()
-            ->select(DB::raw('SUM(CASE WHEN type = "credit" THEN amount ELSE -amount END) as balance'))
+            ->select(DB::raw('SUM(CASE WHEN transaction_type = "credit" THEN amount ELSE -amount END) as balance'))
             ->first()->balance ?? 0;
             
-        $rideCount = Ride::where('user_id', $user->id)->orWhere('driver_id', function ($query) use ($user) {
-            $query->select('id')->from('drivers')->where('user_id', $user->id);
-        })->count();
+        $clientProfile = ClientProfile::where('user_id', $user->id)->first();
+        $driverProfile = DriverProfile::where('user_id', $user->id)->first();
+        $rideCount = 0;
+        if ($clientProfile) {
+            $rideCount += Ride::where('client_id', $clientProfile->id)->count();
+        }
+        if ($driverProfile) {
+            $rideCount += Ride::where('driver_id', $driverProfile->id)->count();
+        }
         
         $data = [
             'id' => $user->id,
@@ -326,7 +338,7 @@ class AdminController extends Controller
         
         if ($request->has('status')) {
             $query->whereHas('driverProfile', function ($q) use ($request) {
-                $q->where('status', $request->status);
+                $q->where('driver_status', $request->status);
             });
         }
         

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverBookHistoryMobile.css';
@@ -52,98 +53,6 @@ interface DeclinedRide {
     response_time_seconds: number;
 }
 
-// Mock data
-const MOCK_DATA = {
-    success: true,
-    user: {
-        id: '1',
-        fullname: 'John Driver',
-        email: 'john@example.com',
-        profile_picture_url: null
-    },
-    stats: {
-        total_rides: 45,
-        completed_rides: 38,
-        cancelled_rides: 5,
-        declined_count: 2,
-        total_fare_amount: 285000,
-        total_earnings: 228000,
-        total_commission: 57000,
-        avg_fare: 6333
-    },
-    notification_count: 2,
-    accepted_rides: [
-        {
-            id: 'RIDE001',
-            ride_number: 'SPD-2024-001',
-            status: 'completed',
-            pickup_address: '123 Main Street, Lagos',
-            destination_address: '456 Victoria Island, Lagos',
-            total_fare: 8500,
-            driver_payout: 6800,
-            platform_commission: 1700,
-            created_at: '2024-01-15 14:30:00',
-            formatted_date: 'Jan 15, 2024',
-            formatted_time: '2:30 PM',
-            client_name: 'Sarah Johnson',
-            client_photo: null,
-            was_declined: false,
-            declined_at: null
-        },
-        {
-            id: 'RIDE002',
-            ride_number: 'SPD-2024-002',
-            status: 'completed',
-            pickup_address: 'Ikeja City Mall, Lagos',
-            destination_address: 'Maryland, Lagos',
-            total_fare: 5500,
-            driver_payout: 4400,
-            platform_commission: 1100,
-            created_at: '2024-01-15 10:15:00',
-            formatted_date: 'Jan 15, 2024',
-            formatted_time: '10:15 AM',
-            client_name: 'Chioma Okafor',
-            client_photo: null,
-            was_declined: false,
-            declined_at: null
-        },
-        {
-            id: 'RIDE003',
-            ride_number: 'SPD-2024-003',
-            status: 'pending',
-            pickup_address: 'Lekki Phase 1, Lagos',
-            destination_address: 'Ajah, Lagos',
-            total_fare: 12000,
-            driver_payout: 9600,
-            platform_commission: 2400,
-            created_at: '2024-01-14 18:45:00',
-            formatted_date: 'Jan 14, 2024',
-            formatted_time: '6:45 PM',
-            client_name: 'David Adeyemi',
-            client_photo: null,
-            was_declined: false,
-            declined_at: null
-        }
-    ],
-    declined_rides: [
-        {
-            id: 'RIDE004',
-            ride_number: 'SPD-2024-004',
-            pickup_address: 'GRA, Ikeja, Lagos',
-            destination_address: 'Airport Road, Lagos',
-            total_fare: 15000,
-            created_at: '2024-01-12 08:20:00',
-            formatted_date: 'Jan 12, 2024',
-            formatted_time: '8:20 AM',
-            client_name: 'Chief Emeka',
-            client_photo: null,
-            declined_at: '2024-01-12 08:20:45',
-            auto_decline: false,
-            response_time_seconds: 45
-        }
-    ]
-};
-
 const DriverBookHistoryMobile: React.FC = () => {
     const [userData, setUserData] = useState<any>(null);
     const [stats, setStats] = useState<RideStats>({
@@ -167,39 +76,17 @@ const DriverBookHistoryMobile: React.FC = () => {
     const fetchBookHistory = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch('/SERVER/API/driver_book_history.php');
-            if (!response.ok) {
-                const mockData = MOCK_DATA;
-                setUserData(mockData.user);
-                setStats(mockData.stats);
-                setAcceptedRides(mockData.accepted_rides);
-                setDeclinedRides(mockData.declined_rides);
-                setNotificationCount(mockData.notification_count);
-                return;
-            }
-            const data = await response.json();
-            if (data.success) {
-                setUserData(data.user);
-                setStats(data.stats);
-                setAcceptedRides(data.accepted_rides || []);
-                setDeclinedRides(data.declined_rides || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                const mockData = MOCK_DATA;
-                setUserData(mockData.user);
-                setStats(mockData.stats);
-                setAcceptedRides(mockData.accepted_rides);
-                setDeclinedRides(mockData.declined_rides);
-                setNotificationCount(mockData.notification_count);
+            const data = await api.driver.rideHistory();
+            if (data.success || data.data) {
+                const d = data.data || data;
+                setUserData(d.user);
+                setStats(d.stats);
+                setAcceptedRides(d.accepted_rides || []);
+                setDeclinedRides(d.declined_rides || []);
+                setNotificationCount(d.notification_count || 0);
             }
         } catch (error) {
             console.error('Error:', error);
-            const mockData = MOCK_DATA;
-            setUserData(mockData.user);
-            setStats(mockData.stats);
-            setAcceptedRides(mockData.accepted_rides);
-            setDeclinedRides(mockData.declined_rides);
-            setNotificationCount(mockData.notification_count);
         } finally {
             setLoading(false);
         }

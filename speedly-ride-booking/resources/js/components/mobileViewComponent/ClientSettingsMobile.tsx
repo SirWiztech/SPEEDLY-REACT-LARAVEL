@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientSettingsMobile.css';
@@ -62,18 +63,23 @@ const ClientSettingsMobile: React.FC = () => {
     // Fetch settings data
     const fetchSettingsData = async () => {
         try {
-            const response = await fetch('/SERVER/API/settings_data.php');
-            const data = await response.json();
+            const [profileData, locationsData] = await Promise.all([
+                api.client.profile(),
+                api.client.locations()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setUserRole(data.user_role || 'client');
-                setUserSettings(data.settings);
-                setPaymentMethods(data.payment_methods || []);
-                setSavedLocations(data.saved_locations || []);
-                setEmergencyContactName(data.emergency_contact?.name || '');
-                setEmergencyContactPhone(data.emergency_contact?.phone || '');
-                setNotificationCount(data.notification_count || 0);
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setUserRole(user?.role || 'client');
+                setUserSettings(profileData.data?.settings || profileData.settings || { dark_mode: false, notifications_enabled: true, email_notifications: true, sms_notifications: false, language: 'en' });
+                setPaymentMethods(profileData.data?.payment_methods || profileData.payment_methods || []);
+                setEmergencyContactName(profileData.data?.emergency_contact?.name || '');
+                setEmergencyContactPhone(profileData.data?.emergency_contact?.phone || '');
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+            }
+            if (locationsData.success || locationsData.data) {
+                setSavedLocations(locationsData.locations || locationsData.data?.locations || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -85,11 +91,7 @@ const ClientSettingsMobile: React.FC = () => {
     // Toggle setting
     const toggleSetting = async (setting: string, value: boolean) => {
         try {
-            await fetch('/SERVER/API/update_settings.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [setting]: value })
-            });
+            await api.client.updateProfile({ [setting]: String(value) });
             setUserSettings(prev => ({ ...prev, [setting]: value }));
         } catch (error) {
             console.error('Error updating setting:', error);
@@ -130,12 +132,7 @@ const ClientSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/update_profile.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(result.value)
-                    });
-                    const data = await response.json();
+                    const data = await api.client.updateProfile(result.value);
                     
                     Swal.close();
                     if (data.success) {
@@ -185,18 +182,11 @@ const ClientSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/update_password.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ current_password: result.value.current, new_password: result.value.new })
-                    });
-                    const data = await response.json();
-                    
-                    Swal.close();
-                    Swal.fire({ icon: 'success', title: 'Password Updated', timer: 1500, showConfirmButton: false });
+                    // TODO: add change password endpoint - currently unavailable
+                    throw new Error('Change password endpoint not yet migrated');
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'success', title: 'Password Updated', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'error', title: 'Not Available', text: 'Change password is coming soon', timer: 1500, showConfirmButton: false });
                 }
             }
         });
@@ -334,9 +324,10 @@ const ClientSettingsMobile: React.FC = () => {
             confirmButtonText: 'Yes, Log Out',
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#ff5e00'
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                window.location.href = '/SERVER/API/logout.php';
+                await api.auth.logout();
+                window.location.href = '/home';
             }
         });
     };

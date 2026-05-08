@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientBookRideMobileView.css';
@@ -99,8 +100,7 @@ const ClientBookRideMobile: React.FC = () => {
     // Fetch dashboard data
     const fetchData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.client.stats();
             
             if (data.success) {
                 setUserData(data.user);
@@ -117,10 +117,9 @@ const ClientBookRideMobile: React.FC = () => {
     // Fetch saved locations
     const fetchSavedLocations = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/get_saved_locations.php');
-            const data = await response.json();
+            const data = await api.client.locations();
             if (data.success) {
-                setSavedLocations(data.locations || []);
+                setSavedLocations(data.locations || data.data?.locations || []);
             }
         } catch (error) {
             console.error('Error fetching saved locations:', error);
@@ -438,17 +437,19 @@ const ClientBookRideMobile: React.FC = () => {
         formData.append('ride_type', booking.plan || 'economy');
 
         try {
-            const response = await fetch('/SERVER/API/calculate_fare.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.rides.calculateFare({
+                pickup_lat: booking.pickup.lat,
+                pickup_lng: booking.pickup.lng,
+                dropoff_lat: booking.destination.lat,
+                dropoff_lng: booking.destination.lng,
+                ride_type: booking.plan || 'economy'
             });
-            const data = await response.json();
 
             if (data.success) {
                 setBooking(prev => ({
                     ...prev,
-                    distance: data.distance,
-                    fare: data.fare
+                    distance: data.distance || data.data?.distance || 0,
+                    fare: data.fare || data.data?.fare || 0
                 }));
                 
                 // Find nearby drivers
@@ -462,19 +463,10 @@ const ClientBookRideMobile: React.FC = () => {
     // Find nearby drivers
     const findNearbyDrivers = async (lat: number, lng: number, rideType: string) => {
         try {
-            const response = await fetch(`/SERVER/API/get_nearby_drivers.php?lat=${lat}&lng=${lng}&ride_type=${rideType}`);
-            const data = await response.json();
+            const data = await api.driver.nearbyDrivers({ lat, lng, radius_km: 10 });
             
             if (data.success && data.drivers) {
                 setDrivers(data.drivers);
-            } else {
-                // Mock drivers as fallback
-                setDrivers([
-                    { id: '1', name: 'Michael Chen', rating: 4.8, rides: 1242, distance: 2.3, vehicle: 'Black Toyota Prius', plate: 'LAG123AB', type: 'economy' },
-                    { id: '2', name: 'Sarah Johnson', rating: 5.0, rides: 892, distance: 3.1, vehicle: 'White Honda Civic', plate: 'LAG456CD', type: 'comfort' },
-                    { id: '3', name: 'James Wilson', rating: 4.9, rides: 2156, distance: 1.8, vehicle: 'Silver Toyota Camry', plate: 'LAG789EF', type: 'economy' },
-                    { id: '4', name: 'Emma Davis', rating: 4.7, rides: 1876, distance: 2.9, vehicle: 'Blue Hyundai Elantra', plate: 'LAG321FG', type: 'comfort' }
-                ]);
             }
         } catch (error) {
             console.error('Error finding drivers:', error);
@@ -715,8 +707,16 @@ const ClientBookRideMobile: React.FC = () => {
         formData.append('payment_method', booking.payment);
 
         try {
-            const response = await fetch('/SERVER/API/book_ride.php', { method: 'POST', body: formData });
-            const data = await response.json();
+            const data = await api.rides.book({
+                pickup_location: booking.pickup.address,
+                dropoff_location: booking.destination.address,
+                pickup_lat: booking.pickup.lat || 0,
+                pickup_lng: booking.pickup.lng || 0,
+                dropoff_lat: booking.destination.lat || 0,
+                dropoff_lng: booking.destination.lng || 0,
+                ride_type: booking.plan,
+                notes: booking.driverId ? `Driver ID: ${booking.driverId}` : undefined
+            });
             Swal.close();
 
             if (data.success) {
@@ -755,19 +755,19 @@ const ClientBookRideMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifs = data.notifications || data.data?.notifications || [];
             
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifs.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifs.forEach((notif: any) => {
                     html += `<div style="padding: 10px; border-bottom: 1px solid #eee;"><p><strong>${notif.title}</strong></p><p>${notif.message}</p><p style="font-size: 12px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p></div>`;
                 });
                 html += '</div>';
                 
                 const result = await Swal.fire({
                     icon: 'info',
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifs.length})`,
                     html: html,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'Close',
@@ -776,10 +776,10 @@ const ClientBookRideMobile: React.FC = () => {
                 });
                 
                 if (result.isDenied) {
-                    await fetch('/SERVER/API/clear_all_notifications.php', { method: 'POST' });
+                    await api.notifications.clearAll();
                     setNotificationCount(0);
                 } else {
-                    await fetch('/SERVER/API/mark_notifications_read.php', { method: 'POST' });
+                    await api.notifications.clearAll();
                     setNotificationCount(0);
                 }
             } else {

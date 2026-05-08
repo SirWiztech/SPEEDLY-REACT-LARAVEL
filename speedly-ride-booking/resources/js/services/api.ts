@@ -1,12 +1,29 @@
 const API_BASE = '/api';
 
+function getToken(): string | null {
+  return localStorage.getItem('auth_token');
+}
+
+export function setToken(token: string | null): void {
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+  }
+}
+
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const isFormData = options.body instanceof FormData;
+  const token = getToken();
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
     ...options.headers,
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
@@ -27,16 +44,12 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   return data;
 }
 
-export const sanctum = {
-  csrf: () => fetch('/sanctum/csrf-cookie', { credentials: 'include' }),
-};
-
 export const api = {
   // Auth
   auth: {
     register: (data: { full_name: string; username: string; email: string; password: string; role: string; phone: string }) =>
       apiFetch('/register', { method: 'POST', body: JSON.stringify(data) }),
-    login: (data: { username: string; password: string }) =>
+    login: (data: { login: string; password: string }) =>
       apiFetch('/login', { method: 'POST', body: JSON.stringify(data) }),
     adminLogin: (data: { email: string; password: string }) =>
       apiFetch('/admin/login', { method: 'POST', body: JSON.stringify(data) }),
@@ -46,6 +59,8 @@ export const api = {
       apiFetch('/admin/logout', { method: 'POST' }),
     me: () =>
       apiFetch('/me'),
+    changePassword: (data: { current_password: string; new_password: string }) =>
+      apiFetch('/change-password', { method: 'POST', body: JSON.stringify(data) }),
     resendOtp: (data: { email: string }) =>
       apiFetch('/resend-otp', { method: 'POST', body: JSON.stringify(data) }),
     verifyOtp: (data: { email: string; otp: string }) =>
@@ -117,20 +132,38 @@ export const api = {
       apiFetch('/driver/toggle-status', { method: 'POST', body: JSON.stringify(data) }),
     updateLocation: (data: { lat: number; lng: number }) =>
       apiFetch('/driver/update-location', { method: 'POST', body: JSON.stringify(data) }),
-    nearbyDrivers: (data: { lat: number; lng: number; radius_km?: number }) =>
-      apiFetch('/driver/nearby', { method: 'POST', body: JSON.stringify(data) }),
+    nearbyDrivers: (params: { lat: number; lng: number; radius_km?: number }) => {
+      const qs = new URLSearchParams();
+      qs.set('lat', String(params.lat));
+      qs.set('lng', String(params.lng));
+      if (params.radius_km) qs.set('radius_km', String(params.radius_km));
+      return apiFetch(`/driver/nearby?${qs}`);
+    },
     support: (data: { category: string; subject: string; message: string; priority: string }) =>
       apiFetch('/driver/support', { method: 'POST', body: JSON.stringify(data) }),
     bankDetails: () => apiFetch('/driver/bank'),
     saveBankDetails: (data: { bank_name: string; account_number: string; account_name: string }) =>
       apiFetch('/driver/bank/save', { method: 'POST', body: JSON.stringify(data) }),
+    setDefaultBank: (id: string) =>
+      apiFetch(`/driver/bank/${id}/set-default`, { method: 'POST' }),
+    removeBankAccount: (id: string) =>
+      apiFetch(`/driver/bank/${id}`, { method: 'DELETE' }),
+    updateVehicle: (data: { vehicle_type?: string; vehicle_model?: string; vehicle_color?: string; plate_number?: string; vehicle_year?: string }) =>
+      apiFetch('/driver/vehicle/update', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // Rides
   rides: {
     getRideTypes: () => apiFetch('/ride-types'),
-    calculateFare: (data: { pickup_lat: number; pickup_lng: number; dropoff_lat: number; dropoff_lng: number; ride_type: string }) =>
-      apiFetch('/rides/calculate-fare', { method: 'POST', body: JSON.stringify(data) }),
+    calculateFare: (params: { pickup_lat: number; pickup_lng: number; dropoff_lat: number; dropoff_lng: number; ride_type: string }) => {
+      const qs = new URLSearchParams();
+      qs.set('pickup_lat', String(params.pickup_lat));
+      qs.set('pickup_lng', String(params.pickup_lng));
+      qs.set('dropoff_lat', String(params.dropoff_lat));
+      qs.set('dropoff_lng', String(params.dropoff_lng));
+      qs.set('ride_type', params.ride_type);
+      return apiFetch(`/rides/calculate-fare?${qs}`);
+    },
     book: (data: { pickup_location: string; dropoff_location: string; pickup_lat: number; pickup_lng: number; dropoff_lat: number; dropoff_lng: number; ride_type: string; scheduled_at?: string; notes?: string }) =>
       apiFetch('/rides/book', { method: 'POST', body: JSON.stringify(data) }),
     getById: (id: string) => apiFetch(`/rides/${id}`),

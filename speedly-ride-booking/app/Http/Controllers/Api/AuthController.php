@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
+use App\Mail\OtpMail;
 use Laravel\Sanctum\NewAccessToken;
 
 class AuthController extends Controller
@@ -45,9 +48,17 @@ class AuthController extends Controller
         ]);
 
         if ($data['role'] === 'client') {
-            ClientProfile::create(['user_id' => $user->id]);
+            ClientProfile::create([
+                'id' => Str::uuid()->toString(),
+                'user_id' => $user->id,
+            ]);
         } elseif ($data['role'] === 'driver') {
-            DriverProfile::create(['user_id' => $user->id]);
+            DriverProfile::create([
+                'id' => Str::uuid()->toString(),
+                'user_id' => $user->id,
+                'driver_status' => 'offline',
+                'verification_status' => 'pending',
+            ]);
         }
 
         $otp = sprintf("%06d", mt_rand(1, 999999));
@@ -56,6 +67,12 @@ class AuthController extends Controller
             'token' => $otp,
             'expires_at' => Carbon::now()->addMinutes(10),
         ]);
+
+        try {
+            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
+        } catch (\Exception $e) {
+            // Log email failure but don't block registration
+        }
 
         return response()->json([
             'success' => true,
@@ -94,6 +111,8 @@ class AuthController extends Controller
         $user->update(['last_login' => Carbon::now()]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        Auth::guard('web')->login($user);
 
         return response()->json([
             'success' => true,
@@ -205,6 +224,12 @@ class AuthController extends Controller
             'expires_at' => Carbon::now()->addMinutes(10),
         ]);
 
+        try {
+            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
+        } catch (\Exception $e) {
+            // Log email failure
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'OTP resent successfully',
@@ -240,6 +265,8 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        Auth::guard('web')->login($user);
+
         return response()->json([
             'success' => true,
             'message' => 'OTP verified successfully',
@@ -273,9 +300,15 @@ class AuthController extends Controller
             'expires_at' => Carbon::now()->addMinutes(60),
         ]);
 
+        try {
+            Mail::to($user->email)->send(new OtpMail($token, $user->full_name ?? $user->name));
+        } catch (\Exception $e) {
+            // Log email failure
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Password reset token generated',
+            'message' => 'Password reset link sent to your email',
             'data' => ['token' => $token]
         ]);
     }
@@ -310,6 +343,32 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Password reset successfully',
+            'data' => null
+        ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect',
+                'data' => null
+            ], 400);
+        }
+
+        $user->update(['password' => bcrypt($data['new_password'])]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully',
             'data' => null
         ]);
     }

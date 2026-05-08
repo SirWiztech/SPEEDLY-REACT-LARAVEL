@@ -31,14 +31,15 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 | Authenticated Routes (Sanctum)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:web')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/admin/logout', [AuthController::class, 'adminLogout']);
 
-    // Me / Profile
+    // Me / Profile / Password
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
 
     /*
     |--------------------------------------------------------------------------
@@ -108,9 +109,14 @@ Route::middleware('auth:web')->group(function () {
         // Nearby drivers (for clients to find nearby drivers)
         Route::get('/nearby', [DriverController::class, 'getNearbyDrivers']);
 
+        // Vehicle
+        Route::post('/vehicle/update', [DriverController::class, 'updateVehicle']);
+
         // Bank details
         Route::get('/bank', [DriverBankController::class, 'getBankDetails']);
         Route::post('/bank/save', [DriverBankController::class, 'saveBankDetails']);
+        Route::post('/bank/{id}/set-default', [DriverBankController::class, 'setDefaultBank']);
+        Route::delete('/bank/{id}', [DriverBankController::class, 'removeBankAccount']);
     });
 
     /*

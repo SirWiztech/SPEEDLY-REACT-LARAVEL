@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientWalletMobile.css';
@@ -47,18 +48,22 @@ const ClientWalletMobile: React.FC = () => {
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/wallet_data.php');
-            const data = await response.json();
+            const [walletData, transactionData] = await Promise.all([
+                api.client.wallet(),
+                api.client.transactions()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setWalletBalance(data.balance);
-                setRideCount(data.ride_count || 0);
-                setTransactions(data.transactions || []);
-                setPaymentMethods(data.payment_methods || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch wallet data:', data.message);
+            if (walletData.success || walletData.data) {
+                const w = walletData.data || walletData;
+                setUserData(w.user);
+                setWalletBalance(w.balance || w.wallet_balance || 0);
+                setRideCount(w.ride_count || 0);
+                setPaymentMethods(w.payment_methods || []);
+                setNotificationCount(w.notification_count || 0);
+            }
+            if (transactionData.success || transactionData.data) {
+                const t = transactionData.data || transactionData;
+                setTransactions(t.transactions || []);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
@@ -109,12 +114,7 @@ const ClientWalletMobile: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/initiate_korapay_payment.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount })
-            });
-            const data = await response.json();
+            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || '' });
             Swal.close();
 
             if (data.success && data.checkout_url) {
@@ -293,16 +293,16 @@ const ClientWalletMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifs = data.notifications || data.data?.notifications || [];
             
-            if (data.success && data.notifications?.length > 0) {
+            if (notifs.length > 0) {
                 let html = '<div style="text-align: left;">';
-                data.notifications.forEach((notif: any) => {
+                notifs.forEach((notif: any) => {
                     html += `<div style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${notif.title}</strong><p style="font-size: 12px;">${notif.message}</p></div>`;
                 });
                 html += '</div>';
-                Swal.fire({ icon: 'info', title: `Notifications (${data.notifications.length})`, html: html, confirmButtonColor: '#ff5e00' });
+                Swal.fire({ icon: 'info', title: `Notifications (${notifs.length})`, html: html, confirmButtonColor: '#ff5e00' });
             } else {
                 Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' });
             }

@@ -32,7 +32,7 @@ class ClientController extends Controller
         $totalRides = Ride::where('client_id', $clientProfile->id)->count();
         $completedRides = Ride::where('client_id', $clientProfile->id)->where('status', 'completed')->count();
         $cancelledRides = Ride::where('client_id', $clientProfile->id)->where('status', 'cancelled')->count();
-        $totalSpent = WalletTransaction::where('user_id', $user->id)->where('type', 'debit')->sum('fare_amount');
+        $totalSpent = WalletTransaction::where('user_id', $user->id)->where('transaction_type', 'debit')->sum('amount');
 
         return response()->json([
             'success' => true,
@@ -64,18 +64,19 @@ class ClientController extends Controller
         $rides = Ride::where('client_id', $clientProfile->id)
             ->leftJoin('driver_profiles', 'rides.driver_id', '=', 'driver_profiles.id')
             ->leftJoin('driver_vehicles', 'driver_profiles.id', '=', 'driver_vehicles.driver_id')
+            ->leftJoin('users', 'driver_profiles.user_id', '=', 'users.id')
             ->select(
                 'rides.id',
-                'rides.pickup_location',
-                'rides.dropoff_location',
+                'rides.pickup_address as pickup_location',
+                'rides.destination_address as dropoff_location',
                 'rides.status',
-                'rides.fare_amount',
+                'rides.total_fare as fare_amount',
                 'rides.ride_type',
                 'rides.created_at',
-                'driver_profiles.full_name as driver_name',
-                'driver_profiles.phone_number as driver_phone',
+                'users.full_name as driver_name',
+                'users.phone_number as driver_phone',
                 'driver_vehicles.vehicle_type',
-                'driver_vehicles.license_plate'
+                'driver_vehicles.plate_number'
             )
             ->orderBy('rides.created_at', 'DESC')
             ->limit($limit)
@@ -109,18 +110,19 @@ class ClientController extends Controller
             })
             ->leftJoin('driver_profiles', 'rides.driver_id', '=', 'driver_profiles.id')
             ->leftJoin('driver_vehicles', 'driver_profiles.id', '=', 'driver_vehicles.driver_id')
+            ->leftJoin('users', 'driver_profiles.user_id', '=', 'users.id')
             ->select(
                 'rides.id',
-                'rides.pickup_location',
-                'rides.dropoff_location',
+                'rides.pickup_address as pickup_location',
+                'rides.destination_address as dropoff_location',
                 'rides.status',
-                'rides.fare_amount',
+                'rides.total_fare as fare_amount',
                 'rides.ride_type',
                 'rides.created_at',
-                'driver_profiles.full_name as driver_name',
-                'driver_profiles.phone_number as driver_phone',
+                'users.full_name as driver_name',
+                'users.phone_number as driver_phone',
                 'driver_vehicles.vehicle_type',
-                'driver_vehicles.license_plate'
+                'driver_vehicles.plate_number'
             )
             ->orderBy('rides.created_at', 'DESC')
             ->paginate(15);
@@ -180,7 +182,6 @@ class ClientController extends Controller
     public function support(Request $request)
     {
         $user = $request->user();
-        $clientProfile = ClientProfile::where('user_id', $user->id)->first();
 
         $validated = $request->validate([
             'category' => 'required|string|max:255',
@@ -191,20 +192,15 @@ class ClientController extends Controller
 
         $ticketNumber = 'TKT-' . Str::random(8);
 
-        Notification::create([
-            'type' => 'support_ticket',
-            'data' => json_encode([
-                'category' => $validated['category'],
-                'subject' => $validated['subject'],
-                'message' => $validated['message'],
-                'priority' => $validated['priority'],
-                'ticket_number' => $ticketNumber,
-                'client_id' => $clientProfile?->id,
-                'user_id' => $user->id,
-            ]),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $adminUsers = User::where('role', 'admin')->get();
+        foreach ($adminUsers as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'support_ticket',
+                'title' => 'New Support Ticket: ' . $validated['subject'],
+                'message' => 'Ticket ' . $ticketNumber . ' submitted by ' . $user->full_name,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

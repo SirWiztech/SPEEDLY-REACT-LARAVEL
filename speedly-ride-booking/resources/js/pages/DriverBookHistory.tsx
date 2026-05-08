@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
+import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import MobilePreloader from '../components/preloader/MobilePreloader';
-import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import DriverBookHistoryMobile from '../components/mobileViewComponent/DriverBookHistoryMobile';
 import '../../css/DriverBookHistory.css';
 
@@ -55,81 +55,6 @@ interface DeclinedRide {
     response_time_seconds: number;
 }
 
-// Mock data for development
-const MOCK_DATA = {
-    success: true,
-    user: {
-        id: '1',
-        fullname: 'John Driver',
-        email: 'john@example.com',
-        profile_picture_url: null
-    },
-    stats: {
-        total_rides: 45,
-        completed_rides: 38,
-        cancelled_rides: 5,
-        declined_count: 2,
-        total_fare_amount: 285000,
-        total_earnings: 228000,
-        total_commission: 57000,
-        avg_fare: 6333
-    },
-    notification_count: 3,
-    accepted_rides: [
-        {
-            id: 'RIDE001',
-            ride_number: 'SPD-2024-001',
-            status: 'completed',
-            pickup_address: '123 Main Street, Lagos',
-            destination_address: '456 Victoria Island, Lagos',
-            total_fare: 8500,
-            driver_payout: 6800,
-            platform_commission: 1700,
-            created_at: '2024-01-15 14:30:00',
-            formatted_date: 'Jan 15, 2024',
-            formatted_time: '2:30 PM',
-            client_name: 'Sarah Johnson',
-            client_photo: null,
-            was_declined: false,
-            declined_at: null
-        },
-        {
-            id: 'RIDE002',
-            ride_number: 'SPD-2024-002',
-            status: 'pending',
-            pickup_address: '789 Lekki Phase 1',
-            destination_address: 'Ajah, Lagos',
-            total_fare: 5500,
-            driver_payout: 4400,
-            platform_commission: 1100,
-            created_at: '2024-01-16 14:20:00',
-            formatted_date: 'Jan 16, 2024',
-            formatted_time: '2:20 PM',
-            client_name: 'Michael Adebayo',
-            client_photo: null,
-            was_declined: false,
-            declined_at: null
-        }
-    ],
-    declined_rides: [
-        {
-            id: 'RIDE003',
-            ride_number: 'SPD-2024-003',
-            pickup_address: 'Ikeja City Mall',
-            destination_address: 'Maryland, Lagos',
-            total_fare: 4200,
-            created_at: '2024-01-14 09:15:00',
-            formatted_date: 'Jan 14, 2024',
-            formatted_time: '9:15 AM',
-            client_name: 'Chioma Okafor',
-            client_photo: null,
-            declined_at: '2024-01-14 09:15:30',
-            auto_decline: false,
-            response_time_seconds: 30
-        }
-    ]
-};
-
 const DriverBookHistory: React.FC = () => {
     // State
     const [userData, setUserData] = useState<any>(null);
@@ -159,45 +84,25 @@ const DriverBookHistory: React.FC = () => {
         setApiError(null);
         
         try {
-            const response = await fetch('/SERVER/API/driver_book_history.php');
-            
-            if (!response.ok) {
-                console.warn('API not available, using mock data');
-                const mockData = MOCK_DATA;
-                setUserData(mockData.user);
-                setStats(mockData.stats);
-                setAcceptedRides(mockData.accepted_rides);
-                setDeclinedRides(mockData.declined_rides);
-                setNotificationCount(mockData.notification_count);
-                return;
-            }
-            
-            const data = await response.json();
+            const [historyData, profileData] = await Promise.all([
+                api.driver.rideHistory(),
+                api.driver.profile()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setStats(data.stats);
-                setAcceptedRides(data.accepted_rides || []);
-                setDeclinedRides(data.declined_rides || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch book history:', data.message);
-                const mockData = MOCK_DATA;
-                setUserData(mockData.user);
-                setStats(mockData.stats);
-                setAcceptedRides(mockData.accepted_rides);
-                setDeclinedRides(mockData.declined_rides);
-                setNotificationCount(mockData.notification_count);
+            if (historyData.success || historyData.data) {
+                const h = historyData.data || historyData;
+                setStats(h.stats || { total_rides: 0, completed_rides: 0, cancelled_rides: 0, declined_count: 0, total_fare_amount: 0, total_earnings: 0, total_commission: 0, avg_fare: 0 });
+                setAcceptedRides(h.accepted_rides || []);
+                setDeclinedRides(h.declined_rides || []);
+            }
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching book history:', error);
-            setApiError('Unable to load data. Using demo data.');
-            const mockData = MOCK_DATA;
-            setUserData(mockData.user);
-            setStats(mockData.stats);
-            setAcceptedRides(mockData.accepted_rides);
-            setDeclinedRides(mockData.declined_rides);
-            setNotificationCount(mockData.notification_count);
+            setApiError('Unable to load ride history data.');
         } finally {
             setLoading(false);
         }
@@ -211,12 +116,12 @@ const DriverBookHistory: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -228,7 +133,7 @@ const DriverBookHistory: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00',

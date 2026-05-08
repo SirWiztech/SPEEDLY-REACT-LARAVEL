@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -56,18 +57,26 @@ const ClientWallet: React.FC = () => {
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/wallet_data.php');
-            const data = await response.json();
+            const [walletData, txData, profileData] = await Promise.all([
+                api.client.wallet(),
+                api.client.transactions(),
+                api.client.profile()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setWalletBalance(data.balance);
-                setRideCount(data.ride_count || 0);
-                setTransactions(data.transactions || []);
-                setPaymentMethods(data.payment_methods || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch wallet data:', data.message);
+            if (walletData.success || walletData.data) {
+                const w = walletData.data || walletData;
+                setWalletBalance(w.balance || 0);
+                setRideCount(w.ride_count || 0);
+            }
+            if (txData.success || txData.data) {
+                const t = txData.data || txData;
+                setTransactions(t.transactions || []);
+                setPaymentMethods(t.payment_methods || []);
+            }
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
@@ -119,14 +128,7 @@ const ClientWallet: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/initiate_korapay_payment.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ amount })
-            });
-            const data = await response.json();
+            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || '' });
             Swal.close();
 
             if (data.success && data.checkout_url) {
@@ -373,17 +375,17 @@ const ClientWallet: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title}</strong></p>
-                            <p style="font-size: 13px;">${notif.message}</p>
-                            <p style="font-size: 11px; color: #999; margin-top: 5px;">${new Date(notif.created_at).toLocaleString()}</p>
+                            <p>${notif.message}</p>
+                            <p style="font-size: 12px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p>
                         </div>
                     `;
                 });
@@ -391,7 +393,7 @@ const ClientWallet: React.FC = () => {
 
                 Swal.fire({
                     icon: 'info',
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     confirmButtonColor: '#ff5e00'
                 });

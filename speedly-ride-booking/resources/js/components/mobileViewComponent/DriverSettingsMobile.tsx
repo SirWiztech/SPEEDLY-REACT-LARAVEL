@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverSettingsMobile.css';
@@ -56,20 +57,26 @@ const DriverSettingsMobile: React.FC = () => {
     // Fetch settings data
     const fetchSettingsData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_settings_data.php');
-            const data = await response.json();
+            const [profileData, bankData] = await Promise.all([
+                api.driver.profile(),
+                api.driver.bankDetails()
+            ]);
 
-            if (data.success) {
-                setDriverData(data.driver);
-                setLicenseNumber(data.license?.license_number || '');
-                setLicenseExpiry(data.license?.license_expiry || '');
-                setVehicleModel(data.vehicle?.vehicle_model || '');
-                setPlateNumber(data.vehicle?.plate_number || '');
-                setBankAccounts(data.bank_accounts || []);
-                setTodayEarnings(data.today_earnings || 0);
-                setTotalEarnings(data.total_earnings || 0);
-                setNotificationCount(data.notification_count || 0);
-                setNotificationSettings(data.notification_settings);
+            if (profileData.success || profileData.data) {
+                const d = profileData.data?.user || profileData.user || profileData.data;
+                setDriverData(d);
+                setLicenseNumber(d.license?.license_number || '');
+                setLicenseExpiry(d.license?.license_expiry || '');
+                setVehicleModel(d.vehicle?.vehicle_model || '');
+                setPlateNumber(d.vehicle?.plate_number || '');
+                setTodayEarnings(d.today_earnings || 0);
+                setTotalEarnings(d.total_earnings || 0);
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+                setNotificationSettings(d.notification_settings || { ride_requests: true, earnings_notif: true, sound_alerts: true, promotions: false });
+            }
+            if (bankData.success || bankData.data) {
+                const b = bankData.data || bankData;
+                setBankAccounts(b.bank_accounts || b.accounts || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -82,11 +89,7 @@ const DriverSettingsMobile: React.FC = () => {
     const toggleSetting = (setting: keyof NotificationSettings, value: boolean) => {
         setNotificationSettings(prev => ({ ...prev, [setting]: value }));
         
-        fetch('/SERVER/API/update_driver_settings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [setting]: value })
-        }).catch(error => console.error('Error updating setting:', error));
+        api.driver.updateProfile({ [setting]: String(value) }).catch(error => console.error('Error updating setting:', error));
     };
 
     // Save driver profile
@@ -112,12 +115,7 @@ const DriverSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/update_driver_profile.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(result.value)
-                    });
-                    const data = await response.json();
+                    const data = await api.driver.updateProfile(result.value);
                     
                     Swal.close();
                     if (data.success) {
@@ -156,12 +154,7 @@ const DriverSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/update_license.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ license_number: result.value.number, license_expiry: result.value.expiry })
-                    });
-                    const data = await response.json();
+                    const data = await api.driver.updateProfile({ license_number: result.value.number, license_expiry: result.value.expiry });
                     
                     Swal.close();
                     if (data.success) {
@@ -203,22 +196,11 @@ const DriverSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/update_vehicle.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(result.value)
-                    });
-                    const data = await response.json();
-                    
-                    Swal.close();
-                    if (data.success) {
-                        setVehicleModel(result.value.model);
-                        setPlateNumber(result.value.plate);
-                        Swal.fire({ icon: 'success', title: 'Vehicle Saved', timer: 1500, showConfirmButton: false });
-                    }
+                    // TODO: update vehicle endpoint not yet available
+                    throw new Error('Vehicle endpoint not yet migrated');
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'success', title: 'Vehicle Saved', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'error', title: 'Not Available', text: 'Vehicle update coming soon', timer: 1500, showConfirmButton: false });
                 }
             }
         });
@@ -265,20 +247,11 @@ const DriverSettingsMobile: React.FC = () => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
-                const formData = new FormData();
-                formData.append('bank_name', result.value.bank);
-                formData.append('account_number', result.value.account);
-                formData.append('account_name', result.value.name);
-                
                 try {
-                    const response = await fetch('/SERVER/API/save_bank_details.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
+                    const data = await api.driver.saveBankDetails({ bank_name: result.value.bank, account_number: result.value.account, account_name: result.value.name });
                     
                     Swal.close();
-                    if (data.status === 'success') {
+                    if (data.success) {
                         Swal.fire({ icon: 'success', title: 'Bank Added', timer: 1500, showConfirmButton: false }).then(() => {
                             fetchSettingsData();
                         });
@@ -305,20 +278,11 @@ const DriverSettingsMobile: React.FC = () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    const response = await fetch('/SERVER/API/set_default_bank.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ bank_id: bankId })
-                    });
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Default Set', timer: 1500, showConfirmButton: false }).then(() => {
-                            fetchSettingsData();
-                        });
-                    }
+                    // TODO: set default bank endpoint not yet available
+                    throw new Error('Set default bank endpoint not yet migrated');
                 } catch (error) {
                     console.error('Error setting default bank:', error);
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Feature not available yet', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -339,22 +303,17 @@ const DriverSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Removing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/remove_bank_account.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ bank_id: bankId })
-                    });
-                    const data = await response.json();
-                    
+                    const data = await api.driver.removeBankAccount(bankId);
                     Swal.close();
                     if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Removed', timer: 1500, showConfirmButton: false }).then(() => {
-                            fetchSettingsData();
-                        });
+                        Swal.fire({ icon: 'success', title: 'Removed', text: 'Bank account removed', timer: 1500, showConfirmButton: false });
+                        fetchSettingsData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#ff5e00' });
                     }
-                } catch (error) {
+                } catch (error: any) {
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to remove bank', confirmButtonColor: '#ff5e00' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to remove bank account', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -363,12 +322,12 @@ const DriverSettingsMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifs = data.notifications || data.data?.notifications || [];
             
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifs.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifs.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -380,7 +339,7 @@ const DriverSettingsMobile: React.FC = () => {
                 html += '</div>';
                 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifs.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00',
@@ -404,9 +363,10 @@ const DriverSettingsMobile: React.FC = () => {
             confirmButtonColor: '#ff5e00',
             confirmButtonText: 'Yes, log out',
             cancelButtonText: 'Cancel'
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                window.location.href = '/SERVER/API/logout.php';
+                await api.auth.logout();
+                window.location.href = '/home';
             }
         });
     };

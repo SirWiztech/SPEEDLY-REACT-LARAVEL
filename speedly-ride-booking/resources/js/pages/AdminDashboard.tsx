@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -137,8 +138,7 @@ const AdminDashboard: React.FC = () => {
     // Fetch dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/admin_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.admin.stats();
             
             if (data.success) {
                 setStats(data.stats);
@@ -266,7 +266,7 @@ const AdminDashboard: React.FC = () => {
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch('/SERVER/API/admin-logout.php').then(() => {
+                api.auth.adminLogout().then(() => {
                     router.visit('/admin-login');
                 });
             }

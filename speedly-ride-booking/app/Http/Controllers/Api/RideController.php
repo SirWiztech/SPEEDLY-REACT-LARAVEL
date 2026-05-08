@@ -82,8 +82,6 @@ class RideController extends Controller
             'dropoff_lat' => 'required|numeric',
             'dropoff_lng' => 'required|numeric',
             'ride_type' => 'required|in:economy,comfort,premium',
-            'scheduled_at' => 'nullable|date',
-            'notes' => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -112,23 +110,27 @@ class RideController extends Controller
         ];
 
         $rideType = $rideTypes[$request->ride_type];
-        $fareAmount = $rideType['base_fare'] + ($distance * $rideType['per_km']);
+        $totalFare = $rideType['base_fare'] + ($distance * $rideType['per_km']);
+        $platformCommission = $totalFare * 0.15;
+        $driverPayout = $totalFare - $platformCommission;
 
         $ride = Ride::create([
             'id' => Str::uuid(),
-            'client_profile_id' => $clientProfile->id,
-            'pickup_location' => $request->pickup_location,
-            'dropoff_location' => $request->dropoff_location,
-            'pickup_lat' => $pickupLat,
-            'pickup_lng' => $pickupLng,
-            'dropoff_lat' => $dropoffLat,
-            'dropoff_lng' => $dropoffLng,
+            'ride_number' => 'RIDE-' . strtoupper(Str::random(8)),
+            'client_id' => $clientProfile->id,
+            'pickup_address' => $request->pickup_location,
+            'destination_address' => $request->dropoff_location,
+            'pickup_latitude' => $pickupLat,
+            'pickup_longitude' => $pickupLng,
+            'destination_latitude' => $dropoffLat,
+            'destination_longitude' => $dropoffLng,
             'ride_type' => $request->ride_type,
-            'fare_amount' => round($fareAmount, 2),
+            'total_fare' => round($totalFare, 2),
+            'platform_commission' => round($platformCommission, 2),
+            'driver_payout' => round($driverPayout, 2),
             'distance_km' => round($distance, 2),
             'status' => 'pending',
-            'scheduled_at' => $request->scheduled_at,
-            'notes' => $request->notes,
+            'payment_status' => 'pending',
         ]);
 
         $admins = User::where('role', 'admin')->get();
@@ -138,7 +140,6 @@ class RideController extends Controller
                 'type' => 'new_ride',
                 'title' => 'New Ride Booking',
                 'message' => "A new ride has been booked by {$user->full_name}.",
-                'data' => json_encode(['ride_id' => $ride->id]),
             ]);
         }
 
@@ -147,7 +148,7 @@ class RideController extends Controller
 
     public function show(Request $request, $id)
     {
-        $ride = Ride::with(['clientProfile.user', 'driverProfile.user', 'driverProfile.vehicles', 'cancellation'])->find($id);
+        $ride = Ride::with(['client.user', 'driver.user', 'driver.vehicles', 'cancellation'])->find($id);
 
         if (!$ride) {
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
@@ -158,7 +159,7 @@ class RideController extends Controller
 
     public function receipt(Request $request, $id)
     {
-        $ride = Ride::with(['clientProfile.user', 'driverProfile.user', 'driverProfile.vehicles'])->find($id);
+        $ride = Ride::with(['client.user', 'driver.user', 'driver.vehicles'])->find($id);
 
         if (!$ride) {
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
@@ -169,9 +170,9 @@ class RideController extends Controller
         }
 
         $fareBreakdown = [
-            'base_fare' => $ride->fare_amount * 0.6,
-            'distance_fare' => $ride->fare_amount * 0.4,
-            'total' => $ride->fare_amount,
+            'base_fare' => $ride->total_fare * 0.6,
+            'distance_fare' => $ride->total_fare * 0.4,
+            'total' => $ride->total_fare,
         ];
 
         return response()->json(['success' => true, 'data' => ['ride' => $ride, 'fare_breakdown' => $fareBreakdown]]);
@@ -187,7 +188,7 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Driver profile not found'], 404);
         }
 
-        if (!$driverProfile->is_online || !$driverProfile->is_verified) {
+        if ($driverProfile->driver_status !== 'online' || $driverProfile->verification_status !== 'approved') {
             return response()->json(['success' => false, 'message' => 'Driver must be online and verified'], 403);
         }
 
@@ -203,17 +204,15 @@ class RideController extends Controller
             }
 
             $ride->update([
-                'driver_profile_id' => $driverProfile->id,
+                'driver_id' => $driverProfile->id,
                 'status' => 'accepted',
-                'accepted_at' => Carbon::now(),
             ]);
 
             Notification::create([
-                'user_id' => $ride->clientProfile->user_id,
+                'user_id' => $ride->client->user_id,
                 'type' => 'ride_accepted',
                 'title' => 'Ride Accepted',
                 'message' => 'Your ride has been accepted by a driver. They are on the way to pick you up.',
-                'data' => json_encode(['ride_id' => $ride->id]),
             ]);
 
             return response()->json(['success' => true, 'message' => 'Ride accepted successfully']);
@@ -249,7 +248,7 @@ class RideController extends Controller
                 return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
             }
 
-            if ($ride->driver_profile_id !== $driverProfile->id) {
+            if ($ride->driver_id !== $driverProfile->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
 
@@ -260,46 +259,53 @@ class RideController extends Controller
             $ride->update([
                 'status' => 'completed',
                 'completed_at' => Carbon::now(),
+                'payment_status' => 'paid',
             ]);
 
-            $clientProfile = $ride->clientProfile;
-            $clientUser = $clientProfile->user;
+            $clientUser = $ride->client->user;
+            $driverUser = $user;
+
+            $lastClientTx = WalletTransaction::where('user_id', $clientUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $clientBalanceBefore = $lastClientTx ? $lastClientTx->balance_after : 0;
+            $clientBalanceAfter = $clientBalanceBefore - $ride->total_fare;
 
             WalletTransaction::create([
                 'id' => Str::uuid(),
                 'user_id' => $clientUser->id,
-                'type' => 'debit',
-                'category' => 'ride_payment',
-                'description' => "Payment for ride {$ride->id}",
-                'amount' => $ride->fare_amount,
-                'balance_after' => $clientUser->wallet_balance - $ride->fare_amount,
+                'transaction_type' => 'debit',
+                'description' => "Payment for ride {$ride->ride_number}",
+                'amount' => $ride->total_fare,
+                'balance_before' => $clientBalanceBefore,
+                'balance_after' => $clientBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
             ]);
 
-            $clientUser->decrement('wallet_balance', $ride->fare_amount);
+            $driverEarning = $ride->total_fare * 0.85;
 
-            $driverUser = $user;
-            $driverEarning = $ride->fare_amount * 0.85;
+            $lastDriverTx = WalletTransaction::where('user_id', $driverUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $driverBalanceBefore = $lastDriverTx ? $lastDriverTx->balance_after : 0;
+            $driverBalanceAfter = $driverBalanceBefore + $driverEarning;
 
             WalletTransaction::create([
                 'id' => Str::uuid(),
                 'user_id' => $driverUser->id,
-                'type' => 'credit',
-                'category' => 'ride_earning',
-                'description' => "Earning from ride {$ride->id}",
+                'transaction_type' => 'credit',
+                'description' => "Earning from ride {$ride->ride_number}",
                 'amount' => $driverEarning,
-                'balance_after' => $driverUser->wallet_balance + $driverEarning,
+                'balance_before' => $driverBalanceBefore,
+                'balance_after' => $driverBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
             ]);
 
-            $driverUser->increment('wallet_balance', $driverEarning);
-
-            $platformCommission = $ride->fare_amount * 0.15;
-
             Notification::create([
-                'user_id' => $clientProfile->user_id,
+                'user_id' => $ride->client->user_id,
                 'type' => 'ride_completed',
                 'title' => 'Ride Completed',
                 'message' => 'Your ride has been completed. Thank you for riding with us!',
-                'data' => json_encode(['ride_id' => $ride->id]),
             ]);
 
             return response()->json(['success' => true, 'message' => 'Ride completed successfully']);
@@ -323,8 +329,8 @@ class RideController extends Controller
         $clientProfile = ClientProfile::where('user_id', $user->id)->first();
         $driverProfile = DriverProfile::where('user_id', $user->id)->first();
 
-        $isClient = $clientProfile && $ride->client_profile_id === $clientProfile->id;
-        $isDriver = $driverProfile && $ride->driver_profile_id === $driverProfile->id;
+        $isClient = $clientProfile && $ride->client_id === $clientProfile->id;
+        $isDriver = $driverProfile && $ride->driver_id === $driverProfile->id;
 
         if (!$isClient && !$isDriver) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -337,7 +343,6 @@ class RideController extends Controller
         return DB::transaction(function () use ($ride, $request, $user, $isClient, $isDriver) {
             $ride->update([
                 'status' => 'cancelled',
-                'cancelled_at' => Carbon::now(),
             ]);
 
             RideCancellation::create([
@@ -345,23 +350,22 @@ class RideController extends Controller
                 'ride_id' => $ride->id,
                 'cancelled_by' => $isClient ? 'client' : 'driver',
                 'reason' => $request->reason,
+                'cancelled_at' => Carbon::now(),
             ]);
 
-            if ($isClient && $ride->driver_profile_id) {
+            if ($isClient && $ride->driver_id) {
                 Notification::create([
-                    'user_id' => $ride->driverProfile->user_id,
+                    'user_id' => $ride->driver->user_id,
                     'type' => 'ride_cancelled',
                     'title' => 'Ride Cancelled',
                     'message' => 'The client has cancelled the ride.',
-                    'data' => json_encode(['ride_id' => $ride->id]),
                 ]);
             } elseif ($isDriver) {
                 Notification::create([
-                    'user_id' => $ride->clientProfile->user_id,
+                    'user_id' => $ride->client->user_id,
                     'type' => 'ride_cancelled',
                     'title' => 'Ride Cancelled',
                     'message' => 'The driver has cancelled the ride.',
-                    'data' => json_encode(['ride_id' => $ride->id]),
                 ]);
             }
 
@@ -389,7 +393,7 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
-        if ($ride->client_profile_id !== $clientProfile->id) {
+        if ($ride->client_id !== $clientProfile->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -400,15 +404,15 @@ class RideController extends Controller
         DriverRating::create([
             'id' => Str::uuid(),
             'ride_id' => $ride->id,
-            'driver_profile_id' => $ride->driver_profile_id,
-            'client_profile_id' => $clientProfile->id,
+            'user_id' => $user->id,
+            'driver_id' => $ride->driver_id,
             'rating' => $request->rating,
-            'comment' => $request->comment,
+            'review' => $request->comment,
         ]);
 
-        $driverProfile = $ride->driverProfile;
-        $avgRating = DriverRating::where('driver_profile_id', $driverProfile->id)->avg('rating');
-        $driverProfile->update(['rating' => round($avgRating, 2)]);
+        $driverProfile = $ride->driver;
+        $avgRating = DriverRating::where('driver_id', $driverProfile->id)->avg('rating');
+        $driverProfile->update(['average_rating' => round($avgRating, 2)]);
 
         return response()->json(['success' => true, 'message' => 'Driver rated successfully']);
     }
@@ -433,7 +437,7 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
-        if ($ride->driver_profile_id !== $driverProfile->id) {
+        if ($ride->driver_id !== $driverProfile->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -444,10 +448,10 @@ class RideController extends Controller
         ClientRating::create([
             'id' => Str::uuid(),
             'ride_id' => $ride->id,
-            'client_profile_id' => $ride->client_profile_id,
-            'driver_profile_id' => $driverProfile->id,
+            'user_id' => $user->id,
+            'client_id' => $ride->client_id,
             'rating' => $request->rating,
-            'comment' => $request->comment,
+            'review' => $request->comment,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Client rated successfully']);

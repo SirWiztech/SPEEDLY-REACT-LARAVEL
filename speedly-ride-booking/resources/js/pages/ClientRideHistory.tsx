@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -71,18 +72,22 @@ const ClientRideHistory: React.FC = () => {
     // Fetch ride history data
     const fetchRideHistory = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/ride_history_data.php');
-            const data = await response.json();
+            const [historyData, profileData] = await Promise.all([
+                api.client.rideHistory(),
+                api.client.profile()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setUserRole(data.user_role || 'client');
-                setStats(data.stats);
-                setRides(data.rides || []);
-                setLastRide(data.last_ride || null);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch ride history:', data.message);
+            if (historyData.success || historyData.data) {
+                const d = historyData.data || historyData;
+                setStats(d.stats || { total_rides: 0, total_spent: 0, avg_rating_given: 0, completed_rides: 0, upcoming_rides: 0 });
+                setRides(d.rides || []);
+                setLastRide(d.last_ride || null);
+            }
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setUserRole(user?.role || 'client');
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching ride history:', error);
@@ -112,13 +117,13 @@ const ClientRideHistory: React.FC = () => {
         });
 
         try {
-            const response = await fetch(`/SERVER/API/get_ride_details.php?ride_id=${encodeURIComponent(rideId)}`);
-            const data = await response.json();
+            const data = await api.rides.getById(rideId);
 
             Swal.close();
 
-            if (data.success && data.ride) {
-                displayRideDetails(data.ride);
+            const rideData = data.ride || data.data?.ride || data.data;
+            if ((data.success && data.ride) || data.data) {
+                displayRideDetails(rideData);
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -325,16 +330,7 @@ const ClientRideHistory: React.FC = () => {
         });
 
         try {
-            const formData = new FormData();
-            formData.append('ride_id', rideId);
-            formData.append('rating', rating.toString());
-            formData.append('review', review);
-
-            const response = await fetch('/SERVER/API/rate_driver.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.rides.rateDriver(rideId, { rating, comment: review });
 
             Swal.close();
 
@@ -375,12 +371,12 @@ const ClientRideHistory: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: Notification) => {
+                notifications.forEach((notif: Notification) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title}</strong></p>
@@ -393,7 +389,7 @@ const ClientRideHistory: React.FC = () => {
 
                 Swal.fire({
                     icon: 'info',
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'Close'

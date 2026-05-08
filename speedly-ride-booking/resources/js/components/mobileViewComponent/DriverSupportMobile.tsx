@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverSupportMobile.css';
@@ -64,12 +65,12 @@ const DriverSupportMobile: React.FC = () => {
     // Fetch user data
     const fetchUserData = async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.driver.profile();
             
-            if (data.success) {
-                setUserName(data.user?.fullname || 'Guest');
-                setNotificationCount(data.notification_count || 0);
+            if (data.success || data.data) {
+                const user = data.data?.user || data.user || data.data;
+                setUserName(user?.fullname || 'Guest');
+                setNotificationCount(data.data?.notification_count || data.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -127,13 +128,14 @@ const DriverSupportMobile: React.FC = () => {
         formData.append('priority', priority);
 
         try {
-            const response = await fetch('/SERVER/API/submit_support_ticket.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.driver.support({
+                category: selectedCategory,
+                subject: subject,
+                message: message,
+                priority: priority
             });
-            const data = await response.json();
 
-            if (data.status === 'success') {
+            if (data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Request Submitted!',

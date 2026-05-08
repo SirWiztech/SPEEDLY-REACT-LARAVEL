@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
-import DriverWalletMobile from '../components/mobileViewComponent/DriverWalletMobile';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import DriverWalletMobile from '../components/mobileViewComponent/DriverWalletMobile';
 import '../../css/DriverWallet.css';
 
 // Types
@@ -43,110 +44,6 @@ interface WalletStats {
     pending_withdrawals: number;
 }
 
-// Mock data for development
-const MOCK_DATA = {
-    success: true,
-    user: {
-        id: '1',
-        fullname: 'Michael Okafor',
-        email: 'michael.o@example.com',
-        profile_picture_url: null,
-        phone: '+234 805 678 9012'
-    },
-    stats: {
-        wallet_balance: 45800,
-        total_earnings: 425000,
-        total_withdrawn: 379200,
-        today_earnings: 12500,
-        week_earnings: 87600,
-        month_earnings: 245000,
-        pending_withdrawals: 25000
-    },
-    notification_count: 3,
-    recent_rides: [
-        {
-            id: 'RIDE001',
-            ride_number: 'SPD-2024-001',
-            total_fare: 8500,
-            driver_payout: 6800,
-            created_at: '2024-01-15 14:30:00',
-            formatted_date: 'Jan 15, 2024',
-            formatted_time: '2:30 PM',
-            pickup_address: '123 Main Street, Lagos',
-            destination_address: '456 Victoria Island, Lagos',
-            client_name: 'Sarah Johnson'
-        },
-        {
-            id: 'RIDE002',
-            ride_number: 'SPD-2024-002',
-            total_fare: 5500,
-            driver_payout: 4400,
-            created_at: '2024-01-15 10:15:00',
-            formatted_date: 'Jan 15, 2024',
-            formatted_time: '10:15 AM',
-            pickup_address: 'Ikeja City Mall',
-            destination_address: 'Maryland, Lagos',
-            client_name: 'Chioma Okafor'
-        },
-        {
-            id: 'RIDE003',
-            ride_number: 'SPD-2024-003',
-            total_fare: 12000,
-            driver_payout: 9600,
-            created_at: '2024-01-14 18:45:00',
-            formatted_date: 'Jan 14, 2024',
-            formatted_time: '6:45 PM',
-            pickup_address: 'Lekki Phase 1',
-            destination_address: 'Ajah, Lagos',
-            client_name: 'David Adeyemi'
-        },
-        {
-            id: 'RIDE004',
-            ride_number: 'SPD-2024-004',
-            total_fare: 7500,
-            driver_payout: 6000,
-            created_at: '2024-01-13 09:30:00',
-            formatted_date: 'Jan 13, 2024',
-            formatted_time: '9:30 AM',
-            pickup_address: 'Surulere, Lagos',
-            destination_address: 'Yaba, Lagos',
-            client_name: 'Funke Adeleke'
-        }
-    ],
-    withdrawals: [
-        {
-            id: 'WTH001',
-            amount: 50000,
-            bank_name: 'GTBank',
-            account_number: '0123456789',
-            account_name: 'Michael Okafor',
-            status: 'paid',
-            created_at: '2024-01-10',
-            formatted_date: 'Jan 10, 2024'
-        },
-        {
-            id: 'WTH002',
-            amount: 25000,
-            bank_name: 'Access Bank',
-            account_number: '9876543210',
-            account_name: 'Michael Okafor',
-            status: 'pending',
-            created_at: '2024-01-14',
-            formatted_date: 'Jan 14, 2024'
-        },
-        {
-            id: 'WTH003',
-            amount: 15000,
-            bank_name: 'First Bank',
-            account_number: '1122334455',
-            account_name: 'Michael Okafor',
-            status: 'approved',
-            created_at: '2024-01-05',
-            formatted_date: 'Jan 5, 2024'
-        }
-    ]
-};
-
 const DriverWallet: React.FC = () => {
     // State
     const [userData, setUserData] = useState<any>(null);
@@ -174,47 +71,29 @@ const DriverWallet: React.FC = () => {
         setApiError(null);
         
         try {
-            const response = await fetch('/SERVER/API/driver_wallet_data.php');
-            
-            if (!response.ok) {
-                console.warn('API not available, using mock data');
-                const mockData = MOCK_DATA;
-                setUserData(mockData.user);
-                setStats(mockData.stats);
-                setRecentRides(mockData.recent_rides);
-                setWithdrawals(mockData.withdrawals);
-                setNotificationCount(mockData.notification_count);
-                setApiError('Using demo data');
-                return;
-            }
-            
-            const data = await response.json();
+            const [walletData, txData, profileData] = await Promise.all([
+                api.driver.wallet(),
+                api.driver.transactions(),
+                api.driver.profile()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setStats(data.stats);
-                setRecentRides(data.recent_rides || []);
-                setWithdrawals(data.withdrawals || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch wallet data:', data.message);
-                const mockData = MOCK_DATA;
-                setUserData(mockData.user);
-                setStats(mockData.stats);
-                setRecentRides(mockData.recent_rides);
-                setWithdrawals(mockData.withdrawals);
-                setNotificationCount(mockData.notification_count);
-                setApiError('Using demo data');
+            if (walletData.success || walletData.data) {
+                const w = walletData.data || walletData;
+                setStats(w.stats || { wallet_balance: 0, total_earnings: 0, total_withdrawn: 0, today_earnings: 0, week_earnings: 0, month_earnings: 0, pending_withdrawals: 0 });
+            }
+            if (txData.success || txData.data) {
+                const t = txData.data || txData;
+                setRecentRides(t.recent_rides || t.rides || []);
+                setWithdrawals(t.withdrawals || []);
+            }
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
-            setApiError('Network error. Using demo data.');
-            const mockData = MOCK_DATA;
-            setUserData(mockData.user);
-            setStats(mockData.stats);
-            setRecentRides(mockData.recent_rides);
-            setWithdrawals(mockData.withdrawals);
-            setNotificationCount(mockData.notification_count);
+            setApiError('Network error. Unable to load wallet data.');
         } finally {
             setLoading(false);
         }
@@ -316,7 +195,7 @@ const DriverWallet: React.FC = () => {
                 }
                 return { amount, bank, account, name: name.trim() };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed && result.value) {
                 Swal.fire({
                     title: 'Processing Withdrawal',
@@ -324,33 +203,51 @@ const DriverWallet: React.FC = () => {
                     allowOutsideClick: false,
                     didOpen: () => Swal.showLoading()
                 });
-                
-                setTimeout(() => {
+
+                try {
+                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'Withdrawal Request Submitted!',
+                            html: `
+                                <div style="text-align: left;">
+                                    <div style="background: #d1fae5; padding: 16px; border-radius: 16px; margin-bottom: 16px;">
+                                        <p style="font-size: 12px; color: #065f46; margin-bottom: 4px;">Amount Requested</p>
+                                        <p style="font-size: 24px; font-weight: 700; color: #065f46;">₦${result.value.amount.toLocaleString()}</p>
+                                    </div>
+                                    <div style="margin-bottom: 12px;">
+                                        <p style="font-size: 12px; color: #666;">Bank: <strong>${result.value.bank}</strong></p>
+                                        <p style="font-size: 12px; color: #666;">Account: <strong>${result.value.account}</strong></p>
+                                        <p style="font-size: 12px; color: #666;">Name: <strong>${result.value.name}</strong></p>
+                                    </div>
+                                    <div style="background: #fef3c7; padding: 12px; border-radius: 12px;">
+                                        <p style="font-size: 12px; color: #92400e;"><i class="fas fa-clock"></i> Your withdrawal will be processed within 24-48 hours.</p>
+                                    </div>
+                                </div>
+                            `,
+                            icon: 'success',
+                            confirmButtonColor: '#ff5e00',
+                            confirmButtonText: 'Done'
+                        }).then(() => {
+                            fetchWalletData();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Withdrawal Failed',
+                            text: data.message || 'Failed to submit withdrawal request.',
+                            confirmButtonColor: '#ff5e00'
+                        });
+                    }
+                } catch (error) {
                     Swal.fire({
-                        title: 'Withdrawal Request Submitted!',
-                        html: `
-                            <div style="text-align: left;">
-                                <div style="background: #d1fae5; padding: 16px; border-radius: 16px; margin-bottom: 16px;">
-                                    <p style="font-size: 12px; color: #065f46; margin-bottom: 4px;">Amount Requested</p>
-                                    <p style="font-size: 24px; font-weight: 700; color: #065f46;">₦${result.value.amount.toLocaleString()}</p>
-                                </div>
-                                <div style="margin-bottom: 12px;">
-                                    <p style="font-size: 12px; color: #666;">Bank: <strong>${result.value.bank}</strong></p>
-                                    <p style="font-size: 12px; color: #666;">Account: <strong>${result.value.account}</strong></p>
-                                    <p style="font-size: 12px; color: #666;">Name: <strong>${result.value.name}</strong></p>
-                                </div>
-                                <div style="background: #fef3c7; padding: 12px; border-radius: 12px;">
-                                    <p style="font-size: 12px; color: #92400e;"><i class="fas fa-clock"></i> Your withdrawal will be processed within 24-48 hours.</p>
-                                </div>
-                            </div>
-                        `,
-                        icon: 'success',
-                        confirmButtonColor: '#ff5e00',
-                        confirmButtonText: 'Done'
-                    }).then(() => {
-                        fetchWalletData();
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Network error. Please check your connection and try again.',
+                        confirmButtonColor: '#ff5e00'
                     });
-                }, 2000);
+                }
             }
         });
     };
@@ -388,14 +285,49 @@ const DriverWallet: React.FC = () => {
                 }
                 return { amount };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    title: 'Payment Gateway',
-                    text: `You are about to add ₦${result.value.amount.toLocaleString()} to your wallet.`,
-                    icon: 'info',
-                    confirmButtonColor: '#ff5e00'
+                    title: 'Processing Payment',
+                    html: 'Redirecting to payment gateway...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
                 });
+
+                try {
+                    const data = await api.payment.initiate({
+                        amount: result.value.amount,
+                        email: userData?.email || '',
+                        name: userData?.fullname || 'Driver',
+                    });
+
+                    if (data.success && data.data?.checkout_url) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Redirecting...',
+                            text: 'You will be redirected to the payment page.',
+                            confirmButtonColor: '#ff5e00',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = data.data.checkout_url;
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Payment Initiation Failed',
+                            text: data.message || 'Failed to initiate payment.',
+                            confirmButtonColor: '#ff5e00'
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Network error. Please try again.',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
             }
         });
         
@@ -417,12 +349,12 @@ const DriverWallet: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -434,7 +366,7 @@ const DriverWallet: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00',

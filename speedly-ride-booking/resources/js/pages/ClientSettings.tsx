@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -76,20 +77,22 @@ const ClientSettings: React.FC = () => {
     // Fetch settings data
     const fetchSettingsData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/settings_data.php');
-            const data = await response.json();
+            const [profileData, locationsData] = await Promise.all([
+                api.client.profile(),
+                api.client.locations()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setUserRole(data.user_role || 'client');
-                setUserSettings(data.settings);
-                setPaymentMethods(data.payment_methods || []);
-                setSavedLocations(data.saved_locations || []);
-                setEmergencyContact(data.emergency_contact || { name: '', phone: '' });
-                setHomeAddress(data.home_address || '');
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch settings data:', data.message);
+            if (profileData.success || profileData.data) {
+                const user = profileData.data?.user || profileData.user || profileData.data;
+                setUserData(user);
+                setUserRole(user?.role || 'client');
+                setUserSettings(profileData.data?.settings || profileData.settings || { dark_mode: false, notifications_enabled: true, email_notifications: true, sms_notifications: false, language: 'en', currency: 'NGN' });
+                setPaymentMethods(profileData.data?.payment_methods || profileData.payment_methods || []);
+                setHomeAddress(profileData.data?.home_address || profileData.home_address || '');
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+            }
+            if (locationsData.success || locationsData.data) {
+                setSavedLocations(locationsData.locations || locationsData.data?.locations || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -107,12 +110,7 @@ const ClientSettings: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/update_profile.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const data = await response.json();
+            const data = await api.client.updateProfile(formData);
 
             if (data.success) {
                 Swal.fire({
@@ -174,12 +172,10 @@ const ClientSettings: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/update_password.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+            const data = await api.auth.changePassword({
+                current_password: currentPassword,
+                new_password: newPassword
             });
-            const data = await response.json();
 
             if (data.success) {
                 Swal.fire({
@@ -214,11 +210,7 @@ const ClientSettings: React.FC = () => {
     // Toggle setting
     const toggleSetting = async (setting: string, value: boolean) => {
         try {
-            await fetch('/SERVER/API/update_settings.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [setting]: value })
-            });
+            await api.client.updateProfile({ [setting]: String(value) });
             setUserSettings(prev => ({ ...prev, [setting]: value }));
         } catch (error) {
             console.error('Error updating setting:', error);
@@ -364,9 +356,10 @@ const ClientSettings: React.FC = () => {
             confirmButtonText: 'Yes, Log Out',
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#ff5e00'
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                window.location.href = '/SERVER/API/logout.php';
+                await api.auth.logout();
+                window.location.href = '/home';
             }
         });
     };

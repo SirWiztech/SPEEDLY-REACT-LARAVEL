@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientAIAssistantMobile.css';
@@ -187,12 +188,11 @@ const ClientAIAssistantMobile: React.FC = () => {
     // Fetch user data
     const fetchUserData = async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.client.stats();
             
             if (data.success) {
                 setUserData(data.user);
-                setUserRole(data.user_role || 'client');
+                setUserRole(data.user?.role || 'client');
                 setNotificationCount(data.notification_count || 0);
             }
         } catch (error) {

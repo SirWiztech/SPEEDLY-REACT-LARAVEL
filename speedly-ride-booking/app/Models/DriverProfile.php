@@ -3,12 +3,23 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class DriverProfile extends Model
 {
     protected $primaryKey = 'id';
     public $incrementing = false;
     protected $keyType = 'string';
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->{$model->getKeyName()})) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
 
     protected $fillable = [
         'id', 'user_id', 'license_number', 'license_expiry',
@@ -37,6 +48,11 @@ class DriverProfile extends Model
     public function vehicles()
     {
         return $this->hasMany(DriverVehicle::class, 'driver_id');
+    }
+
+    public function vehicle()
+    {
+        return $this->hasOne(DriverVehicle::class, 'driver_id')->where('is_active', true);
     }
 
     public function rides()

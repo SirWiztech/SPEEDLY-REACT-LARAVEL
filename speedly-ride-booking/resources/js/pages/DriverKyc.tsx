@@ -6,6 +6,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import DriverKycMobile from '../components/mobileViewComponent/DriverKycMobile';
+import api from '../services/api';
 import '../../css/DriverKyc.css';
 
 // Types
@@ -74,17 +75,17 @@ const DriverKyc: React.FC = () => {
     // Fetch KYC data
     const fetchKycData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_kyc_data.php');
-            const data = await response.json();
+            const data = await api.driver.kyc();
 
-            if (data.success) {
-                setDriverData(data.driver);
-                setDocuments(data.documents || []);
-                setPendingApproval(data.pending_approval || null);
-                setNotificationCount(data.notification_count || 0);
-                setDateOfBirth(data.date_of_birth || '');
-                setLicenseNumber(data.license_number || '');
-                setLicenseExpiry(data.license_expiry || '');
+            if (data.success || data.data) {
+                const d = data.data || data;
+                setDriverData(d.driver || d);
+                setDocuments(d.documents || []);
+                setPendingApproval(d.pending_approval || null);
+                setNotificationCount(d.notification_count || 0);
+                setDateOfBirth(d.date_of_birth || '');
+                setLicenseNumber(d.license_number || '');
+                setLicenseExpiry(d.license_expiry || '');
             } else {
                 console.error('Failed to fetch KYC data:', data.message);
             }
@@ -242,11 +243,7 @@ const DriverKyc: React.FC = () => {
         if (vehicleRegistrationFile) formData.append('vehicle_registration', vehicleRegistrationFile);
         
         try {
-            const response = await fetch('/SERVER/API/submit_kyc.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.driver.uploadKyc(formData);
             
             if (data.success) {
                 Swal.fire({
@@ -282,12 +279,12 @@ const DriverKyc: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
             
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -299,7 +296,7 @@ const DriverKyc: React.FC = () => {
                 html += '</div>';
                 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00',

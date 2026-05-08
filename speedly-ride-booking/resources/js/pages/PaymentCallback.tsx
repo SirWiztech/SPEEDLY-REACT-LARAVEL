@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -32,8 +33,7 @@ const PaymentCallback: React.FC = () => {
         // Check transaction status
         const checkStatus = async () => {
             try {
-                const response = await fetch(`/SERVER/API/check_transaction_status.php?reference=${ref}`);
-                const data = await response.json();
+                const data = await api.payment.verify(ref);
                 
                 if (data.status === 'success') {
                     setAmount(data.amount || 0);

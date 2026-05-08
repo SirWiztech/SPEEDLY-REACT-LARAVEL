@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -219,13 +220,13 @@ const ClientAIAssistant: React.FC = () => {
     // Fetch user data
     const fetchUserData = async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.client.profile();
             
-            if (data.success) {
-                setUserData(data.user);
-                setUserRole(data.user_role || 'client');
-                setNotificationCount(data.notification_count || 0);
+            if (data.success || data.data) {
+                const user = data.data?.user || data.user || data.data;
+                setUserData(user);
+                setUserRole(user?.role || data.data?.role || 'client');
+                setNotificationCount(data.notification_count || data.data?.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);

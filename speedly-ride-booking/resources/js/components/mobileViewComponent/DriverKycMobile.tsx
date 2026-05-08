@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverKycMobile.css';
@@ -57,17 +58,17 @@ const DriverKycMobile: React.FC = () => {
     // Fetch KYC data
     const fetchKycData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_kyc_data.php');
-            const data = await response.json();
+            const data = await api.driver.kyc();
 
-            if (data.success) {
-                setDriverData(data.driver);
-                setDocuments(data.documents || []);
-                setPendingApproval(data.pending_approval || null);
-                setNotificationCount(data.notification_count || 0);
-                setDateOfBirth(data.date_of_birth || '');
-                setLicenseNumber(data.license_number || '');
-                setLicenseExpiry(data.license_expiry || '');
+            if (data.success || data.data) {
+                const d = data.data || data;
+                setDriverData(d.driver);
+                setDocuments(d.documents || []);
+                setPendingApproval(d.pending_approval || null);
+                setNotificationCount(d.notification_count || 0);
+                setDateOfBirth(d.date_of_birth || '');
+                setLicenseNumber(d.license_number || '');
+                setLicenseExpiry(d.license_expiry || '');
             }
         } catch (error) {
             console.error('Error fetching KYC data:', error);
@@ -156,11 +157,7 @@ const DriverKycMobile: React.FC = () => {
         if (vehicleRegistrationFile) formData.append('vehicle_registration', vehicleRegistrationFile);
         
         try {
-            const response = await fetch('/SERVER/API/submit_kyc.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.driver.uploadKyc(formData);
             
             if (data.success) {
                 Swal.fire({

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -54,8 +55,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
             }
 
             try {
-                const response = await fetch(`/SERVER/API/get_ride_details.php?ride_id=${rideId}`);
-                const data = await response.json();
+                const data = await api.rides.receipt(rideId);
 
                 if (data.success && data.ride) {
                     setRide(data.ride);

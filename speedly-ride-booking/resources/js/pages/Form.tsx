@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../../css/form.css';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import api, { setToken } from '../services/api';
 
 interface Toast {
     id: number;
@@ -182,32 +183,26 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
         setIsLoginLoading(true);
         
         try {
-            const formData = new FormData();
-            formData.append('username', loginData.username);
-            formData.append('password', loginData.password);
-            if (loginData.remember) {
-                formData.append('remember', '1');
-            }
-            
-            const response = await fetch('/SERVER/API/sign-in.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.auth.login({
+                login: loginData.username,
+                password: loginData.password
             });
             
-            const data = await response.json();
-            
-            if (data.status === 'success') {
+            if (data.success) {
+                setToken(data.data.token);
                 showToast('success', 'Welcome Back!', data.message || 'Login successful!');
                 setTimeout(() => {
                     if (onLoginSuccess) onLoginSuccess();
-                    window.location.href = data.redirect || '/home';
+                    const role = data.data.user.role;
+                    if (role === 'client') window.location.href = '/clientdashboard';
+                    else if (role === 'driver') window.location.href = '/driverdashboard';
+                    else window.location.href = '/home';
                 }, 1500);
             } else {
                 showToast('error', 'Login Failed', data.message || 'Invalid credentials');
             }
-        } catch (error) {
-            console.error('Login error:', error);
-            showToast('error', 'Connection Error', 'Unable to connect to the server. Please try again.');
+        } catch (error: any) {
+            showToast('error', 'Login Failed', error.message || 'Invalid credentials');
         } finally {
             setIsLoginLoading(false);
         }
@@ -250,35 +245,26 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
         try {
             const phone = registerData.phone || generatePhoneNumber();
             
-            const formData = new FormData();
-            formData.append('fullname', fullname);
-            formData.append('username', username);
-            formData.append('email', email);
-            formData.append('phone', phone);
-            formData.append('password', password);
-            formData.append('role', role);
-            formData.append('terms', terms.toString());
-            
-            const response = await fetch('/SERVER/API/sign-up.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.auth.register({
+                full_name: fullname,
+                username,
+                email,
+                phone,
+                password,
+                role,
             });
             
-            const data = await response.json();
-            
-            if (data.status === 'success') {
+            if (data.success) {
                 showToast('success', 'Account Created!', 'Please check your email for the verification code.');
                 setTimeout(() => {
                     if (onRegisterSuccess) onRegisterSuccess();
-                    const redirect = data.redirect || `/verify-otp?email=${encodeURIComponent(email)}`;
-                    window.location.href = redirect;
+                    window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
                 }, 2000);
             } else {
                 showToast('error', 'Registration Failed', data.message || 'An error occurred during registration');
             }
-        } catch (error) {
-            console.error('Registration error:', error);
-            showToast('error', 'Connection Error', 'Unable to connect to the server. Please try again.');
+        } catch (error: any) {
+            showToast('error', 'Registration Failed', error.message || 'Unable to complete registration');
         } finally {
             setIsRegisterLoading(false);
         }

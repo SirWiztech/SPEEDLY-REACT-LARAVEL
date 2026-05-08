@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientRideHistoryMobile.css';
@@ -63,14 +64,14 @@ const ClientRideHistoryMobile: React.FC = () => {
     // Fetch ride history data
     const fetchRideHistory = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/ride_history_data.php');
-            const data = await response.json();
+            const data = await api.client.rideHistory();
 
-            if (data.success) {
-                setUserData(data.user);
-                setStats(data.stats);
-                setRides(data.rides || []);
-                setNotificationCount(data.notification_count || 0);
+            if (data.success || data.data) {
+                const d = data.data || data;
+                setUserData(d.user);
+                setStats(d.stats);
+                setRides(d.rides || []);
+                setNotificationCount(d.notification_count || 0);
             } else {
                 console.error('Failed to fetch ride history:', data.message);
             }
@@ -102,13 +103,12 @@ const ClientRideHistoryMobile: React.FC = () => {
         });
 
         try {
-            const response = await fetch(`/SERVER/API/get_ride_details.php?ride_id=${encodeURIComponent(rideId)}`);
-            const data = await response.json();
+            const data = await api.rides.getById(rideId);
 
             Swal.close();
 
-            if (data.success && data.ride) {
-                displayRideDetails(data.ride);
+            if (data.success && (data.ride || data.data)) {
+                displayRideDetails(data.ride || data.data);
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -299,16 +299,7 @@ const ClientRideHistoryMobile: React.FC = () => {
         });
 
         try {
-            const formData = new FormData();
-            formData.append('ride_id', rideId);
-            formData.append('rating', rating.toString());
-            formData.append('review', review);
-
-            const response = await fetch('/SERVER/API/rate_driver.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.rides.rateDriver(rideId, { rating, comment: review });
 
             Swal.close();
 
@@ -348,12 +339,12 @@ const ClientRideHistoryMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifs = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifs.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: Notification) => {
+                notifs.forEach((notif: Notification) => {
                     html += `
                         <div style="padding: 10px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title}</strong></p>
@@ -366,7 +357,7 @@ const ClientRideHistoryMobile: React.FC = () => {
 
                 Swal.fire({
                     icon: 'info',
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifs.length})`,
                     html: html,
                     confirmButtonColor: '#ff5e00'
                 });

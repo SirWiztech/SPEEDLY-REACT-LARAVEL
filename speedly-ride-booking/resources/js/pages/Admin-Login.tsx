@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import api, { setToken } from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -22,9 +23,8 @@ const AdminLogin: React.FC = () => {
     useEffect(() => {
         const checkSession = async () => {
             try {
-                const response = await fetch('/SERVER/API/check_admin_session.php');
-                const data = await response.json();
-                if (data.logged_in) {
+                const data = await api.auth.me();
+                if (data.data?.user) {
                     router.visit('/admin-dashboard');
                 }
             } catch (error) {
@@ -45,19 +45,11 @@ const AdminLogin: React.FC = () => {
         setLoading(true);
         setError('');
         
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('password', password);
-        formData.append('remember', rememberMe ? '1' : '0');
-        
         try {
-            const response = await fetch('/SERVER/API/admin-login.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.auth.adminLogin({ email: username, password });
             
-            if (data.status === 'success') {
+            if (data.status === 'success' || data.success) {
+                if (data.data?.token) setToken(data.data.token);
                 Swal.fire({
                     icon: 'success',
                     title: 'Login Successful!',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -38,17 +39,10 @@ const ForgotPassword: React.FC = () => {
         
         setLoading(true);
         
-        const formData = new FormData();
-        formData.append('email', email);
-        
         try {
-            const response = await fetch('/SERVER/API/send-reset-link.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.auth.forgotPassword({ email });
             
-            if (data.status === 'success') {
+            if (data.status === 'success' || data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Reset Link Sent!',

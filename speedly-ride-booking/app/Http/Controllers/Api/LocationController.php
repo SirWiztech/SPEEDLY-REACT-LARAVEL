@@ -13,11 +13,20 @@ class LocationController extends Controller
 {
     public function getClientLocations(Request $request)
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $clientProfile = ClientProfile::where('user_id', $user->id)->first();
 
-        $rides = Ride::where('client_id', $userId)
+        if (!$clientProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Client profile not found',
+                'data' => null
+            ]);
+        }
+
+        $rides = Ride::where('client_id', $clientProfile->id)
             ->orderBy('created_at', 'DESC')
-            ->get(['pickup_address', 'pickup_latitude', 'pickup_longitude', 'dropoff_address', 'dropoff_latitude', 'dropoff_longitude']);
+            ->get(['pickup_address', 'pickup_latitude', 'pickup_longitude', 'destination_address', 'destination_latitude', 'destination_longitude', 'created_at']);
 
         $locations = [];
         $seen = [];
@@ -34,15 +43,15 @@ class LocationController extends Controller
                 $seen[] = $ride->pickup_address;
             }
 
-            if (!in_array($ride->dropoff_address, $seen)) {
+            if (!in_array($ride->destination_address, $seen)) {
                 $locations[] = [
-                    'address' => $ride->dropoff_address,
-                    'lat' => $ride->dropoff_latitude,
-                    'lng' => $ride->dropoff_longitude,
+                    'address' => $ride->destination_address,
+                    'lat' => $ride->destination_latitude,
+                    'lng' => $ride->destination_longitude,
                     'type' => 'dropoff',
                     'last_used' => $ride->created_at
                 ];
-                $seen[] = $ride->dropoff_address;
+                $seen[] = $ride->destination_address;
             }
         }
 
@@ -72,7 +81,7 @@ class LocationController extends Controller
                 'latitude' => $driverProfile->current_latitude,
                 'longitude' => $driverProfile->current_longitude,
                 'last_location_update' => $driverProfile->last_location_update,
-                'status' => $driverProfile->status
+                'status' => $driverProfile->driver_status
             ]
         ]);
     }
@@ -81,7 +90,7 @@ class LocationController extends Controller
     {
         $request->validate(['query' => 'required|string']);
 
-        $query = $request->query;
+        $query = $request->input('query');
         $apiKey = config('services.google.maps_api_key') ?: env('GOOGLE_MAPS_API_KEY');
 
         if ($apiKey) {

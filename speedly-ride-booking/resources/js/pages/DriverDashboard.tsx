@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -104,21 +105,26 @@ const DriverDashboard: React.FC = () => {
     // Fetch driver dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_dashboard_data.php');
-            const data = await response.json();
+            const [profileData, statsData, ridesData] = await Promise.all([
+                api.driver.profile(),
+                api.driver.stats(),
+                api.driver.rides(5)
+            ]);
 
-            if (data.success) {
-                setDriverData(data.driver);
-                setEarnings(data.earnings);
-                setStats(data.stats);
-                setActiveRide(data.active_ride || null);
-                setPendingRide(data.pending_ride || null);
-                setRecentRides(data.recent_rides || []);
-                setDriverStatus(data.driver_status || 'offline');
-                setVerificationStatus(data.verification_status || 'pending');
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch dashboard data:', data.message);
+            if (statsData.success || statsData.data) {
+                const s = statsData.data || statsData;
+                setEarnings(s.earnings || { total_earnings: 0, available_balance: 0, pending_clearance: 0, today_earnings: 0, week_earnings: 0, month_earnings: 0 });
+                setStats(s.stats || { total_rides: 0, completed_rides: 0, cancelled_rides: 0, acceptance_rate: 0, total_fare_amount: 0, total_commission: 0 });
+                setActiveRide(s.active_ride || null);
+                setPendingRide(s.pending_ride || null);
+                setRecentRides(s.recent_rides || []);
+            }
+            if (profileData.success || profileData.data) {
+                const d = profileData.data?.user || profileData.user || profileData.data;
+                setDriverData(d);
+                setDriverStatus(d.status || 'offline');
+                setVerificationStatus(d.verification_status || 'pending');
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -154,12 +160,7 @@ const DriverDashboard: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/toggle_driver_status.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
-                });
-                const data = await response.json();
+                const data = await api.driver.toggleStatus({ status: newStatus });
 
                 if (data.success) {
                     setDriverStatus(newStatus);
@@ -205,12 +206,7 @@ const DriverDashboard: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/accept_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: rideId })
-                });
-                const data = await response.json();
+                const data = await api.rides.accept(rideId);
 
                 if (data.success) {
                     Swal.fire({
@@ -256,12 +252,7 @@ const DriverDashboard: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/decline_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: rideId, auto_decline: false })
-                });
-                const data = await response.json();
+                const data = await api.rides.decline(rideId);
 
                 if (data.success) {
                     Swal.fire({
@@ -363,16 +354,11 @@ const DriverDashboard: React.FC = () => {
             reviewComment = (document.getElementById('review-comment') as HTMLTextAreaElement)?.value || '';
 
             try {
-                const response = await fetch('/SERVER/API/complete_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ride_id: rideId,
-                        rating: selectedRating > 0 ? selectedRating : null,
-                        comment: reviewComment
-                    })
-                });
-                const data = await response.json();
+                const data = await api.rides.complete(rideId);
+
+                if (selectedRating > 0) {
+                    await api.rides.rateClient(rideId, { rating: selectedRating, comment: reviewComment });
+                }
 
                 if (data.success) {
                     Swal.fire({
@@ -437,12 +423,7 @@ const DriverDashboard: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/cancel_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: rideId, reason: result.value })
-                });
-                const data = await response.json();
+                const data = await api.rides.cancel(rideId, { reason: result.value });
 
                 if (data.success) {
                     Swal.fire({
@@ -604,12 +585,12 @@ const DriverDashboard: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -621,7 +602,7 @@ const DriverDashboard: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00',
@@ -660,8 +641,7 @@ const DriverDashboard: React.FC = () => {
         // Set up periodic refresh for ride requests (every 30 seconds)
         const interval = setInterval(() => {
             if (driverStatus === 'online') {
-                fetch('/SERVER/API/get_pending_rides.php')
-                    .then(res => res.json())
+                api.driver.pendingRides()
                     .then(data => {
                         if (data.has_new_rides) {
                             Swal.fire({

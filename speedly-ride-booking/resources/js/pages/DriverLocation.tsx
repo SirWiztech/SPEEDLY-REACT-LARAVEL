@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
-import ClientSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
+import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import Swal from 'sweetalert2';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import ClientLocationMobile from '../components/mobileViewComponent/ClientLocationMobile';
+import DriverLocationMobile from '../components/mobileViewComponent/DriverLocationMobile';
 import '../../css/DriverLocation.css';
 
 // Types
@@ -35,7 +35,7 @@ interface PlaceResult {
     types: string[];
 }
 
-const ClientLocation: React.FC = () => {
+const DriverLocation: React.FC = () => {
     // State
     const [userData, setUserData] = useState<any>(null);
     const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
@@ -451,12 +451,12 @@ const ClientLocation: React.FC = () => {
 
     // Render mobile view
     if (isMobile) {
-        return <ClientLocationMobile />;
+        return <DriverLocationMobile />;
     }
 
     return (
         <div className="location-desktop-container">
-            <ClientSidebarDesktop userName={userData?.fullname || 'User'} profilePictureUrl={userData?.profile_picture_url} />
+            <DriverSidebarDesktop userName={userData?.fullname || 'User'} profilePictureUrl={userData?.profile_picture_url} />
 
             <div className="location-desktop-main">
                 {/* Header */}
@@ -585,4 +585,4 @@ const ClientLocation: React.FC = () => {
     );
 };
 
-export default ClientLocation;
+export default DriverLocation;

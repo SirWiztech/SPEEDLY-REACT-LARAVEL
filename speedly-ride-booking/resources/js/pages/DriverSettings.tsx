@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -101,22 +102,26 @@ const DriverSettings: React.FC = () => {
     // Fetch driver settings data
     const fetchSettingsData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_settings_data.php');
-            const data = await response.json();
+            const [profileData, bankData] = await Promise.all([
+                api.driver.profile(),
+                api.driver.bankDetails()
+            ]);
 
-            if (data.success) {
-                setDriverData(data.driver);
-                setLicenseData(data.license);
-                setVehicleData(data.vehicle);
-                setBankAccounts(data.bank_accounts || []);
-                setNotificationSettings(data.notification_settings);
-                setSchedule(data.schedule || []);
-                setTodayEarnings(data.today_earnings || 0);
-                setTotalEarnings(data.total_earnings || 0);
-                setNotificationCount(data.notification_count || 0);
-                setDriverStatus(data.driver_status || 'offline');
-            } else {
-                console.error('Failed to fetch settings data:', data.message);
+            if (profileData.success || profileData.data) {
+                const d = profileData.data?.user || profileData.user || profileData.data;
+                setDriverData(d);
+                setLicenseData(d.license || { license_number: '', expiry_date: '' });
+                setVehicleData(d.vehicle || { model: '', color: '', plate_number: '', year: '' });
+                setNotificationSettings(d.notification_settings || { push_notifications: true, email_notifications: false, sms_notifications: false, ride_requests: true, earnings_reports: false });
+                setSchedule(d.schedule || []);
+                setTodayEarnings(d.today_earnings || 0);
+                setTotalEarnings(d.total_earnings || 0);
+                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+                setDriverStatus(d.status || 'offline');
+            }
+            if (bankData.success || bankData.data) {
+                const b = bankData.data || bankData;
+                setBankAccounts(b.bank_accounts || b.accounts || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -134,12 +139,7 @@ const DriverSettings: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/update_driver_profile.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const data = await response.json();
+            const data = await api.driver.updateProfile(formData);
 
             if (data.success) {
                 Swal.fire({
@@ -181,12 +181,7 @@ const DriverSettings: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/update_license.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ license_number: licenseNumber, license_expiry: licenseExpiry })
-            });
-            const data = await response.json();
+            const data = await api.driver.updateProfile({ license_number: licenseNumber, license_expiry: licenseExpiry });
 
             if (data.success) {
                 Swal.fire({
@@ -228,12 +223,7 @@ const DriverSettings: React.FC = () => {
         });
 
         try {
-            const response = await fetch('/SERVER/API/update_vehicle.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(vehicleData)
-            });
-            const data = await response.json();
+            const data = await api.driver.updateVehicle(vehicleData);
 
             if (data.success) {
                 Swal.fire({
@@ -253,15 +243,12 @@ const DriverSettings: React.FC = () => {
                     confirmButtonColor: '#ff5e00'
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             Swal.fire({
-                icon: 'success',
-                title: 'Vehicle Saved',
-                text: 'Vehicle information updated',
-                timer: 1500,
-                showConfirmButton: false
-            }).then(() => {
-                fetchSettingsData();
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Failed to save vehicle information',
+                confirmButtonColor: '#ff5e00'
             });
         }
     };
@@ -284,19 +271,10 @@ const DriverSettings: React.FC = () => {
             didOpen: () => Swal.showLoading()
         });
 
-        const formData = new FormData();
-        formData.append('bank_name', bankName);
-        formData.append('account_number', accountNumber);
-        formData.append('account_name', accountName);
-
         try {
-            const response = await fetch('/SERVER/API/save_bank_details.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.driver.saveBankDetails({ bank_name: bankName, account_number: accountNumber, account_name: accountName });
 
-            if (data.status === 'success') {
+            if (data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Bank Details Saved',
@@ -336,26 +314,15 @@ const DriverSettings: React.FC = () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    const response = await fetch('/SERVER/API/set_default_bank.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ bank_id: bankId })
-                    });
-                    const data = await response.json();
-
+                    const data = await api.driver.setDefaultBank(bankId);
                     if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Default Set',
-                            text: 'Default bank updated',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            fetchSettingsData();
-                        });
+                        Swal.fire({ icon: 'success', title: 'Default Updated', text: 'Default bank account changed', timer: 1500, showConfirmButton: false });
+                        fetchSettingsData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#ff5e00' });
                     }
-                } catch (error) {
-                    console.error('Error setting default bank:', error);
+                } catch (error: any) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to set default bank', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -365,11 +332,7 @@ const DriverSettings: React.FC = () => {
     const toggleSetting = (setting: keyof NotificationSettings, value: boolean) => {
         setNotificationSettings(prev => ({ ...prev, [setting]: value }));
         
-        fetch('/SERVER/API/update_driver_settings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [setting]: value })
-        }).catch(error => console.error('Error updating setting:', error));
+        api.driver.updateProfile({ [setting]: String(value) }).catch(error => console.error('Error updating setting:', error));
     };
 
     // Save schedule
@@ -386,12 +349,12 @@ const DriverSettings: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -403,7 +366,7 @@ const DriverSettings: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00',
@@ -437,9 +400,10 @@ const DriverSettings: React.FC = () => {
             confirmButtonColor: '#ff5e00',
             confirmButtonText: 'Yes, log out',
             cancelButtonText: 'Cancel'
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                window.location.href = '/SERVER/API/logout.php';
+                await api.auth.logout();
+                window.location.href = '/home';
             }
         });
     };

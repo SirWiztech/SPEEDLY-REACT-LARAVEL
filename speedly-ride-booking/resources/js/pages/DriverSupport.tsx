@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
-import ClientSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
+import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import ClientSupportMobile from '../components/mobileViewComponent/DriverSupportMobile';
+import DriverSupportMobile from '../components/mobileViewComponent/DriverSupportMobile';
 import '../../css/DriverSupport.css';
 
 // Types
@@ -74,12 +75,12 @@ const DriverSupport: React.FC = () => {
     // Fetch user data
     const fetchUserData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.driver.profile();
             
-            if (data.success) {
-                setUserData(data.user);
-                setNotificationCount(data.notification_count || 0);
+            if (data.success || data.data) {
+                const user = data.data?.user || data.user || data.data;
+                setUserData(user);
+                setNotificationCount(data.data?.notification_count || data.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -130,20 +131,15 @@ const DriverSupport: React.FC = () => {
             }
         });
 
-        const formData = new FormData();
-        formData.append('category', selectedCategory);
-        formData.append('subject', subject);
-        formData.append('message', message);
-        formData.append('priority', priority);
-
         try {
-            const response = await fetch('/SERVER/API/submit_support_ticket.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.driver.support({
+                category: selectedCategory,
+                subject,
+                message,
+                priority
             });
-            const data = await response.json();
 
-            if (data.status === 'success') {
+            if (data.status === 'success' || data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Request Submitted!',
@@ -160,7 +156,7 @@ const DriverSupport: React.FC = () => {
                     setCharCount(0);
                     // Redirect after 2 seconds
                     setTimeout(() => {
-                        router.visit('/client-dashboard');
+                        router.visit('/driverdashboard');
                     }, 2000);
                 });
             } else {
@@ -185,12 +181,12 @@ const DriverSupport: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -202,7 +198,7 @@ const DriverSupport: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00'
@@ -243,7 +239,7 @@ const DriverSupport: React.FC = () => {
 
     // Render mobile view
     if (isMobile) {
-        return <ClientSupportMobile />;
+        return <DriverSupportMobile />;
     }
 
     const getPriorityIcon = (value: string) => {
@@ -263,7 +259,7 @@ const DriverSupport: React.FC = () => {
 
     return (
         <div className="support-desktop-container">
-            <ClientSidebarDesktop 
+            <DriverSidebarDesktop 
                 userName={userData?.fullname || 'User'} 
                 profilePictureUrl={userData?.profile_picture_url}
             />

@@ -175,10 +175,9 @@ class DriverController extends Controller
             'license_expiry' => $driverProfile->license_expiry,
             'vehicle' => $vehicle ? [
                 'id' => $vehicle->id,
-                'make' => $vehicle->make,
-                'model' => $vehicle->model,
-                'year' => $vehicle->year,
-                'color' => $vehicle->color,
+                'vehicle_model' => $vehicle->vehicle_model,
+                'vehicle_color' => $vehicle->vehicle_color,
+                'vehicle_year' => $vehicle->vehicle_year,
                 'plate_number' => $vehicle->plate_number,
                 'vehicle_type' => $vehicle->vehicle_type,
             ] : null
@@ -302,8 +301,8 @@ class DriverController extends Controller
             'lng' => 'required|numeric|between:-180,180'
         ]);
 
-        $driverProfile->latitude = $request->lat;
-        $driverProfile->longitude = $request->lng;
+        $driverProfile->current_latitude = $request->lat;
+        $driverProfile->current_longitude = $request->lng;
         $driverProfile->last_location_update = now();
         $driverProfile->save();
 
@@ -327,11 +326,11 @@ class DriverController extends Controller
 
         $drivers = DriverProfile::where('driver_status', 'online')
             ->where('verification_status', 'approved')
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
+            ->whereNotNull('current_latitude')
+            ->whereNotNull('current_longitude')
             ->selectRaw("
                 *,
-                (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance
+                (6371 * acos(cos(radians(?)) * cos(radians(current_latitude)) * cos(radians(current_longitude) - radians(?)) + sin(radians(?)) * sin(radians(current_latitude)))) AS distance
             ", [$lat, $lng, $lat])
             ->having('distance', '<=', $radiusKm)
             ->orderBy('distance')
@@ -343,6 +342,38 @@ class DriverController extends Controller
             'success' => true,
             'message' => 'Nearby drivers retrieved successfully',
             'data' => $drivers
+        ]);
+    }
+
+    public function updateVehicle(Request $request)
+    {
+        $user = $request->user();
+        $driverProfile = $user->driverProfile;
+
+        if (!$driverProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Driver profile not found'
+            ]);
+        }
+
+        $request->validate([
+            'vehicle_type' => 'sometimes|string|max:50',
+            'vehicle_model' => 'sometimes|string|max:100',
+            'vehicle_color' => 'sometimes|string|max:50',
+            'plate_number' => 'sometimes|string|max:20',
+            'vehicle_year' => 'sometimes|string|max:4',
+        ]);
+
+        $vehicle = DriverVehicle::updateOrCreate(
+            ['driver_id' => $driverProfile->id],
+            $request->only(['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year'])
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vehicle updated successfully',
+            'data' => $vehicle
         ]);
     }
 
@@ -358,7 +389,7 @@ class DriverController extends Controller
         $ticketNumber = 'TKT-' . Str::random(8);
         $user = $request->user();
 
-        $adminUsers = User::where('role', 'admin')->orWhere('is_admin', true)->get();
+        $adminUsers = User::where('role', 'admin')->get();
 
         foreach ($adminUsers as $admin) {
             Notification::create([
@@ -366,14 +397,6 @@ class DriverController extends Controller
                 'type' => 'support_ticket',
                 'title' => 'New Support Ticket: ' . $request->subject,
                 'message' => 'Ticket ' . $ticketNumber . ' submitted by ' . $user->full_name,
-                'data' => json_encode([
-                    'ticket_number' => $ticketNumber,
-                    'category' => $request->category,
-                    'subject' => $request->subject,
-                    'message' => $request->message,
-                    'priority' => $request->priority ?? 'medium',
-                    'user_id' => $user->id
-                ])
             ]);
         }
 

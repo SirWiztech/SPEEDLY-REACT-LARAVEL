@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -97,28 +98,32 @@ const DriverProfile: React.FC = () => {
     // Fetch driver data
     const fetchDriverData = async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_profile_data.php');
-            const data = await response.json();
+            const [profileData, statsData] = await Promise.all([
+                api.driver.profile(),
+                api.driver.stats()
+            ]);
             
-            if (data.success) {
-                setDriverData(data.driver);
-                setStats(data.stats);
-                setWithdrawalHistory(data.withdrawal_history || []);
-                
-                // Set form values
-                setEditFullname(data.driver?.fullname || '');
-                setEditPhone(data.driver?.phone || '');
-                setEditAddress(data.driver?.address || '');
-                setEditCity(data.driver?.city || '');
-                setEditState(data.driver?.state || '');
-                setVehicleType(data.driver?.vehicle_type || '');
-                setVehicleModel(data.driver?.vehicle_model || '');
-                setVehicleYear(data.driver?.vehicle_year || '');
-                setLicensePlate(data.driver?.license_plate || '');
-                setBankName(data.driver?.bank_name || '');
-                setAccountNumber(data.driver?.account_number || '');
-                setAccountName(data.driver?.account_name || '');
-                setIsAvailable(data.driver?.is_available ?? true);
+            if (profileData.success || profileData.data) {
+                const d = profileData.data?.user || profileData.user || profileData.data;
+                setDriverData(d);
+                setWithdrawalHistory(d.withdrawal_history || []);
+                setEditFullname(d.fullname || '');
+                setEditPhone(d.phone || '');
+                setEditAddress(d.address || '');
+                setEditCity(d.city || '');
+                setEditState(d.state || '');
+                setVehicleType(d.vehicle_type || '');
+                setVehicleModel(d.vehicle_model || '');
+                setVehicleYear(d.vehicle_year || '');
+                setLicensePlate(d.license_plate || '');
+                setBankName(d.bank_name || '');
+                setAccountNumber(d.account_number || '');
+                setAccountName(d.account_name || '');
+                setIsAvailable(d.is_available ?? true);
+            }
+            if (statsData.success || statsData.data) {
+                const s = statsData.data || statsData;
+                setStats(s.stats || s);
             }
         } catch (error) {
             console.error('Error fetching driver data:', error);
@@ -130,11 +135,11 @@ const DriverProfile: React.FC = () => {
     // Fetch notifications
     const fetchNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_notifications.php');
-            const data = await response.json();
-            if (data.success) {
-                setNotifications(data.notifications);
-                setUnreadCount(data.unread_count);
+            const data = await api.notifications.list();
+            if (data.success || data.data) {
+                const d = data.data || data;
+                setNotifications(d.notifications || []);
+                setUnreadCount(d.unread_count || 0);
             }
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -152,25 +157,20 @@ const DriverProfile: React.FC = () => {
         });
         
         try {
-            const formData = new FormData();
-            formData.append('fullname', editFullname);
-            formData.append('phone', editPhone);
-            formData.append('address', editAddress);
-            formData.append('city', editCity);
-            formData.append('state', editState);
-            formData.append('vehicle_type', vehicleType);
-            formData.append('vehicle_model', vehicleModel);
-            formData.append('vehicle_year', vehicleYear);
-            formData.append('license_plate', licensePlate);
-            formData.append('bank_name', bankName);
-            formData.append('account_number', accountNumber);
-            formData.append('account_name', accountName);
-            
-            const response = await fetch('/SERVER/API/update_driver_profile.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.driver.updateProfile({
+                fullname: editFullname,
+                phone: editPhone,
+                address: editAddress,
+                city: editCity,
+                state: editState,
+                vehicle_type: vehicleType,
+                vehicle_model: vehicleModel,
+                vehicle_year: vehicleYear,
+                license_plate: licensePlate,
+                bank_name: bankName,
+                account_number: accountNumber,
+                account_name: accountName
             });
-            const data = await response.json();
             
             if (data.success) {
                 Swal.fire({
@@ -226,11 +226,7 @@ const DriverProfile: React.FC = () => {
             if (licenseFile) formData.append('license_file', licenseFile);
             if (idFile) formData.append('id_file', idFile);
             
-            const response = await fetch('/SERVER/API/upload_driver_documents.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.driver.uploadKyc(formData);
             
             if (data.success) {
                 Swal.fire({
@@ -293,43 +289,20 @@ const DriverProfile: React.FC = () => {
         });
         
         try {
-            const response = await fetch('/SERVER/API/change_driver_password.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    current_password: currentPassword, 
-                    new_password: newPassword 
-                })
+            const data = await api.auth.changePassword({
+                current_password: currentPassword,
+                new_password: newPassword
             });
-            const data = await response.json();
-            
             if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Password Changed',
-                    text: 'Your password has been changed successfully',
-                    confirmButtonColor: '#ff5e00'
-                }).then(() => {
-                    setCurrentPassword('');
-                    setNewPassword('');
-                    setConfirmPassword('');
-                    setActiveTab('view');
-                });
+                Swal.fire({ icon: 'success', title: 'Password Changed', text: 'Your password has been changed successfully', confirmButtonColor: '#ff5e00' });
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
             } else {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'Error', 
-                    text: data.message || 'Failed to change password',
-                    confirmButtonColor: '#ff5e00' 
-                });
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#ff5e00' });
             }
-        } catch (error) {
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'Error', 
-                text: 'Failed to change password',
-                confirmButtonColor: '#ff5e00' 
-            });
+        } catch (error: any) {
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to change password', confirmButtonColor: '#ff5e00' });
         }
     };
 
@@ -338,12 +311,7 @@ const DriverProfile: React.FC = () => {
         setIsAvailable(status);
         
         try {
-            const response = await fetch('/SERVER/API/toggle_driver_availability.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_available: status })
-            });
-            const data = await response.json();
+            const data = await api.driver.toggleStatus({ status: status ? 'online' : 'offline' });
             
             if (data.success) {
                 Swal.fire({
@@ -390,12 +358,7 @@ const DriverProfile: React.FC = () => {
         });
         
         try {
-            const response = await fetch('/SERVER/API/request_withdrawal.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: withdrawalAmount })
-            });
-            const data = await response.json();
+            const data = await api.driver.requestWithdrawal({ amount: parseFloat(withdrawalAmount) });
             
             if (data.success) {
                 Swal.fire({
@@ -429,11 +392,7 @@ const DriverProfile: React.FC = () => {
     // Mark notification as read
     const markNotificationAsRead = async (notificationId: number) => {
         try {
-            await fetch('/SERVER/API/mark_notification_read.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notification_id: notificationId })
-            });
+            await api.notifications.clear({ notification_id: String(notificationId) });
             fetchNotifications();
         } catch (error) {
             console.error('Error marking notification:', error);

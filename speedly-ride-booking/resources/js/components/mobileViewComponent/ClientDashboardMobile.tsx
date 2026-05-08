@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientDashboardMobileView.css';
@@ -94,8 +95,7 @@ const ClientDashboardMobile: React.FC = () => {
     // Fetch dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.client.stats();
 
             if (data.success) {
                 setUserData(data.user);
@@ -124,8 +124,7 @@ const ClientDashboardMobile: React.FC = () => {
         const reference = urlParams.get('reference');
 
         if (paymentStatusParam === 'completed' && reference) {
-            fetch(`/SERVER/API/verify_payment.php?reference=${reference}`)
-                .then(res => res.json())
+            api.payment.verify(reference)
                 .then(data => {
                     if (data.success) {
                         Swal.fire({
@@ -154,8 +153,7 @@ const ClientDashboardMobile: React.FC = () => {
     // Check for new notifications
     const checkForNewNotifications = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
             if (data.success && data.count > 0) {
                 setNotificationCount(data.count);
             } else if (data.count === 0) {
@@ -208,8 +206,7 @@ const ClientDashboardMobile: React.FC = () => {
         });
 
         try {
-            const response = await fetch(`/SERVER/API/get_ride_details.php?ride_id=${encodeURIComponent(rideId)}`);
-            const data = await response.json();
+            const data = await api.rides.getById(rideId);
 
             Swal.close();
 
@@ -252,8 +249,7 @@ const ClientDashboardMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
 
             if (data.success && data.notifications && data.notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -280,11 +276,11 @@ const ClientDashboardMobile: React.FC = () => {
                 });
 
                 if (result.isDenied) {
-                    await fetch('/SERVER/API/clear_all_notifications.php', { method: 'POST' });
+                    await api.notifications.clearAll();
                     Swal.fire({ icon: 'success', title: 'Cleared!', text: 'All notifications cleared', confirmButtonColor: '#ff5e00' });
                     setNotificationCount(0);
                 } else {
-                    await fetch('/SERVER/API/mark_notifications_read.php', { method: 'POST' });
+                    await api.notifications.clearAll();
                     setNotificationCount(0);
                 }
             } else {

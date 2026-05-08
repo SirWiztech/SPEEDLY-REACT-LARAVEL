@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverDashboardMobile.css';
@@ -65,80 +66,6 @@ interface RecentRide {
     formatted_time: string;
 }
 
-// Mock data for development
-const MOCK_DATA = {
-    success: true,
-    driver: {
-        id: '1',
-        fullname: 'Michael Okafor',
-        email: 'michael.o@example.com',
-        phone_number: '+234 805 678 9012',
-        profile_picture_url: null,
-        driver_status: 'offline',
-        verification_status: 'approved',
-        avg_rating: 4.8,
-        total_reviews: 42
-    },
-    earnings: {
-        today_earnings: 12500,
-        total_earnings: 425000,
-        available_balance: 45800,
-        total_withdrawn: 379200
-    },
-    stats: {
-        total_rides: 128,
-        completed_rides: 120,
-        cancelled_rides: 8,
-        today_rides: 3,
-        acceptance_rate: 94
-    },
-    active_ride: null,
-    pending_ride: {
-        id: 'RIDE001',
-        status: 'pending',
-        request_type: 'public',
-        pickup_address: '123 Main Street, Lagos',
-        destination_address: '456 Victoria Island, Lagos',
-        total_fare: 8500,
-        driver_payout: 6800,
-        platform_commission: 1700,
-        distance_km: 12.5,
-        created_at: '2024-01-15 14:30:00',
-        client_name: 'Sarah Johnson',
-        client_phone: '+234 802 345 6789',
-        client_photo: null,
-        pickup_latitude: 6.5244,
-        pickup_longitude: 3.3792,
-        formatted_date: 'Jan 15, 2024',
-        formatted_time: '2:30 PM'
-    },
-    recent_rides: [
-        {
-            id: 'RIDE002',
-            pickup_address: 'Ikeja City Mall',
-            destination_address: 'Maryland, Lagos',
-            total_fare: 5500,
-            driver_payout: 4400,
-            platform_commission: 1100,
-            created_at: '2024-01-14 10:15:00',
-            client_name: 'Chioma Okafor',
-            formatted_time: '10:15 AM'
-        },
-        {
-            id: 'RIDE003',
-            pickup_address: 'Lekki Phase 1',
-            destination_address: 'Ajah, Lagos',
-            total_fare: 12000,
-            driver_payout: 9600,
-            platform_commission: 2400,
-            created_at: '2024-01-13 18:45:00',
-            client_name: 'David Adeyemi',
-            formatted_time: '6:45 PM'
-        }
-    ],
-    notification_count: 2
-};
-
 const DriverDashboardMobile: React.FC = () => {
     // State
     const [driverData, setDriverData] = useState<DriverData | null>(null);
@@ -174,25 +101,7 @@ const DriverDashboardMobile: React.FC = () => {
         setApiError(null);
         
         try {
-            const response = await fetch('/SERVER/API/driver_dashboard_data.php');
-            
-            if (!response.ok) {
-                console.warn('API not available, using mock data');
-                const mockData = MOCK_DATA;
-                setDriverData(mockData.driver);
-                setEarnings(mockData.earnings);
-                setStats(mockData.stats);
-                setActiveRide(mockData.active_ride || null);
-                setPendingRide(mockData.pending_ride || null);
-                setRecentRides(mockData.recent_rides || []);
-                setDriverStatus(mockData.driver.driver_status);
-                setVerificationStatus(mockData.driver.verification_status);
-                setNotificationCount(mockData.notification_count);
-                setApiError('Using demo data');
-                return;
-            }
-            
-            const data = await response.json();
+            const data = await api.driver.stats();
 
             if (data.success) {
                 setDriverData(data.driver);
@@ -206,31 +115,11 @@ const DriverDashboardMobile: React.FC = () => {
                 setNotificationCount(data.notification_count || 0);
             } else {
                 console.error('Failed to fetch dashboard data:', data.message);
-                const mockData = MOCK_DATA;
-                setDriverData(mockData.driver);
-                setEarnings(mockData.earnings);
-                setStats(mockData.stats);
-                setActiveRide(mockData.active_ride || null);
-                setPendingRide(mockData.pending_ride || null);
-                setRecentRides(mockData.recent_rides || []);
-                setDriverStatus(mockData.driver.driver_status);
-                setVerificationStatus(mockData.driver.verification_status);
-                setNotificationCount(mockData.notification_count);
-                setApiError('Using demo data');
+                setApiError('Failed to load dashboard data.');
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-            setApiError('Network error. Using demo data.');
-            const mockData = MOCK_DATA;
-            setDriverData(mockData.driver);
-            setEarnings(mockData.earnings);
-            setStats(mockData.stats);
-            setActiveRide(mockData.active_ride || null);
-            setPendingRide(mockData.pending_ride || null);
-            setRecentRides(mockData.recent_rides || []);
-            setDriverStatus(mockData.driver.driver_status);
-            setVerificationStatus(mockData.driver.verification_status);
-            setNotificationCount(mockData.notification_count);
+            setApiError('Network error. Unable to load dashboard data.');
         } finally {
             setLoading(false);
         }
@@ -262,12 +151,7 @@ const DriverDashboardMobile: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/toggle_driver_status.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
-                });
-                const data = await response.json();
+                const data = await api.driver.toggleStatus({ status: newStatus });
 
                 if (data.success) {
                     setDriverStatus(newStatus);
@@ -313,12 +197,7 @@ const DriverDashboardMobile: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/accept_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: rideId })
-                });
-                const data = await response.json();
+                const data = await api.rides.accept(rideId);
 
                 if (data.success) {
                     Swal.fire({
@@ -364,12 +243,7 @@ const DriverDashboardMobile: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/decline_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: rideId, auto_decline: false })
-                });
-                const data = await response.json();
+                const data = await api.rides.decline(rideId);
 
                 if (data.success) {
                     Swal.fire({
@@ -474,16 +348,7 @@ const DriverDashboardMobile: React.FC = () => {
             reviewComment = (document.getElementById('review-comment') as HTMLTextAreaElement)?.value || '';
 
             try {
-                const response = await fetch('/SERVER/API/complete_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ride_id: rideId,
-                        rating: selectedRating > 0 ? selectedRating : null,
-                        comment: reviewComment
-                    })
-                });
-                const data = await response.json();
+                const data = await api.rides.complete(rideId);
 
                 if (data.success) {
                     Swal.fire({
@@ -548,12 +413,7 @@ const DriverDashboardMobile: React.FC = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch('/SERVER/API/cancel_ride.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: rideId, reason: result.value })
-                });
-                const data = await response.json();
+                const data = await api.rides.cancel(rideId, { reason: result.value });
 
                 if (data.success) {
                     Swal.fire({
@@ -646,19 +506,46 @@ const DriverDashboardMobile: React.FC = () => {
                 }
                 return { amount, bank, account, name };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    title: 'Withdrawal Request Submitted',
-                    html: `
-                        <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
-                        <p>Bank: ${result.value.bank}</p>
-                        <p>Account: ${result.value.account} (${result.value.name})</p>
-                        <p class="mt-4 text-sm" style="margin-top: 16px; font-size: 12px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
-                    `,
-                    icon: 'success',
-                    confirmButtonColor: '#ff5e00'
+                    title: 'Processing Withdrawal',
+                    html: 'Please wait while we submit your request...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
                 });
+
+                try {
+                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'Withdrawal Request Submitted',
+                            html: `
+                                <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
+                                <p>Bank: ${result.value.bank}</p>
+                                <p>Account: ${result.value.account} (${result.value.name})</p>
+                                <p class="mt-4 text-sm" style="margin-top: 16px; font-size: 12px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
+                            `,
+                            icon: 'success',
+                            confirmButtonColor: '#ff5e00'
+                        }).then(() => fetchDashboardData());
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Withdrawal Failed',
+                            text: data.message || 'Failed to submit withdrawal.',
+                            confirmButtonColor: '#ff5e00'
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Network error. Please try again.',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
             }
         });
     };
@@ -713,8 +600,7 @@ const DriverDashboardMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
 
             if (data.success && data.notifications && data.notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';

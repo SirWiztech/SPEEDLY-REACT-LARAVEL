@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -74,12 +75,11 @@ const ClientSupport: React.FC = () => {
     // Fetch user data
     const fetchUserData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const data = await api.client.profile();
             
-            if (data.success) {
-                setUserData(data.user);
-                setNotificationCount(data.notification_count || 0);
+            if (data.success || data.data) {
+                setUserData(data.data?.user || data.user || data.data);
+                setNotificationCount(data.notification_count || data.data?.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -130,20 +130,15 @@ const ClientSupport: React.FC = () => {
             }
         });
 
-        const formData = new FormData();
-        formData.append('category', selectedCategory);
-        formData.append('subject', subject);
-        formData.append('message', message);
-        formData.append('priority', priority);
-
         try {
-            const response = await fetch('/SERVER/API/submit_support_ticket.php', {
-                method: 'POST',
-                body: formData
+            const data = await api.client.support({
+                category: selectedCategory,
+                subject,
+                message,
+                priority
             });
-            const data = await response.json();
 
-            if (data.status === 'success') {
+            if (data.status === 'success' || data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Request Submitted!',
@@ -185,12 +180,12 @@ const ClientSupport: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if ((data.success || data.data) && (data.notifications?.length || data.data?.notifications?.length)) {
+                const notifications = data.notifications || data.data?.notifications || [];
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -202,7 +197,7 @@ const ClientSupport: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
                     confirmButtonColor: '#ff5e00'

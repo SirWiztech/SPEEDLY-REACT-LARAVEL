@@ -2,8 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
+import api from '../services/api';
 import '../../css/ClientDashboard.css';
 import ClientDashboardMobile from '../components/mobileViewComponent/ClientDashboardMobile';
+import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import MobilePreloader from '../components/preloader/MobilePreloader';
+import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 
 
@@ -124,21 +128,61 @@ const ClientDashboard: React.FC = () => {
     // Fetch dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/client_dashboard_data.php');
-            const data = await response.json();
+            const [profileData, statsData, ridesData, walletData] = await Promise.all([
+                api.client.profile(),
+                api.client.stats(),
+                api.client.rides(5),
+                api.client.wallet()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setWalletBalance(data.wallet_balance);
-                setRideStats({
-                    active_count: data.active_rides,
-                    completed_count: data.completed_rides,
-                    monthly_change: data.monthly_change
+            if (profileData.success) {
+                const p = profileData.data;
+                setUserData({
+                    id: p.id || '',
+                    fullname: p.full_name || '',
+                    profile_picture_url: p.profile_picture_url || null,
+                    is_verified: p.is_verified || false,
+                    membership_tier: (p.membership_tier || 'basic') as 'basic' | 'premium' | 'gold',
+                    created_at: p.created_at || ''
                 });
-                setRecentRides(data.recent_rides || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch dashboard data:', data.message);
+            }
+
+            if (statsData.success) {
+                const s = statsData.data;
+                setRideStats({
+                    active_count: s.total_rides || 0,
+                    completed_count: s.completed_rides || 0,
+                    monthly_change: 0
+                });
+            }
+
+            if (ridesData.success && Array.isArray(ridesData.data)) {
+                const rides = ridesData.data.map((ride: any) => ({
+                    id: ride.id,
+                    status: ride.status,
+                    pickup_address: ride.pickup_location || '',
+                    destination_address: ride.dropoff_location || '',
+                    total_fare: parseFloat(ride.fare_amount) || 0,
+                    created_at: ride.created_at,
+                    formatted_date: '',
+                    formatted_time: '',
+                    driver_name: ride.driver_name || null,
+                    driver_photo: null,
+                    vehicle_model: ride.vehicle_type || null,
+                    distance_km: 0,
+                    notification_type: null,
+                    notification_message: null,
+                    user_rating: null,
+                    pickup_latitude: null,
+                    pickup_longitude: null,
+                    destination_latitude: null,
+                    destination_longitude: null
+                }));
+                setRecentRides(rides);
+            }
+
+            if (walletData.success) {
+                setWalletBalance(parseFloat(walletData.data.balance) || 0);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -148,70 +192,58 @@ const ClientDashboard: React.FC = () => {
     }, []);
 
     // Check for payment status from URL params
-    const checkPaymentStatus = useCallback(() => {
+    const checkPaymentStatus = useCallback(async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const paymentStatusParam = urlParams.get('payment_status');
         const reference = urlParams.get('reference');
 
         if (paymentStatusParam === 'completed' && reference) {
-            fetch(`/SERVER/API/verify_payment.php?reference=${reference}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        setPaymentStatus({
-                            success: true,
-                            amount: data.amount,
-                            newBalance: data.new_balance
-                        });
+            try {
+                const data = await api.payment.verify(reference);
+                if (data.success) {
+                    setPaymentStatus({
+                        success: true,
+                        amount: data.amount,
+                        newBalance: data.new_balance
+                    });
 
-                        // Show success notification
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Deposit Successful! 💰',
-                            html: `
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deposit Successful! 💰',
+                        html: `
                 <div style="text-align: center;">
                   <p style="font-size: 18px; margin-bottom: 10px;">Your wallet has been credited with</p>
                   <p style="font-size: 28px; font-weight: bold; color: #ff5e00;">${formatCurrency(data.amount)}</p>
                   <p style="margin-top: 10px;">New balance: <strong>${formatCurrency(data.new_balance)}</strong></p>
                 </div>
               `,
-                            confirmButtonColor: '#ff5e00',
-                            confirmButtonText: 'Great!',
-                            timer: 5000,
-                            timerProgressBar: true
-                        });
+                        confirmButtonColor: '#ff5e00',
+                        confirmButtonText: 'Great!',
+                        timer: 5000,
+                        timerProgressBar: true
+                    });
 
-                        // Refresh dashboard data
-                        fetchDashboardData();
-                        // Remove payment params from URL
-                        window.history.replaceState({}, '', window.location.pathname);
-                    } else if (data.status === 'failed') {
-                        setPaymentStatus({ success: false, failed: true });
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Deposit Failed',
-                            text: 'Your payment could not be processed. Please try again.',
-                            confirmButtonColor: '#ff5e00'
-                        });
-                        window.history.replaceState({}, '', window.location.pathname);
-                    }
-                })
-                .catch(error => console.error('Error verifying payment:', error));
+                    fetchDashboardData();
+                    window.history.replaceState({}, '', window.location.pathname);
+                } else {
+                    setPaymentStatus({ success: false, message: data.message || 'Payment verification failed' });
+                }
+            } catch (error: any) {
+                console.error('Payment verification error:', error);
+                setPaymentStatus({ success: false, message: error.message || 'Payment verification failed' });
+            }
         }
-    }, [fetchDashboardData]);
+    }, []);
 
-    // Check for new notifications (just update badge, no popup)
+    // Check for new notifications silently
     const checkForNewNotifications = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
-            if (data.success && data.count > 0) {
-                setNotificationCount(data.count);
-            } else if (data.count === 0) {
-                setNotificationCount(0);
-            }
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
+            const unread = notifications.filter((n: any) => !n.is_read).length;
+            setNotificationCount(unread);
         } catch (error) {
-            console.error('Error checking notifications:', error);
+            // Silently fail
         }
     }, []);
 
@@ -263,13 +295,13 @@ const ClientDashboard: React.FC = () => {
         });
 
         try {
-            const response = await fetch(`/SERVER/API/get_ride_details.php?ride_id=${encodeURIComponent(rideId)}`);
-            const data = await response.json();
+            const data = await api.rides.getById(rideId);
 
             Swal.close();
 
-            if (data.success && data.ride) {
-                displayRideDetails(data.ride);
+            const rideData = data.ride || data.data?.ride || data.data;
+            if (data.success || data.data) {
+                displayRideDetails(rideData);
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -292,10 +324,24 @@ const ClientDashboard: React.FC = () => {
 
     // Display ride details in modal
     const displayRideDetails = (ride: any) => {
-        const rideDate = ride.formatted_date || formatDate(ride.created_at);
-        const rideTime = ride.formatted_time || formatTime(ride.created_at);
+        const driver = ride.driver || null;
+        const driverUser = driver?.user || null;
+        const vehicles = driver?.vehicles || [];
+        const primaryVehicle = vehicles[0] || null;
+
+        const driverName = driverUser?.full_name || null;
+        const driverPhone = driverUser?.phone_number || null;
+        const vehicleDisplay = primaryVehicle
+            ? `${primaryVehicle.vehicle_type || ''} - ${primaryVehicle.plate_number || ''}`.trim()
+            : null;
+
+        const rideDate = formatDate(ride.created_at);
+        const rideTime = formatTime(ride.created_at);
         const statusColor = getStatusColor(ride.status);
-        const canRate = ride.status === 'completed' && !ride.user_rating;
+        const distanceKm = ride.distance_km ? parseFloat(ride.distance_km).toFixed(1) + ' km' : 'N/A';
+        const clientRating = ride.client_rating || null;
+        const clientReview = ride.client_review || null;
+        const canRate = ride.status === 'completed' && !clientRating;
 
         let html = `
       <div style="text-align: left; max-height: 70vh; overflow-y: auto; padding: 10px;">
@@ -310,7 +356,7 @@ const ClientDashboard: React.FC = () => {
           <p><strong>Date:</strong> ${rideDate} at ${rideTime}</p>
           <p><strong>From:</strong> ${ride.pickup_address || 'N/A'}</p>
           <p><strong>To:</strong> ${ride.destination_address || 'N/A'}</p>
-          <p><strong>Distance:</strong> ${ride.distance_km ? ride.distance_km.toFixed(1) + ' km' : 'N/A'}</p>
+          <p><strong>Distance:</strong> ${distanceKm}</p>
           <p><strong>Fare:</strong> <span style="color: #4CAF50; font-weight: bold;">${formatCurrency(ride.total_fare)}</span></p>
     `;
 
@@ -321,19 +367,18 @@ const ClientDashboard: React.FC = () => {
         html += `<p><strong>Payment Status:</strong> <span style="color: ${ride.payment_status === 'paid' ? '#4CAF50' : '#FF9800'};">${ride.payment_status ? ride.payment_status.toUpperCase() : 'PENDING'}</span></p>`;
         html += `</div>`;
 
-        // Driver info if available
-        if (ride.driver_name) {
+        if (driverName) {
             html += `
         <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
           <h4 style="margin-bottom: 10px; color: #2E7D32;">Driver Information</h4>
           <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
             <div style="width: 50px; height: 50px; background: #4CAF50; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
-              ${ride.driver_name ? ride.driver_name.charAt(0).toUpperCase() : 'D'}
+              ${driverName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">${ride.driver_name}</p>
-              <p style="color: #666; margin-bottom: 3px;">${ride.vehicle_display || 'Vehicle not specified'}</p>
-              ${ride.driver_phone ? `<p style="color: #666; font-size: 14px; margin-top: 5px;"><i class="fas fa-phone" style="margin-right: 5px;"></i> ${ride.driver_phone}</p>` : ''}
+              <p style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">${driverName}</p>
+              ${vehicleDisplay ? `<p style="color: #666; margin-bottom: 3px;">${vehicleDisplay}</p>` : ''}
+              ${driverPhone ? `<p style="color: #666; font-size: 14px; margin-top: 5px;"><i class="fas fa-phone" style="margin-right: 5px;"></i> ${driverPhone}</p>` : ''}
             </div>
           </div>
         </div>
@@ -347,7 +392,6 @@ const ClientDashboard: React.FC = () => {
       `;
         }
 
-        // Rating section if ride is completed and not rated
         if (canRate) {
             html += `
         <div style="background: #fff3e0; padding: 15px; border-radius: 10px;">
@@ -365,27 +409,26 @@ const ClientDashboard: React.FC = () => {
           </button>
         </div>
       `;
-        } else if (ride.user_rating) {
+        } else if (clientRating) {
             html += `
         <div style="background: #e8f5e9; padding: 15px; border-radius: 10px;">
           <h4 style="margin-bottom: 10px; color: #2E7D32;">Your Rating</h4>
           <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
             <div style="color: #FFD700; font-size: 24px;">
-              ${'★'.repeat(ride.user_rating)}${'☆'.repeat(5 - ride.user_rating)}
+              ${'★'.repeat(clientRating)}${'☆'.repeat(5 - clientRating)}
             </div>
-            <span style="font-weight: bold;">${ride.user_rating}/5</span>
+            <span style="font-weight: bold;">${clientRating}/5</span>
           </div>
-          ${ride.user_review ? `<p style="background: white; padding: 10px; border-radius: 8px;"><strong>Your review:</strong> ${ride.user_review}</p>` : ''}
+          ${clientReview ? `<p style="background: white; padding: 10px; border-radius: 8px;"><strong>Your review:</strong> ${clientReview}</p>` : ''}
         </div>
       `;
         }
 
-        // Action buttons for active rides
         if (['pending', 'accepted', 'driver_assigned', 'driver_arrived', 'ongoing'].includes(ride.status)) {
             html += `
         <div style="display: flex; gap: 10px; margin-top: 15px;">
-          ${ride.driver_phone ? `
-            <a href="tel:${ride.driver_phone}" style="flex: 1; background: #4CAF50; color: white; text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: 600;">
+          ${driverPhone ? `
+            <a href="tel:${driverPhone}" style="flex: 1; background: #4CAF50; color: white; text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: 600;">
               <i class="fas fa-phone"></i> Call Driver
             </a>
           ` : ''}
@@ -466,16 +509,7 @@ const ClientDashboard: React.FC = () => {
         });
 
         try {
-            const formData = new FormData();
-            formData.append('ride_id', rideId);
-            formData.append('rating', rating.toString());
-            formData.append('review', review);
-
-            const response = await fetch('/SERVER/API/rate_driver.php', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+            const data = await api.rides.rateDriver(rideId, { rating, comment: review });
 
             Swal.close();
 
@@ -533,17 +567,7 @@ const ClientDashboard: React.FC = () => {
             });
 
             try {
-                const response = await fetch('/SERVER/API/cancel_ride.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ride_id: rideId,
-                        reason: 'Cancelled by client'
-                    })
-                });
-                const data = await response.json();
+                const data = await api.rides.cancel(rideId, { reason: 'Cancelled by client' });
 
                 Swal.close();
 
@@ -590,12 +614,12 @@ const ClientDashboard: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifications = data.notifications || data.data?.notifications || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: Notification) => {
+                notifications.forEach((notif: Notification) => {
                     html += `
             <div style="padding: 10px; border-bottom: 1px solid #eee;">
               <p><strong>${notif.title}</strong></p>
@@ -608,7 +632,7 @@ const ClientDashboard: React.FC = () => {
 
                 const result = await Swal.fire({
                     icon: 'info',
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'Close',
@@ -619,11 +643,11 @@ const ClientDashboard: React.FC = () => {
                 });
 
                 if (result.isDenied) {
-                    await fetch('/SERVER/API/clear_all_notifications.php', { method: 'POST' });
+                    await api.notifications.clearAll();
                     Swal.fire({ icon: 'success', title: 'Cleared!', text: 'All notifications cleared', confirmButtonColor: '#ff5e00' });
                     setNotificationCount(0);
                 } else {
-                    await fetch('/SERVER/API/mark_notifications_read.php', { method: 'POST' });
+                    await api.notifications.list();
                     setNotificationCount(0);
                 }
             } else {
@@ -637,15 +661,9 @@ const ClientDashboard: React.FC = () => {
         } catch (error) {
             console.error('Error fetching notifications:', error);
             Swal.fire({
-                icon: 'info',
-                title: 'Notifications',
-                html: `
-          <div style="text-align: left;">
-            <p>💰 <strong>Balance Update:</strong> Your wallet balance is updated</p>
-            <p>🏆 <strong>Reward:</strong> You've earned a ride reward!</p>
-            <p>📢 <strong>Promo:</strong> 20% off your next ride</p>
-          </div>
-        `,
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to load notifications',
                 confirmButtonColor: '#ff5e00'
             });
         }
@@ -677,13 +695,14 @@ const ClientDashboard: React.FC = () => {
 
     const tierColor = userData?.membership_tier ? tierColors[userData.membership_tier] : '#6c757d';
 
+    const preloaderLoading = usePreloader(1000);
+
+    if (preloaderLoading) {
+        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+    }
+
     if (loading) {
-        return (
-            <div className="dashboard-loading">
-                <div className="loading-spinner"></div>
-                <p>Loading dashboard...</p>
-            </div>
-        );
+        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
     }
 
     // Render mobile view on mobile devices ONLY
@@ -756,35 +775,35 @@ const ClientDashboard: React.FC = () => {
                     <div className="mt-8">
                         <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
                         <div className="grid grid-cols-4 gap-4">
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/book-ride')}>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientbookride')}>
                                 <div className="text-3xl text-[#ff5e00]"><i className="fas fa-car"></i></div>
                                 <span className="font-medium">Book a Ride</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/ride-history')}>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientridehistory')}>
                                 <div className="text-3xl text-[#ff5e00]"><i className="fas fa-history"></i></div>
                                 <span className="font-medium">Ride History</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/wallet')}>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientwallet')}>
                                 <div className="text-3xl text-[#ff5e00]"><i className="fas fa-wallet"></i></div>
                                 <span className="font-medium">Wallet</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/settings')}>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientsettings')}>
                                 <div className="text-3xl text-[#ff5e00]"><i className="fas fa-cog"></i></div>
                                 <span className="font-medium">Settings</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/location')}>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientlocation')}>
                                 <div className="text-3xl text-[#ff5e00]"><i className="fas fa-map-marked-alt"></i></div>
                                 <span className="font-medium">Saved Locations</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => showComingSoon('Promotions')}>
-                                <div className="text-3xl text-[#ff5e00]"><i className="fas fa-tags"></i></div>
-                                <span className="font-medium">Promotions</span>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientaiassistant')}>
+                                <div className="text-3xl text-[#ff5e00]"><i className="fas fa-robot"></i></div>
+                                <span className="font-medium">AI Assistant</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => showComingSoon('Safety')}>
-                                <div className="text-3xl text-[#ff5e00]"><i className="fas fa-shield-alt"></i></div>
-                                <span className="font-medium">Safety Center</span>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/client-profile')}>
+                                <div className="text-3xl text-[#ff5e00]"><i className="fas fa-user"></i></div>
+                                <span className="font-medium">Profile</span>
                             </button>
-                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => showComingSoon('Support')}>
+                            <button className="desktop-action-btn bg-gray-50 hover:bg-gray-100 p-6 rounded-xl transition flex flex-col items-center gap-3" onClick={() => router.visit('/clientsupport')}>
                                 <div className="text-3xl text-[#ff5e00]"><i className="fas fa-headset"></i></div>
                                 <span className="font-medium">Support</span>
                             </button>
@@ -795,7 +814,7 @@ const ClientDashboard: React.FC = () => {
                     <div className="mt-8">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold">Recent Rides</h2>
-                            <button className="text-[#ff5e00] font-medium hover:underline" onClick={() => router.visit('/ride-history')}>View All →</button>
+                            <button className="text-[#ff5e00] font-medium hover:underline" onClick={() => router.visit('/clientridehistory')}>View All →</button>
                         </div>
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <table className="w-full">
@@ -845,7 +864,7 @@ const ClientDashboard: React.FC = () => {
                                             <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                                                 <i className="fas fa-car-side text-4xl mb-2 opacity-50"></i>
                                                 <p>No rides yet</p>
-                                                <button className="mt-4 bg-[#ff5e00] text-white px-6 py-2 rounded-xl text-sm font-medium" onClick={() => router.visit('/book-ride')}>
+                                                <button className="mt-4 bg-[#ff5e00] text-white px-6 py-2 rounded-xl text-sm font-medium" onClick={() => router.visit('/clientbookride')}>
                                                     Book Your First Ride
                                                 </button>
                                             </td>
@@ -856,18 +875,6 @@ const ClientDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Promo Banner */}
-                    <div className="mt-8 bg-gradient-to-r from-[#ff5e00] to-[#ff8c3a] rounded-xl p-6 text-white">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold">🚀 20% OFF Your Next Ride</h3>
-                                <p className="opacity-90 mt-1">Use code: SPEEDLY20 • Valid for new users</p>
-                            </div>
-                            <button className="bg-white text-[#ff5e00] px-6 py-3 rounded-xl font-bold hover:shadow-lg transition" onClick={() => showComingSoon('Promo Details')}>
-                                Learn More
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

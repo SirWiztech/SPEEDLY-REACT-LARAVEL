@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverWalletMobile.css';
@@ -56,17 +57,21 @@ const DriverWalletMobile: React.FC = () => {
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
         try {
-            const response = await fetch('/SERVER/API/driver_wallet_data.php');
-            const data = await response.json();
+            const [walletData, transactionData] = await Promise.all([
+                api.driver.wallet(),
+                api.driver.transactions()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setStats(data.stats);
-                setRecentRides(data.recent_rides || []);
-                setWithdrawals(data.withdrawals || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch wallet data:', data.message);
+            if (walletData.success || walletData.data) {
+                const w = walletData.data || walletData;
+                setUserData(w.user);
+                setStats(w.stats);
+                setRecentRides(w.recent_rides || []);
+                setNotificationCount(w.notification_count || 0);
+            }
+            if (transactionData.success || transactionData.data) {
+                const t = transactionData.data || transactionData;
+                setWithdrawals(t.withdrawals || []);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
@@ -145,10 +150,9 @@ const DriverWalletMobile: React.FC = () => {
                 Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const response = await fetch('/SERVER/API/request_withdrawal.php', { method: 'POST', body: formData });
-                    const data = await response.json();
+                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
                     
-                    if (data.status === 'success') {
+                    if (data.success) {
                         Swal.fire({
                             title: 'Success!',
                             html: `<p>Withdrawal request submitted!</p><p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p><p class="mt-2 text-sm">Processed within 24-48 hours.</p>`,
@@ -171,16 +175,16 @@ const DriverWalletMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const response = await fetch('/SERVER/API/get_notifications.php');
-            const data = await response.json();
+            const data = await api.notifications.list();
+            const notifs = data.notifications || data.data?.notifications || [];
             
-            if (data.success && data.notifications?.length > 0) {
+            if (notifs.length > 0) {
                 let html = '<div style="text-align: left;">';
-                data.notifications.forEach((notif: any) => {
+                notifs.forEach((notif: any) => {
                     html += `<div style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${notif.title}</strong><p>${notif.message}</p></div>`;
                 });
                 html += '</div>';
-                Swal.fire({ title: `Notifications (${data.notifications.length})`, html: html, confirmButtonColor: '#ff5e00' });
+                Swal.fire({ title: `Notifications (${notifs.length})`, html: html, confirmButtonColor: '#ff5e00' });
             } else {
                 Swal.fire({ title: 'Notifications', text: 'No new notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
             }

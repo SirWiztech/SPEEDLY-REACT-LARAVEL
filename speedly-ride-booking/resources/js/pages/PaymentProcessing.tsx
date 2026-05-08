@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import MobilePreloader from '../components/preloader/MobilePreloader';
@@ -34,8 +35,7 @@ const PaymentProcessing: React.FC = () => {
             attempts++;
             
             try {
-                const response = await fetch(`/SERVER/API/check_transaction_status.php?reference=${ref}`);
-                const data = await response.json();
+                const data = await api.payment.verify(ref);
                 
                 if (data.status === 'success') {
                     setStatus('success');
