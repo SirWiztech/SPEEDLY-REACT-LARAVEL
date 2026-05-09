@@ -80,7 +80,7 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
         </div>
         <div className="profile-info">
           <h3>{userName.length > 20 ? userName.substring(0, 20) + '...' : userName}</h3>
-          <p>Client Member</p>
+          <p>{userRole === 'driver' ? 'Driver Member' : 'Client Member'}</p>
         </div>
       </Link>
     </div>

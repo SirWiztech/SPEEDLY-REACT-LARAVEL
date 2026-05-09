@@ -4,6 +4,7 @@ import DriverNavMobile from '@/components/navbars/DriverNavMobile';
 import { useQuery } from '@tanstack/react-query';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../preloader/MobilePreloader';
+import { api } from '../../services/api';
 import '../../../css/DriverLocation.css';
 
 interface Location {
@@ -19,17 +20,13 @@ export default function DriverLocationMobile() {
 
     const { data: locations } = useQuery<Location[]>({
         queryKey: ['driver-locations-mobile'],
-        queryFn: () => fetch('/api/driver/locations').then(res => res.json()),
+        queryFn: () => api.driver.locations().then(res => res.data),
     });
 
     const toggleStatus = () => {
         const newStatus = driverStatus === 'online' ? 'offline' : 'online';
         setDriverStatus(newStatus);
-        fetch('/api/driver/toggle-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus }),
-        });
+        api.driver.toggleStatus({ status: newStatus });
     };
 
     if (loading) {

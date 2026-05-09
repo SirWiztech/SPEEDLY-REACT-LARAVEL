@@ -4,6 +4,7 @@ import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../preloader/MobilePreloader';
+import { api } from '../../services/api';
 import '../../../css/ClientKyc.css';
 
 interface KycDocument {
@@ -23,7 +24,7 @@ export default function ClientKycMobile() {
 
     const { data: kycStatus, isLoading } = useQuery<KycStatus>({
         queryKey: ['client-kyc-mobile'],
-        queryFn: () => fetch('/api/client/kyc').then(res => res.json()),
+        queryFn: () => api.client.kyc().then(res => res.data),
     });
 
     if (loading) {

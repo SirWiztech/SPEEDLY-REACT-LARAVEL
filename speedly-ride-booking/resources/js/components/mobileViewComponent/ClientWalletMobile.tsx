@@ -114,7 +114,7 @@ const ClientWalletMobile: React.FC = () => {
         });
 
         try {
-            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || '' });
+            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
             Swal.close();
 
             if (data.success && data.checkout_url) {
@@ -327,7 +327,7 @@ const ClientWalletMobile: React.FC = () => {
                 {/* Header */}
                 <div className="mobile-wallet-header">
                     <div className="mobile-wallet-user-info">
-                        <h1>Welcome back, {userData?.fullname?.split(' ')[0] || 'Guest'}!</h1>
+                        <h1>Welcome back, {userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Guest'}!</h1>
                         <p>Manage your funds and transactions</p>
                     </div>
                     <button className="mobile-wallet-notification-btn" onClick={checkNotifications}>

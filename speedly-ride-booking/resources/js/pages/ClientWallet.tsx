@@ -128,7 +128,7 @@ const ClientWallet: React.FC = () => {
         });
 
         try {
-            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || '' });
+            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
             Swal.close();
 
             if (data.success && data.checkout_url) {
@@ -490,7 +490,7 @@ const ClientWallet: React.FC = () => {
     return (
         <div className="wallet-desktop-container">
             <ClientSidebarDesktop 
-                userName={userData?.fullname || 'User'} 
+                userName={userData?.fullname || userData?.full_name || 'User'} 
                 profilePictureUrl={userData?.profile_picture_url}
             />
 

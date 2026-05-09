@@ -136,7 +136,7 @@ const ClientBookRide: React.FC = () => {
 
             const script = document.createElement('script');
             script.id = 'google-maps-script';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyB1tM_s2w8JWfnIoUTAzJNpbblU-eZiC30&libraries=places,geometry&callback=initMap`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMap`;
             script.async = true;
             script.defer = true;
             
@@ -674,7 +674,7 @@ const ClientBookRide: React.FC = () => {
     // Render desktop view
     return (
         <div className="book-ride-desktop-container">
-            <ClientSidebarDesktop userName={userData?.fullname || 'User'} profilePictureUrl={userData?.profile_picture_url} />
+            <ClientSidebarDesktop userName={userData?.fullname || userData?.full_name || 'User'} profilePictureUrl={userData?.profile_picture_url} />
             
             <div className="book-ride-desktop-main">
                 {/* Header */}

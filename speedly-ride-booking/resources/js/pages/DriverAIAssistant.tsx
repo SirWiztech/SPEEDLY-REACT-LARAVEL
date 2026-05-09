@@ -335,7 +335,7 @@ const DriverAIAssistant: React.FC = () => {
         ));
     };
 
-    const firstName = userData?.fullname?.split(' ')[0] || 'Guest';
+    const firstName = (userData?.fullname || userData?.full_name)?.split(' ')[0] || 'Guest';
 
     if (loading || preloaderLoading) {
         return <DesktopPreloader />;
@@ -349,7 +349,7 @@ const DriverAIAssistant: React.FC = () => {
     return (
         <div className="ai-desktop-container">
             <DriverSidebarDesktop 
-                userName={userData?.fullname || 'User'} 
+                userName={userData?.fullname || userData?.full_name || 'User'} 
                 profilePictureUrl={userData?.profile_picture_url}
             />
 

@@ -307,7 +307,7 @@ const ClientAIAssistantMobile: React.FC = () => {
         ));
     };
 
-    const firstName = userData?.fullname?.split(' ')[0] || 'Guest';
+    const firstName = userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Guest';
 
     if (loading) {
         return <MobilePreloader />;

@@ -5,6 +5,7 @@ import { useForm } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../preloader/MobilePreloader';
+import { api } from '../../services/api';
 import '../../../css/ClientProfile.css';
 
 interface ProfileData {
@@ -19,7 +20,7 @@ export default function ClientProfileMobile() {
 
     const { data: profile } = useQuery<ProfileData>({
         queryKey: ['client-profile-mobile'],
-        queryFn: () => fetch('/api/client/profile').then(res => res.json()),
+        queryFn: () => api.client.profile().then(res => res.data),
     });
 
     const { data, setData, post, processing } = useForm({

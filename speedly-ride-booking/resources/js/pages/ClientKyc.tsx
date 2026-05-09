@@ -33,6 +33,13 @@ export default function ClientKyc() {
     queryFn: () => api.client.kyc().then(res => res.data),
   });
 
+  const { data: profileData } = useQuery({
+    queryKey: ['client-profile-kyc'],
+    queryFn: () => api.client.profile().then(res => res.data?.user || res.user || res.data),
+  });
+
+  const userData = profileData || {};
+
   const uploadMutation = useMutation({
     mutationFn: (formData: FormData) => api.client.uploadKyc(formData),
   });
@@ -110,7 +117,7 @@ export default function ClientKyc() {
         </div>
       ) : (
         <div className="dashboard-container">
-          <ClientSidebarDesktop userName="User" />
+          <ClientSidebarDesktop userName={userData?.fullname || userData?.full_name || 'User'} profilePictureUrl={userData?.profile_picture_url} />
           <div className="desktop-main">
             <div className="desktop-header">
               <h1>KYC Verification</h1>

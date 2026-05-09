@@ -65,7 +65,7 @@ const DriverLocation: React.FC = () => {
     const isMobile = useMobile();
 
     // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = 'AIzaSyB1tM_s2w8JWfnIoUTAzJNpbblU-eZiC30';
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
     // Load Google Maps script
     useEffect(() => {
@@ -456,7 +456,7 @@ const DriverLocation: React.FC = () => {
 
     return (
         <div className="location-desktop-container">
-            <DriverSidebarDesktop userName={userData?.fullname || 'User'} profilePictureUrl={userData?.profile_picture_url} />
+            <DriverSidebarDesktop userName={userData?.fullname || userData?.full_name || 'User'} profilePictureUrl={userData?.profile_picture_url} />
 
             <div className="location-desktop-main">
                 {/* Header */}

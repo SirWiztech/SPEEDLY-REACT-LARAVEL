@@ -158,7 +158,7 @@ const DriverBookHistory: React.FC = () => {
     };
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
-    const userInitial = userData?.fullname?.charAt(0)?.toUpperCase() || 'D';
+    const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'D';
 
     useEffect(() => {
         fetchBookHistory();
@@ -179,7 +179,7 @@ const DriverBookHistory: React.FC = () => {
     return (
         <div className="driver-book-history-desktop-container">
             <DriverSidebarDesktop 
-                userName={userData?.fullname || 'Driver'} 
+                userName={userData?.fullname || userData?.full_name || 'Driver'} 
                 userRole="driver"
                 profilePictureUrl={userData?.profile_picture_url}
             />

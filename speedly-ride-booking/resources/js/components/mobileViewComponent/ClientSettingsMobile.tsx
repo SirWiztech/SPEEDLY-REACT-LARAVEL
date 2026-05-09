@@ -11,6 +11,7 @@ import '../../../css/ClientSettingsMobile.css';
 interface UserData {
     id: string;
     fullname: string;
+    full_name?: string;
     email: string;
     phone_number: string;
     profile_picture_url: string | null;
@@ -114,7 +115,7 @@ const ClientSettingsMobile: React.FC = () => {
         Swal.fire({
             title: 'Edit Profile',
             html: `
-                <input type="text" id="full-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || ''}">
+                <input type="text" id="full-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || userData?.full_name || ''}">
                 <input type="email" id="email" class="swal2-input" placeholder="Email" value="${userData?.email || ''}">
                 <input type="tel" id="phone" class="swal2-input" placeholder="Phone" value="${userData?.phone_number || ''}">
             `,
@@ -369,8 +370,8 @@ const ClientSettingsMobile: React.FC = () => {
         }
     }, []);
 
-    const userInitial = userData?.fullname?.charAt(0)?.toUpperCase() || 'U';
-    const firstName = userData?.fullname?.split(' ')[0] || 'Guest';
+    const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'U';
+    const firstName = (userData?.fullname || userData?.full_name)?.split(' ')[0] || 'Guest';
 
     if (loading || preloaderLoading) {
         return <MobilePreloader />;
@@ -400,7 +401,7 @@ const ClientSettingsMobile: React.FC = () => {
                                 <i className="fas fa-pen"></i>
                             </button>
                         </div>
-                        <div className="mobile-profile-name">{userData?.fullname}</div>
+                        <div className="mobile-profile-name">{userData?.fullname || userData?.full_name}</div>
                         <div className="mobile-profile-email">{userData?.email}</div>
                         <div className="mobile-profile-tier">{userRole === 'client' ? 'Client Member' : 'Driver Member'}</div>
                     </div>

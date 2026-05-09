@@ -12,6 +12,7 @@ interface DriverData {
     id: string;
     user_id: string;
     fullname: string;
+    full_name?: string;
     email: string;
     phone: string;
     address: string | null;
@@ -107,7 +108,7 @@ const DriverProfile: React.FC = () => {
                 const d = profileData.data?.user || profileData.user || profileData.data;
                 setDriverData(d);
                 setWithdrawalHistory(d.withdrawal_history || []);
-                setEditFullname(d.fullname || '');
+                setEditFullname(d.fullname || d.full_name || '');
                 setEditPhone(d.phone || '');
                 setEditAddress(d.address || '');
                 setEditCity(d.city || '');
@@ -158,7 +159,7 @@ const DriverProfile: React.FC = () => {
         
         try {
             const data = await api.driver.updateProfile({
-                fullname: editFullname,
+                full_name: editFullname,
                 phone: editPhone,
                 address: editAddress,
                 city: editCity,
@@ -437,7 +438,7 @@ const DriverProfile: React.FC = () => {
     };
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
-    const userInitial = driverData?.fullname?.charAt(0)?.toUpperCase() || 'D';
+    const userInitial = (driverData?.fullname || driverData?.full_name)?.charAt(0)?.toUpperCase() || 'D';
 
     useEffect(() => {
         fetchDriverData();
@@ -496,7 +497,7 @@ const DriverProfile: React.FC = () => {
                             <input type="file" accept="image/*" style={{ display: 'none' }} />
                         </label>
                     </div>
-                    <h3>{driverData?.fullname}</h3>
+                    <h3>{driverData?.fullname || driverData?.full_name}</h3>
                     <p className="profile-email">{driverData?.email}</p>
                     
                     {getKycStatusBadge()}
@@ -599,7 +600,7 @@ const DriverProfile: React.FC = () => {
                             <div className="info-grid">
                                 <div className="info-row">
                                     <div className="info-label">Full Name</div>
-                                    <div className="info-value">{driverData?.fullname}</div>
+                                    <div className="info-value">{driverData?.fullname || driverData?.full_name}</div>
                                 </div>
                                 <div className="info-row">
                                     <div className="info-label">Email Address</div>

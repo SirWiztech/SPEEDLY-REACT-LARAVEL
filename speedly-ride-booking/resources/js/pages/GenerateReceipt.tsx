@@ -34,11 +34,21 @@ interface PaymentData {
     status: string;
 }
 
+interface FareBreakdown {
+    base_fare: number;
+    distance_fare: number;
+    service_fee: number;
+    platform_commission: number;
+    driver_payout: number;
+    total: number;
+}
+
 const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) => {
     const { props } = usePage();
     const rideId = propRideId || (props.rideId as string) || new URLSearchParams(window.location.search).get('rideId') || '';
     const [ride, setRide] = useState<RideData | null>(null);
     const [payment, setPayment] = useState<PaymentData | null>(null);
+    const [fareBreakdown, setFareBreakdown] = useState<FareBreakdown | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
     
@@ -60,6 +70,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                 if (data.success && data.ride) {
                     setRide(data.ride);
                     setPayment(data.payment || null);
+                    setFareBreakdown(data.fare_breakdown || null);
                 } else {
                     setError(data.message || 'Failed to load ride details');
                 }
@@ -151,11 +162,11 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
         );
     }
 
-    const baseFare = 500;
-    const distanceFare = (ride.distance_km || 0) * 1000;
-    const serviceFee = ride.total_fare * 0.05;
-    const platformCommission = ride.total_fare * 0.2;
-    const driverPayout = ride.total_fare - platformCommission;
+    const baseFare = fareBreakdown?.base_fare ?? 500;
+    const distanceFare = fareBreakdown?.distance_fare ?? (ride.distance_km || 0) * 1000;
+    const serviceFee = fareBreakdown?.service_fee ?? ride.total_fare * 0.05;
+    const platformCommission = fareBreakdown?.platform_commission ?? ride.total_fare * 0.2;
+    const driverPayout = fareBreakdown?.driver_payout ?? ride.total_fare - (fareBreakdown?.platform_commission ?? ride.total_fare * 0.2);
     const driverInitial = ride.driver_name?.charAt(0)?.toUpperCase() || 'D';
     const clientInitial = ride.client_name?.charAt(0)?.toUpperCase() || 'C';
 
@@ -302,7 +313,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                                 <span>{formatCurrency(baseFare)}</span>
                             </div>
                             <div className="fare-row">
-                                <span>Distance Fare ({ride.distance_km?.toFixed(1) || 0} km @ ₦1000/km)</span>
+                                <span>Distance Fare ({ride.distance_km?.toFixed(1) || 0} km)</span>
                                 <span>{formatCurrency(distanceFare)}</span>
                             </div>
                             <div className="fare-row">

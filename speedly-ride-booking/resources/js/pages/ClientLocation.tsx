@@ -6,6 +6,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import ClientLocationMobile from '../components/mobileViewComponent/ClientLocationMobile';
+import api from '../services/api';
 import '../../css/ClientLocation.css';
 
 // Types
@@ -64,8 +65,24 @@ const ClientLocation: React.FC = () => {
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
+    const fetchProfileData = useCallback(async () => {
+        try {
+            const data = await api.client.profile();
+            if (data.success || data.data) {
+                const user = data.data?.user || data.user || data.data;
+                setUserData(user);
+            }
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchProfileData();
+    }, [fetchProfileData]);
+
     // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = 'AIzaSyB1tM_s2w8JWfnIoUTAzJNpbblU-eZiC30';
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
     // Load Google Maps script
     useEffect(() => {
@@ -456,7 +473,7 @@ const ClientLocation: React.FC = () => {
 
     return (
         <div className="location-desktop-container">
-            <ClientSidebarDesktop userName={userData?.fullname || 'User'} profilePictureUrl={userData?.profile_picture_url} />
+            <ClientSidebarDesktop userName={userData?.fullname || userData?.full_name || 'User'} profilePictureUrl={userData?.profile_picture_url} />
 
             <div className="location-desktop-main">
                 {/* Header */}

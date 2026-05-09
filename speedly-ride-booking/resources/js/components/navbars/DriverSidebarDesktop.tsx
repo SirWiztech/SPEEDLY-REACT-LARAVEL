@@ -3,13 +3,13 @@ import { Link } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import '../../../css/NavBar.css';
 
-interface ClientSidebarDesktopProps {
+interface DriverSidebarDesktopProps {
   userName: string;
   userRole?: string;
   profilePictureUrl?: string | null;
 }
 
-const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
+const DriverSidebarDesktop: React.FC<DriverSidebarDesktopProps> = ({
   userName = 'User',
   userRole = 'client',
   profilePictureUrl = null,
@@ -59,7 +59,7 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
         ))}
       </div>
 
-      <Link href="/client-profile" className="user-profile">
+      <Link href="/driverprofile" className="user-profile">
         <div className="profile-avatar">
           {profilePictureUrl ? (
             <img 
@@ -72,11 +72,11 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
         </div>
         <div className="profile-info">
           <h3>{userName}</h3>
-          <p>Client Member</p>
+          <p>{userRole === 'driver' ? 'Driver Member' : 'Client Member'}</p>
         </div>
       </Link>
     </div>
   );
 };
 
-export default ClientSidebarDesktop;
+export default DriverSidebarDesktop;

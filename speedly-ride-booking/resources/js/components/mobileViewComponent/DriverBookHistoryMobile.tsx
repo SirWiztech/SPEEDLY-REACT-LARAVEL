@@ -106,7 +106,7 @@ const DriverBookHistoryMobile: React.FC = () => {
     };
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
-    const firstName = userData?.fullname?.split(' ')[0] || 'Driver';
+    const firstName = userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Driver';
 
     useEffect(() => {
         fetchBookHistory();

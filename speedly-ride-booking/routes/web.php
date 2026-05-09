@@ -15,10 +15,11 @@ Route::inertia('/home', 'Home', [
     'canRegister' => Features::enabled(Features::registration()),
 ])->name('home');
 
+Route::inertia('/login', 'Form')->name('login');
+Route::inertia('/register', 'Form')->name('register');
+Route::inertia('/form', 'Form')->name('form');
+
 Route::middleware(['guest'])->group(function () {
-    Route::inertia('/login', 'Form')->name('login');
-    Route::inertia('/register', 'Form')->name('register');
-    Route::inertia('/form', 'Form')->name('form');
     Route::inertia('/forgot-password', 'ForgotPassword')->name('password.request');
     Route::inertia('/reset-password', 'ResetPassword')->name('password.reset');
     Route::inertia('/verify-otp', 'VerifyOtp')->name('verify.otp');

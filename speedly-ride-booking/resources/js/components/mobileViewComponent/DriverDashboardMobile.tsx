@@ -11,6 +11,7 @@ import '../../../css/DriverDashboardMobile.css';
 interface DriverData {
     id: string;
     fullname: string;
+    full_name?: string;
     email: string;
     phone_number: string;
     profile_picture_url: string | null;
@@ -676,7 +677,7 @@ const DriverDashboardMobile: React.FC = () => {
     }, []);
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
-    const firstName = driverData?.fullname?.split(' ')[0] || 'Driver';
+    const firstName = driverData?.fullname?.split(' ')[0] || driverData?.full_name?.split(' ')[0] || 'Driver';
 
     if (loading || preloaderLoading) {
         return <MobilePreloader />;

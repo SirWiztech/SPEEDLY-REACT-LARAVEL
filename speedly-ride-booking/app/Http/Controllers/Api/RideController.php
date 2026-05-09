@@ -172,6 +172,9 @@ class RideController extends Controller
         $fareBreakdown = [
             'base_fare' => $ride->total_fare * 0.6,
             'distance_fare' => $ride->total_fare * 0.4,
+            'service_fee' => $ride->total_fare * 0.05,
+            'platform_commission' => $ride->platform_commission ?? $ride->total_fare * 0.2,
+            'driver_payout' => $ride->driver_payout ?? $ride->total_fare - $ride->platform_commission,
             'total' => $ride->total_fare,
         ];
 

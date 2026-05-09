@@ -13,6 +13,7 @@ import '../../css/DriverDashboard.css';
 interface DriverData {
     id: string;
     fullname: string;
+    full_name?: string;
     email: string;
     phone_number: string;
     profile_picture_url: string | null;
@@ -662,8 +663,8 @@ const DriverDashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, [fetchDashboardData, driverStatus]);
 
-    const firstName = driverData?.fullname?.split(' ')[0] || 'Driver';
-    const driverInitial = driverData?.fullname?.charAt(0)?.toUpperCase() || 'D';
+    const firstName = (driverData?.fullname || driverData?.full_name)?.split(' ')[0] || 'Driver';
+    const driverInitial = (driverData?.fullname || driverData?.full_name)?.charAt(0)?.toUpperCase() || 'D';
 
     if (loading || preloaderLoading) {
         return <DesktopPreloader />;
@@ -677,7 +678,7 @@ const DriverDashboard: React.FC = () => {
     return (
         <div className="driver-desktop-container">
             <DriverSidebarDesktop 
-                userName={driverData?.fullname || 'Driver'} 
+                userName={driverData?.fullname || driverData?.full_name || 'Driver'} 
                 userRole="driver"
                 profilePictureUrl={driverData?.profile_picture_url}
                 driverStatus={driverStatus}

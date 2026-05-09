@@ -61,7 +61,7 @@ const ClientLocationMobile: React.FC = () => {
     const preloaderLoading = usePreloader(1000);
 
     // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = 'AIzaSyB1tM_s2w8JWfnIoUTAzJNpbblU-eZiC30';
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
     // Load Google Maps script
     useEffect(() => {

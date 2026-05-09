@@ -428,7 +428,7 @@ const ClientRideHistoryMobile: React.FC = () => {
                 <div className="mobile-ride-history-header">
                     <div className="mobile-ride-history-user-info">
                         <h1>Ride History</h1>
-                        <p>Welcome back, {userData?.fullname?.split(' ')[0] || 'Guest'}</p>
+                        <p>Welcome back, {userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Guest'}</p>
                     </div>
                     <button className="mobile-ride-history-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>

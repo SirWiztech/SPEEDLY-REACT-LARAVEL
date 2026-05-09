@@ -4,6 +4,7 @@ import DriverNavMobile from '@/components/navbars/DriverNavMobile';
 import { useQuery } from '@tanstack/react-query';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../preloader/MobilePreloader';
+import { api } from '../../services/api';
 import '../../../css/DriverProfile.css';
 
 interface ProfileData {
@@ -21,7 +22,7 @@ export default function DriverProfileMobile() {
 
     const { data: profile } = useQuery<ProfileData>({
         queryKey: ['driver-profile-mobile'],
-        queryFn: () => fetch('/api/driver/profile').then(res => res.json()),
+        queryFn: () => api.driver.profile().then(res => res.data),
     });
 
     if (loading) {

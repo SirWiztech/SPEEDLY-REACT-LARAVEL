@@ -474,7 +474,7 @@ const ClientRideHistory: React.FC = () => {
     return (
         <div className="ride-history-desktop-container">
             <ClientSidebarDesktop 
-                userName={userData?.fullname || 'User'} 
+                userName={userData?.fullname || userData?.full_name || 'User'} 
                 profilePictureUrl={userData?.profile_picture_url}
             />
 

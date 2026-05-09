@@ -298,7 +298,7 @@ const DriverWallet: React.FC = () => {
                     const data = await api.payment.initiate({
                         amount: result.value.amount,
                         email: userData?.email || '',
-                        name: userData?.fullname || 'Driver',
+                        name: userData?.fullname || userData?.full_name || 'Driver',
                     });
 
                     if (data.success && data.data?.checkout_url) {
@@ -391,7 +391,7 @@ const DriverWallet: React.FC = () => {
     };
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
-    const userInitial = userData?.fullname?.charAt(0)?.toUpperCase() || 'D';
+    const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'D';
 
     const getWithdrawalStatusBadge = (status: string) => {
         switch (status) {
@@ -425,7 +425,7 @@ const DriverWallet: React.FC = () => {
     return (
         <div className="driver-wallet-desktop-container">
             <DriverSidebarDesktop 
-                userName={userData?.fullname || 'Driver'} 
+                userName={userData?.fullname || userData?.full_name || 'Driver'} 
                 userRole="driver"
                 profilePictureUrl={userData?.profile_picture_url}
             />

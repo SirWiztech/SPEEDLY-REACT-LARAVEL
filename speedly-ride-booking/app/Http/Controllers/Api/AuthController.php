@@ -58,6 +58,13 @@ class AuthController extends Controller
                 'user_id' => $user->id,
                 'driver_status' => 'offline',
                 'verification_status' => 'pending',
+                'license_number' => '',
+                'license_expiry' => null,
+                'is_available' => false,
+                'completed_rides' => 0,
+                'average_rating' => 0,
+                'total_reviews' => 0,
+                'total_earnings' => 0,
             ]);
         }
 

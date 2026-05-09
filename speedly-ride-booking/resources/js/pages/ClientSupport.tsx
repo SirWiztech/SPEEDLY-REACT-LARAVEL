@@ -225,8 +225,8 @@ const ClientSupport: React.FC = () => {
         window.history.back();
     };
 
-    const firstName = userData?.fullname?.split(' ')[0] || 'Guest';
-    const userInitial = userData?.fullname?.charAt(0)?.toUpperCase() || 'U';
+    const firstName = (userData?.fullname || userData?.full_name)?.split(' ')[0] || 'Guest';
+    const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'U';
 
     useEffect(() => {
         fetchUserData();
@@ -259,7 +259,7 @@ const ClientSupport: React.FC = () => {
     return (
         <div className="support-desktop-container">
             <ClientSidebarDesktop 
-                userName={userData?.fullname || 'User'} 
+                userName={userData?.fullname || userData?.full_name || 'User'} 
                 profilePictureUrl={userData?.profile_picture_url}
             />
 

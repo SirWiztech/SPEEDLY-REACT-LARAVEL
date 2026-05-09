@@ -69,7 +69,7 @@ const DriverSupportMobile: React.FC = () => {
             
             if (data.success || data.data) {
                 const user = data.data?.user || data.user || data.data;
-                setUserName(user?.fullname || 'Guest');
+                setUserName(user?.fullname || user?.full_name || 'Guest');
                 setNotificationCount(data.data?.notification_count || data.notification_count || 0);
             }
         } catch (error) {

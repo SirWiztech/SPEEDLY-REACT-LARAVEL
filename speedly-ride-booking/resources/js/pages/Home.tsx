@@ -139,7 +139,7 @@ useEffect(() => {
                     </a>
                 </div>
 
-                <div className="nav-actions">
+                <div className="nav-actions" >
                     {isLoggedIn ? (
                         <div className="nav-profile">
                             <button
@@ -153,13 +153,13 @@ useEffect(() => {
                                 className={`profile-dropdown ${profileDropdownOpen ? 'active' : ''}`}
                                 ref={profileDropdownRef}
                             >
-                                <a href="/form" className="dropdown-item"><i className='bx bx-user'></i> Register</a>
-                                <a href="/form" className="dropdown-item"><i className='bx bx-cog'></i> Login</a>
+                                <a href="/login" className="dropdown-item"><i className='bx bx-user'></i> Register</a>
+                                <a href="/login" className="dropdown-item"><i className='bx bx-cog'></i> Login</a>
                                 <hr className="dropdown-divider" />
                             </div>
                         </div>
                     ) : (
-                        <Link href="/form" className="auth-btn" aria-label="Register or Login">
+                        <Link href="/login" className="auth-btn" aria-label="Register or Login">
                             <i className='bx bx-user'></i>
                             Register / Login
                         </Link>
@@ -196,7 +196,7 @@ useEffect(() => {
                     {isLoggedIn ? (
                         <a href="/form" className="btn-mobile btn-mobile-outline">Sign Out</a>
                     ) : (
-                        <Link href="/form" className="auth-btn" style={{width: '100%', justifyContent: 'center'}}>
+                        <Link href="/login" className="auth-btn" style={{width: '100%', justifyContent: 'center'}}>
                             <i className='bx bx-user'></i>
                             Register / Login
                         </Link>

@@ -13,6 +13,7 @@ import '../../css/ClientSettings.css';
 interface UserData {
     id: string;
     fullname: string;
+    full_name?: string;
     email: string;
     phone_number: string;
     profile_picture_url: string | null;
@@ -428,8 +429,8 @@ const ClientSettings: React.FC = () => {
         }
     }, [fetchSettingsData]);
 
-    const firstName = userData?.fullname?.split(' ')[0] || 'User';
-    const userInitial = userData?.fullname?.charAt(0)?.toUpperCase() || 'U';
+    const firstName = (userData?.fullname || userData?.full_name)?.split(' ')[0] || 'User';
+    const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'U';
 
     if (loading || preloaderLoading) {
         return <DesktopPreloader />;
@@ -443,7 +444,7 @@ const ClientSettings: React.FC = () => {
     return (
         <div className="settings-desktop-container">
             <ClientSidebarDesktop 
-                userName={userData?.fullname || 'User'} 
+                userName={userData?.fullname || userData?.full_name || 'User'} 
                 profilePictureUrl={userData?.profile_picture_url}
             />
 
@@ -470,7 +471,7 @@ const ClientSettings: React.FC = () => {
                                 Swal.fire({
                                     title: 'Edit Profile',
                                     html: `
-                                        <input type="text" id="full-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || ''}">
+                                        <input type="text" id="full-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || userData?.full_name || ''}">
                                         <input type="email" id="email" class="swal2-input" placeholder="Email" value="${userData?.email || ''}">
                                         <input type="tel" id="phone" class="swal2-input" placeholder="Phone" value="${userData?.phone_number || ''}">
                                     `,
@@ -493,7 +494,7 @@ const ClientSettings: React.FC = () => {
                             </button>
                         </div>
                         <div className="settings-profile-info">
-                            <div className="settings-profile-name">{userData?.fullname}</div>
+                            <div className="settings-profile-name">{userData?.fullname || userData?.full_name}</div>
                             <div className="settings-profile-email">{userData?.email}</div>
                             <div className="settings-profile-tier">{userRole === 'client' ? 'Client Member' : 'Driver Member'}</div>
                         </div>
@@ -502,7 +503,7 @@ const ClientSettings: React.FC = () => {
                                 Swal.fire({
                                     title: 'Personal Information',
                                     html: `
-                                        <input type="text" id="personal-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || ''}">
+                                        <input type="text" id="personal-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || userData?.full_name || ''}">
                                         <input type="email" id="personal-email" class="swal2-input" placeholder="Email" value="${userData?.email || ''}">
                                         <input type="tel" id="personal-phone" class="swal2-input" placeholder="Phone" value="${userData?.phone_number || ''}">
                                         <textarea id="personal-address" class="swal2-textarea" placeholder="Address">${homeAddress}</textarea>

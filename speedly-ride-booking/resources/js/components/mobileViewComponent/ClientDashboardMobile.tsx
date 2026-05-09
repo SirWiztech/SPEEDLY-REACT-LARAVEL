@@ -11,6 +11,7 @@ import '../../../css/ClientDashboardMobileView.css';
 interface UserData {
     id: string;
     fullname: string;
+    full_name?: string;
     profile_picture_url: string | null;
     is_verified: boolean;
     membership_tier: 'basic' | 'premium' | 'gold';
@@ -320,7 +321,7 @@ const ClientDashboardMobile: React.FC = () => {
                 {/* Header */}
                 <div className="mobile-header">
                     <div className="mobile-user-info">
-                        <h1>Welcome back, {userData?.fullname?.split(' ')[0] || 'Guest'}!</h1>
+                        <h1>Welcome back, {userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Guest'}!</h1>
                         <div className="mobile-flex mobile-items-center mobile-gap-2 mobile-mt-1">
                             <span className="mobile-tier-badge" style={{ backgroundColor: tierColor }}>
                                 {userData?.membership_tier ? userData.membership_tier.charAt(0).toUpperCase() + userData.membership_tier.slice(1) : 'Basic'} Member

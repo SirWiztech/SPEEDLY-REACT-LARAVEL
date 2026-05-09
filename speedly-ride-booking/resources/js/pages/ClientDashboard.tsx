@@ -15,6 +15,7 @@ import { useMobile } from '../hooks/useMobile';
 interface UserData {
     id: string;
     fullname: string;
+    full_name?: string;
     profile_picture_url: string | null;
     is_verified: boolean;
     membership_tier: 'basic' | 'premium' | 'gold';
@@ -716,7 +717,7 @@ const ClientDashboard: React.FC = () => {
             {/* DESKTOP VIEW ONLY */}
             <div className="desktop-view">
                 <ClientSidebarDesktop
-                    userName={userData?.fullname || 'User'}
+                    userName={userData?.fullname || userData?.full_name || 'User'}
                     profilePictureUrl={userData?.profile_picture_url}
                 />
 
@@ -725,7 +726,7 @@ const ClientDashboard: React.FC = () => {
                     {/* Header */}
                     <div className="desktop-header">
                         <div className="desktop-title">
-                            <h1>Welcome back, {userData?.fullname?.split(' ')[0] || 'Guest'}!</h1>
+                            <h1>Welcome back, {userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Guest'}!</h1>
                             <p className="text-gray-600">Ready for your next ride?</p>
                         </div>
                         <div className="flex items-center gap-4">
