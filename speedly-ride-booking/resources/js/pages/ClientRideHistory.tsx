@@ -77,17 +77,17 @@ const ClientRideHistory: React.FC = () => {
                 api.client.profile()
             ]);
 
-            if (historyData.success || historyData.data) {
-                const d = historyData.data || historyData;
+            if (historyData.success && historyData.data) {
+                const d = historyData.data;
                 setStats(d.stats || { total_rides: 0, total_spent: 0, avg_rating_given: 0, completed_rides: 0, upcoming_rides: 0 });
                 setRides(d.rides || []);
                 setLastRide(d.last_ride || null);
+                setUserData(d.user || null);
             }
-            if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
+            if (profileData.success && profileData.data) {
+                const user = profileData.data;
                 setUserData(user);
                 setUserRole(user?.role || 'client');
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching ride history:', error);
@@ -372,7 +372,7 @@ const ClientRideHistory: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const notifications = data.data?.data || data.data?.notifications || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -490,7 +490,7 @@ const ClientRideHistory: React.FC = () => {
                             <i className="fas fa-bell"></i>
                             {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
                         </button>
-                        <button className="ride-history-book-btn" onClick={() => router.visit('/book-ride')}>
+                        <button className="ride-history-book-btn" onClick={() => router.visit('/clientbookride')}>
                             <i className="fas fa-car"></i> Book Ride
                         </button>
                     </div>
@@ -615,7 +615,7 @@ const ClientRideHistory: React.FC = () => {
                                         <td colSpan={7} className="no-rides-cell">
                                             <i className="fas fa-history"></i>
                                             <p>No rides yet</p>
-                                            <button className="book-first-ride-btn" onClick={() => router.visit('/book-ride')}>
+                                            <button className="book-first-ride-btn" onClick={() => router.visit('/clientbookride')}>
                                                 Book Your First Ride
                                             </button>
                                         </td>
@@ -646,7 +646,7 @@ const ClientRideHistory: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    <button className="banner-book-btn" onClick={() => router.visit('/book-ride')}>
+                    <button className="banner-book-btn" onClick={() => router.visit('/clientbookride')}>
                         <i className="fas fa-car"></i>
                         <span>Book a Ride Now</span>
                     </button>

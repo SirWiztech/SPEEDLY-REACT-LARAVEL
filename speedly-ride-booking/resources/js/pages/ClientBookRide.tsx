@@ -40,12 +40,11 @@ interface Driver {
 }
 
 interface SavedLocation {
-    id: string;
-    name: string;
     address: string;
-    latitude: number;
-    longitude: number;
-    location_type: string;
+    lat: number;
+    lng: number;
+    type: string;
+    last_used: string;
 }
 
 const ClientBookRide: React.FC = () => {
@@ -82,6 +81,8 @@ const ClientBookRide: React.FC = () => {
     const searchBoxRef = useRef<HTMLInputElement>(null);
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
     const watchIdRef = useRef<number | null>(null);
+    const mapInitRef = useRef(false);
+    const actionsRef = useRef<any>({});
 
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
@@ -99,13 +100,23 @@ const ClientBookRide: React.FC = () => {
     // Fetch dashboard data
     const fetchData = useCallback(async () => {
         try {
-            const profileData = await api.client.profile();
-            
-            if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
-                setUserData(user);
-                setWalletBalance(profileData.data?.wallet_balance || profileData.wallet_balance || 0);
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+            const [profileResult, walletResult] = await Promise.allSettled([
+                api.client.profile(),
+                api.client.wallet()
+            ]);
+
+            if (profileResult.status === 'fulfilled') {
+                const profileData = profileResult.value;
+                if (profileData.success || profileData.data) {
+                    setUserData(profileData.data);
+                }
+            }
+
+            if (walletResult.status === 'fulfilled') {
+                const walletData = walletResult.value;
+                if (walletData.success) {
+                    setWalletBalance(parseFloat(walletData.data.balance) || 0);
+                }
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -118,42 +129,18 @@ const ClientBookRide: React.FC = () => {
     const fetchSavedLocations = useCallback(async () => {
         try {
             const data = await api.client.locations();
-            if (data.success || data.data) {
-                setSavedLocations(data.locations || data.data?.locations || []);
+            if (data.success && data.data) {
+                setSavedLocations(data.data.saved_locations || []);
             }
         } catch (error) {
             console.error('Error fetching saved locations:', error);
         }
     }, []);
 
-    // Load Google Maps script
-    useEffect(() => {
-        const loadGoogleMaps = () => {
-            if (document.querySelector('#google-maps-script')) {
-                initMap();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.id = 'google-maps-script';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            
-            (window as any).initMap = () => {
-                setMapLoaded(true);
-                initMap();
-            };
-            
-            document.head.appendChild(script);
-        };
-
-        loadGoogleMaps();
-    }, []);
-
     // Initialize map
-    const initMap = () => {
-        if (!mapRef.current || !window.google) return;
+    const initMap = useCallback(() => {
+        if (!mapRef.current || !window.google || mapInitRef.current) return;
+        mapInitRef.current = true;
 
         const defaultCenter = { lat: 6.5244, lng: 3.3792 };
         
@@ -170,7 +157,7 @@ const ClientBookRide: React.FC = () => {
         // Add click listener
         mapInstanceRef.current.addListener('click', (e: google.maps.MapMouseEvent) => {
             if (e.latLng) {
-                handleMapClick(e.latLng.lat(), e.latLng.lng());
+                actionsRef.current.handleMapClick(e.latLng.lat(), e.latLng.lng());
             }
         });
 
@@ -191,10 +178,11 @@ const ClientBookRide: React.FC = () => {
                     mapInstanceRef.current?.setCenter({ lat, lng });
                     mapInstanceRef.current?.setZoom(16);
                     
-                    if (mode === 'pickup') {
-                        updatePickupLocation(lat, lng, address, place.place_id);
+                    const a = actionsRef.current;
+                    if (a.mode === 'pickup') {
+                        a.updatePickupLocation(lat, lng, address, place.place_id);
                     } else {
-                        updateDestinationLocation(lat, lng, address, place.place_id);
+                        a.updateDestinationLocation(lat, lng, address, place.place_id);
                     }
                     
                     if (searchBoxRef.current) searchBoxRef.current.value = '';
@@ -214,8 +202,40 @@ const ClientBookRide: React.FC = () => {
         });
 
         // Start watching user location
-        startWatchingPosition();
-    };
+        actionsRef.current.startWatchingPosition();
+    }, []);
+
+    // Load Google Maps script
+    useEffect(() => {
+        const loadGoogleMaps = () => {
+            if (document.querySelector('#google-maps-script')) {
+                initMap();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.id = 'google-maps-script';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMap&loading=async`;
+            script.async = true;
+            script.defer = true;
+            
+            (window as any).initMap = () => {
+                setMapLoaded(true);
+                initMap();
+            };
+            
+            document.head.appendChild(script);
+        };
+
+        loadGoogleMaps();
+    }, [initMap]);
+
+    // Retry map init after preloader finishes
+    useEffect(() => {
+        if (!preloaderLoading) {
+            initMap();
+        }
+    }, [preloaderLoading, initMap]);
 
     // Handle map click
     const handleMapClick = async (lat: number, lng: number) => {
@@ -353,11 +373,11 @@ const ClientBookRide: React.FC = () => {
                 ride_type: booking.plan || 'economy'
             });
 
-            if (data.success) {
+            if (data.success && data.data) {
                 setBooking(prev => ({
                     ...prev,
-                    distance: data.distance,
-                    fare: data.fare
+                    distance: data.data.distance_km || 0,
+                    fare: data.data.estimated_fare || 0
                 }));
                 
                 // Find nearby drivers
@@ -375,8 +395,18 @@ const ClientBookRide: React.FC = () => {
         try {
             const data = await api.driver.nearbyDrivers({ lat, lng, radius_km: 5 });
             
-            if ((data.success || data.data) && (data.drivers || data.data?.drivers)) {
-                setDrivers(data.drivers || data.data?.drivers || []);
+            if (data.success && data.data) {
+                const rawList = Array.isArray(data.data) ? data.data : [];
+                setDrivers(rawList.map((d: any) => ({
+                    id: d.id,
+                    name: d.user?.full_name || 'Unknown',
+                    rating: d.average_rating || 0,
+                    rides: d.completed_rides || 0,
+                    distance: d.distance ? Math.round(d.distance * 10) / 10 : 0,
+                    vehicle: d.vehicle?.vehicle_type || 'Standard',
+                    plate: d.vehicle?.plate_number || '',
+                    type: d.vehicle?.vehicle_type || 'standard'
+                })));
             }
         } catch (error) {
             console.error('Error finding drivers:', error);
@@ -433,8 +463,8 @@ const ClientBookRide: React.FC = () => {
 
     // Use saved location
     const useSavedLocation = (location: SavedLocation, type: 'pickup' | 'destination') => {
-        const lat = location.latitude;
-        const lng = location.longitude;
+        const lat = location.lat;
+        const lng = location.lng;
         const address = location.address;
 
         if (mapInstanceRef.current) {
@@ -602,14 +632,15 @@ const ClientBookRide: React.FC = () => {
             Swal.close();
 
             if (data.success) {
+                const rideData = data.data;
                 Swal.fire({
                     icon: 'success',
                     title: 'Ride Booked Successfully!',
-                    html: `<div><p><strong>Ride Number:</strong> #${data.ride_number || data.data?.ride_number}</p><p><strong>Amount Paid:</strong> ₦${booking.fare.toLocaleString()}</p><p><strong>New Balance:</strong> ₦${(data.new_balance || data.data?.new_balance || 0).toLocaleString()}</p></div>`,
+                    html: `<div><p><strong>Ride Number:</strong> #${rideData?.ride_number || ''}</p><p><strong>Amount Paid:</strong> ₦${booking.fare.toLocaleString()}</p><p><strong>Wallet Balance:</strong> ₦${walletBalance.toLocaleString()}</p></div>`,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'View Receipt'
                 }).then(() => {
-                    router.visit(`/generate_receipt?ride_id=${data.ride_id || data.data?.ride_id}`);
+                    router.visit(`/generate_receipt?ride_id=${rideData?.id || ''}`);
                 });
             } else if (data.insufficient_balance) {
                 Swal.fire({ icon: 'error', title: 'Insufficient Balance', text: data.message, confirmButtonColor: '#ff5e00' });
@@ -626,7 +657,7 @@ const ClientBookRide: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const notifications = data.data?.data || [];
             
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -643,6 +674,17 @@ const ClientBookRide: React.FC = () => {
             Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' });
         }
     };
+
+    // Keep actionsRef updated with latest function references for initMap's stale closure
+    useEffect(() => {
+        actionsRef.current = {
+            mode,
+            handleMapClick,
+            updatePickupLocation,
+            updateDestinationLocation,
+            startWatchingPosition,
+        };
+    });
 
     // Initial data fetch
     useEffect(() => {
@@ -760,10 +802,10 @@ const ClientBookRide: React.FC = () => {
                                 <>
                                     <h3 className="section-title">Saved Locations</h3>
                                     <div className="saved-locations-grid">
-                                        {savedLocations.map(loc => (
-                                            <div key={loc.id} className="saved-location-chip" onClick={() => useSavedLocation(loc, mode)}>
-                                                <i className={`fas fa-${loc.location_type === 'home' ? 'home' : loc.location_type === 'work' ? 'building' : 'map-pin'}`}></i>
-                                                <div className="name">{loc.name}</div>
+                                        {savedLocations.map((loc, idx) => (
+                                            <div key={idx} className="saved-location-chip" onClick={() => useSavedLocation(loc, mode)}>
+                                                <i className="fas fa-map-pin"></i>
+                                                <div className="name">{loc.address.substring(0, 25)}</div>
                                             </div>
                                         ))}
                                     </div>

@@ -53,17 +53,16 @@ const ClientWalletMobile: React.FC = () => {
                 api.client.transactions()
             ]);
 
-            if (walletData.success || walletData.data) {
-                const w = walletData.data || walletData;
-                setUserData(w.user);
-                setWalletBalance(w.balance || w.wallet_balance || 0);
+            if (walletData.success && walletData.data) {
+                const w = walletData.data;
+                setUserData(w.user || null);
+                setWalletBalance(w.balance || 0);
                 setRideCount(w.ride_count || 0);
                 setPaymentMethods(w.payment_methods || []);
                 setNotificationCount(w.notification_count || 0);
             }
-            if (transactionData.success || transactionData.data) {
-                const t = transactionData.data || transactionData;
-                setTransactions(t.transactions || []);
+            if (transactionData.success && transactionData.data) {
+                setTransactions(transactionData.data.transactions || []);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
@@ -114,17 +113,20 @@ const ClientWalletMobile: React.FC = () => {
         });
 
         try {
-            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
+            const res = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
             Swal.close();
 
-            if (data.success && data.checkout_url) {
-                sessionStorage.setItem('payment_reference', data.reference);
-                window.location.href = data.checkout_url;
+            const checkoutUrl = res.data?.payment_url || res.data?.checkout_url || res.checkout_url;
+            const reference = res.data?.reference || res.reference;
+
+            if (res.success && checkoutUrl) {
+                sessionStorage.setItem('payment_reference', reference || '');
+                window.location.href = checkoutUrl;
             } else {
                 Swal.fire({
                     icon: 'error',
                     title: 'Payment Failed',
-                    text: data.message || 'Unable to initialize payment',
+                    text: res.message || 'Unable to initialize payment',
                     confirmButtonColor: '#ff5e00'
                 });
             }
@@ -294,7 +296,7 @@ const ClientWalletMobile: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifs = data.notifications || data.data?.notifications || [];
+            const notifs = data.data?.data || data.data?.notifications || [];
             
             if (notifs.length > 0) {
                 let html = '<div style="text-align: left;">';
@@ -390,11 +392,11 @@ const ClientWalletMobile: React.FC = () => {
                             <div className="mobile-action-icon withdraw"><i className="fas fa-money-check-alt"></i></div>
                             <span>Withdraw</span>
                         </button>
-                        <button className="mobile-action-btn" onClick={() => router.visit('/ride-history')}>
+                        <button className="mobile-action-btn" onClick={() => router.visit('/clientridehistory')}>
                             <div className="mobile-action-icon history"><i className="fas fa-history"></i></div>
                             <span>History</span>
                         </button>
-                        <button className="mobile-action-btn" onClick={() => router.visit('/support')}>
+                        <button className="mobile-action-btn" onClick={() => router.visit('/clientsupport')}>
                             <div className="mobile-action-icon support"><i className="fas fa-headset"></i></div>
                             <span>Support</span>
                         </button>
@@ -405,7 +407,7 @@ const ClientWalletMobile: React.FC = () => {
                 <div className="mobile-wallet-section">
                     <div className="mobile-section-header">
                         <h3>Recent Transactions</h3>
-                        <button className="mobile-see-all" onClick={() => router.visit('/ride-history')}>See All</button>
+                        <button className="mobile-see-all" onClick={() => router.visit('/clientridehistory')}>See All</button>
                     </div>
                     <div className="mobile-transactions-list">
                         {transactions.length > 0 ? (
@@ -430,7 +432,7 @@ const ClientWalletMobile: React.FC = () => {
                 </div>
 
                 {/* Book Ride Button */}
-                <button className="mobile-book-ride-btn" onClick={() => router.visit('/book-ride')}>
+                <button className="mobile-book-ride-btn" onClick={() => router.visit('/clientbookride')}>
                     <i className="fas fa-car"></i>
                     <span>Book a Ride Now</span>
                 </button>

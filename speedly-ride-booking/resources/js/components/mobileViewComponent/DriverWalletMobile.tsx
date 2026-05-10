@@ -57,21 +57,26 @@ const DriverWalletMobile: React.FC = () => {
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
         try {
-            const [walletData, transactionData] = await Promise.all([
+            const results = await Promise.allSettled([
                 api.driver.wallet(),
                 api.driver.transactions()
             ]);
 
-            if (walletData.success || walletData.data) {
+            const [walletResult, txResult] = results;
+
+            if (walletResult.status === 'fulfilled') {
+                const walletData = walletResult.value;
                 const w = walletData.data || walletData;
-                setUserData(w.user);
-                setStats(w.stats);
-                setRecentRides(w.recent_rides || []);
-                setNotificationCount(w.notification_count || 0);
+                if (w.stats) setStats(w.stats);
+                if (w.user) setUserData(w.user);
+                if (w.notification_count !== undefined) setNotificationCount(w.notification_count);
             }
-            if (transactionData.success || transactionData.data) {
-                const t = transactionData.data || transactionData;
-                setWithdrawals(t.withdrawals || []);
+
+            if (txResult.status === 'fulfilled') {
+                const txData = txResult.value;
+                const t = txData.data || txData;
+                if (t.recent_rides) setRecentRides(t.recent_rides);
+                if (t.withdrawals) setWithdrawals(t.withdrawals);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
@@ -141,16 +146,15 @@ const DriverWalletMobile: React.FC = () => {
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
-                const formData = new FormData();
-                formData.append('amount', result.value.amount.toString());
-                formData.append('bank_name', result.value.bank);
-                formData.append('account_number', result.value.account);
-                formData.append('account_name', result.value.name);
-                
                 Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+                    const data = await api.driver.requestWithdrawal({
+                        amount: result.value.amount,
+                        bank_name: result.value.bank,
+                        account_number: result.value.account,
+                        account_name: result.value.name,
+                    });
                     
                     if (data.success) {
                         Swal.fire({
@@ -170,13 +174,14 @@ const DriverWalletMobile: React.FC = () => {
     };
 
     // View history
-    const viewHistory = () => router.visit('/book-history');
+    const viewHistory = () => router.visit('/driverbookhistory');
 
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const data = await api.notifications.list();
-            const notifs = data.notifications || data.data?.notifications || [];
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifs = payload.data || [];
             
             if (notifs.length > 0) {
                 let html = '<div style="text-align: left;">';

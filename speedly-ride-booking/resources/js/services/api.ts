@@ -45,7 +45,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
 }
 
 export const api = {
-  // Auth
+    // Auth
   auth: {
     register: (data: { full_name: string; username: string; email: string; password: string; role: string; phone: string }) =>
       apiFetch('/register', { method: 'POST', body: JSON.stringify(data) }),
@@ -61,6 +61,8 @@ export const api = {
       apiFetch('/me'),
     changePassword: (data: { current_password: string; new_password: string }) =>
       apiFetch('/change-password', { method: 'POST', body: JSON.stringify(data) }),
+    deleteAccount: () =>
+      apiFetch('/delete-account', { method: 'POST' }),
     resendOtp: (data: { email: string }) =>
       apiFetch('/resend-otp', { method: 'POST', body: JSON.stringify(data) }),
     verifyOtp: (data: { email: string; otp: string }) =>
@@ -119,7 +121,7 @@ export const api = {
       if (params?.page) qs.set('page', String(params.page));
       return apiFetch(`/driver/wallet/transactions?${qs}`);
     },
-    requestWithdrawal: (data: { amount: number }) =>
+    requestWithdrawal: (data: { amount: number; bank_name?: string; account_number?: string; account_name?: string }) =>
       apiFetch('/driver/wallet/withdraw', { method: 'POST', body: JSON.stringify(data) }),
     profile: () => apiFetch('/driver/profile'),
     updateProfile: (data: Record<string, string>) =>
@@ -219,6 +221,17 @@ export const api = {
     rejectDriver: (id: string, data: { reason: string }) =>
       apiFetch(`/admin/drivers/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
     pendingKyc: (page?: number) => apiFetch(`/admin/kyc/pending${page ? `?page=${page}` : ''}`),
+    supportTickets: (params?: { status?: string; priority?: string; page?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set('status', params.status);
+      if (params?.priority) qs.set('priority', params.priority);
+      if (params?.page) qs.set('page', String(params.page));
+      return apiFetch(`/admin/support-tickets?${qs}`);
+    },
+    replyTicket: (id: string, data: { reply: string }) =>
+      apiFetch(`/admin/support-tickets/${id}/reply`, { method: 'POST', body: JSON.stringify(data) }),
+    closeTicket: (id: string) =>
+      apiFetch(`/admin/support-tickets/${id}/close`, { method: 'POST' }),
     approveKyc: (id: string) =>
       apiFetch(`/admin/kyc/${id}/approve`, { method: 'POST' }),
     rejectKyc: (id: string, data: { reason: string }) =>

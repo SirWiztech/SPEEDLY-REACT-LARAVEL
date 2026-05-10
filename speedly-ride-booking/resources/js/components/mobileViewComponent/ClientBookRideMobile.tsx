@@ -38,12 +38,11 @@ interface Driver {
 }
 
 interface SavedLocation {
-    id: string;
-    name: string;
     address: string;
-    latitude: number;
-    longitude: number;
-    location_type: string;
+    lat: number;
+    lng: number;
+    type: string;
+    last_used: string;
 }
 
 const ClientBookRideMobile: React.FC = () => {
@@ -84,6 +83,8 @@ const ClientBookRideMobile: React.FC = () => {
     const searchBoxRef = useRef<HTMLInputElement>(null);
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
     const watchIdRef = useRef<number | null>(null);
+    const mapInitRef = useRef(false);
+    const actionsRef = useRef<any>({});
 
     const preloaderLoading = usePreloader(1000);
 
@@ -100,12 +101,23 @@ const ClientBookRideMobile: React.FC = () => {
     // Fetch dashboard data
     const fetchData = useCallback(async () => {
         try {
-            const data = await api.client.stats();
-            
-            if (data.success) {
-                setUserData(data.user);
-                setWalletBalance(data.wallet_balance);
-                setNotificationCount(data.notification_count || 0);
+            const [profileResult, walletResult] = await Promise.allSettled([
+                api.client.profile(),
+                api.client.wallet()
+            ]);
+
+            if (profileResult.status === 'fulfilled') {
+                const profileData = profileResult.value;
+                if (profileData.success || profileData.data) {
+                    setUserData(profileData.data);
+                }
+            }
+
+            if (walletResult.status === 'fulfilled') {
+                const walletData = walletResult.value;
+                if (walletData.success) {
+                    setWalletBalance(parseFloat(walletData.data.balance) || 0);
+                }
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -118,42 +130,18 @@ const ClientBookRideMobile: React.FC = () => {
     const fetchSavedLocations = useCallback(async () => {
         try {
             const data = await api.client.locations();
-            if (data.success) {
-                setSavedLocations(data.locations || data.data?.locations || []);
+            if (data.success && data.data) {
+                setSavedLocations(data.data.saved_locations || []);
             }
         } catch (error) {
             console.error('Error fetching saved locations:', error);
         }
     }, []);
 
-    // Load Google Maps script
-    useEffect(() => {
-        const loadGoogleMaps = () => {
-            if (document.querySelector('#google-maps-script-mobile')) {
-                initMap();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.id = 'google-maps-script-mobile';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapMobile`;
-            script.async = true;
-            script.defer = true;
-            
-            (window as any).initMapMobile = () => {
-                setMapLoaded(true);
-                initMap();
-            };
-            
-            document.head.appendChild(script);
-        };
-
-        loadGoogleMaps();
-    }, []);
-
     // Initialize map
-    const initMap = () => {
-        if (!mapRef.current || !window.google) return;
+    const initMap = useCallback(() => {
+        if (!mapRef.current || !window.google || mapInitRef.current) return;
+        mapInitRef.current = true;
 
         const defaultCenter = { lat: 6.5244, lng: 3.3792 };
         
@@ -170,7 +158,7 @@ const ClientBookRideMobile: React.FC = () => {
         // Add click listener
         mapInstanceRef.current.addListener('click', (e: google.maps.MapMouseEvent) => {
             if (e.latLng) {
-                handleMapClick(e.latLng.lat(), e.latLng.lng());
+                actionsRef.current.handleMapClick(e.latLng.lat(), e.latLng.lng());
             }
         });
 
@@ -200,10 +188,11 @@ const ClientBookRideMobile: React.FC = () => {
                     mapInstanceRef.current?.setCenter({ lat, lng });
                     mapInstanceRef.current?.setZoom(16);
                     
-                    if (mode === 'pickup') {
-                        updatePickupLocation(lat, lng, address, place.place_id);
+                    const a = actionsRef.current;
+                    if (a.mode === 'pickup') {
+                        a.updatePickupLocation(lat, lng, address, place.place_id);
                     } else {
-                        updateDestinationLocation(lat, lng, address, place.place_id);
+                        a.updateDestinationLocation(lat, lng, address, place.place_id);
                     }
                     
                     if (searchBoxRef.current) searchBoxRef.current.value = '';
@@ -223,8 +212,40 @@ const ClientBookRideMobile: React.FC = () => {
         });
 
         // Start watching user location
-        startWatchingPosition();
-    };
+        actionsRef.current.startWatchingPosition();
+    }, []);
+
+    // Load Google Maps script
+    useEffect(() => {
+        const loadGoogleMaps = () => {
+            if (document.querySelector('#google-maps-script-mobile')) {
+                initMap();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.id = 'google-maps-script-mobile';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapMobile&loading=async`;
+            script.async = true;
+            script.defer = true;
+            
+            (window as any).initMapMobile = () => {
+                setMapLoaded(true);
+                initMap();
+            };
+            
+            document.head.appendChild(script);
+        };
+
+        loadGoogleMaps();
+    }, [initMap]);
+
+    // Retry map init after preloader finishes
+    useEffect(() => {
+        if (!preloaderLoading) {
+            initMap();
+        }
+    }, [preloaderLoading, initMap]);
 
     // Handle map click
     const handleMapClick = async (lat: number, lng: number) => {
@@ -445,15 +466,17 @@ const ClientBookRideMobile: React.FC = () => {
                 ride_type: booking.plan || 'economy'
             });
 
-            if (data.success) {
+            if (data.success && data.data) {
                 setBooking(prev => ({
                     ...prev,
-                    distance: data.distance || data.data?.distance || 0,
-                    fare: data.fare || data.data?.fare || 0
+                    distance: data.data.distance_km || 0,
+                    fare: data.data.estimated_fare || 0
                 }));
                 
                 // Find nearby drivers
-                findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan || 'economy');
+                if (booking.pickup.lat && booking.pickup.lng) {
+                    findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan || 'economy');
+                }
             }
         } catch (error) {
             console.error('Error calculating fare:', error);
@@ -465,8 +488,18 @@ const ClientBookRideMobile: React.FC = () => {
         try {
             const data = await api.driver.nearbyDrivers({ lat, lng, radius_km: 10 });
             
-            if (data.success && data.drivers) {
-                setDrivers(data.drivers);
+            if (data.success && data.data) {
+                const rawList = Array.isArray(data.data) ? data.data : [];
+                setDrivers(rawList.map((d: any) => ({
+                    id: d.id,
+                    name: d.user?.full_name || 'Unknown',
+                    rating: d.average_rating || 0,
+                    rides: d.completed_rides || 0,
+                    distance: d.distance ? Math.round(d.distance * 10) / 10 : 0,
+                    vehicle: d.vehicle?.vehicle_type || 'Standard',
+                    plate: d.vehicle?.plate_number || '',
+                    type: d.vehicle?.vehicle_type || 'standard'
+                })));
             }
         } catch (error) {
             console.error('Error finding drivers:', error);
@@ -523,8 +556,8 @@ const ClientBookRideMobile: React.FC = () => {
 
     // Use saved location
     const useSavedLocation = (location: SavedLocation) => {
-        const lat = location.latitude;
-        const lng = location.longitude;
+        const lat = location.lat;
+        const lng = location.lng;
         const address = location.address;
 
         if (mapInstanceRef.current) {
@@ -663,7 +696,7 @@ const ClientBookRideMobile: React.FC = () => {
                 confirmButtonText: 'Add Funds',
                 confirmButtonColor: '#ff5e00'
             }).then((result) => {
-                if (result.isConfirmed) router.visit('/wallet');
+                if (result.isConfirmed) router.visit('/clientwallet');
             });
             return;
         }
@@ -720,6 +753,7 @@ const ClientBookRideMobile: React.FC = () => {
             Swal.close();
 
             if (data.success) {
+                const rideData = data.data;
                 const message = data.driver_assigned 
                     ? 'Your selected driver has been notified and will respond shortly.'
                     : 'Nearby drivers have been notified and will respond shortly.';
@@ -727,10 +761,10 @@ const ClientBookRideMobile: React.FC = () => {
                 Swal.fire({
                     icon: 'success',
                     title: 'Ride Booked!',
-                    html: `<div><p><strong>Ride #${data.ride_number}</strong></p><p>${message}</p><p>New Balance: ₦${data.new_balance.toLocaleString()}</p></div>`,
+                    html: `<div><p><strong>Ride #${rideData?.ride_number || ''}</strong></p><p>${message}</p><p>Wallet Balance: ₦${walletBalance.toLocaleString()}</p></div>`,
                     confirmButtonColor: '#ff5e00'
                 }).then(() => {
-                    router.visit('/ride-history');
+                    router.visit('/clientridehistory');
                 });
             } else if (data.insufficient_balance) {
                 Swal.fire({
@@ -741,7 +775,7 @@ const ClientBookRideMobile: React.FC = () => {
                     confirmButtonText: 'Add Funds',
                     confirmButtonColor: '#ff5e00'
                 }).then((result) => {
-                    if (result.isConfirmed) router.visit('/wallet');
+                    if (result.isConfirmed) router.visit('/clientwallet');
                 });
             } else {
                 Swal.fire({ icon: 'error', title: 'Booking Failed', text: data.message, confirmButtonColor: '#ff5e00' });
@@ -756,7 +790,7 @@ const ClientBookRideMobile: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifs = data.notifications || data.data?.notifications || [];
+            const notifs = data.data?.data || [];
             
             if (notifs.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -778,9 +812,6 @@ const ClientBookRideMobile: React.FC = () => {
                 if (result.isDenied) {
                     await api.notifications.clearAll();
                     setNotificationCount(0);
-                } else {
-                    await api.notifications.clearAll();
-                    setNotificationCount(0);
                 }
             } else {
                 Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' });
@@ -789,6 +820,17 @@ const ClientBookRideMobile: React.FC = () => {
             Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' });
         }
     };
+
+    // Keep actionsRef updated with latest function references for initMap's stale closure
+    useEffect(() => {
+        actionsRef.current = {
+            mode,
+            handleMapClick,
+            updatePickupLocation,
+            updateDestinationLocation,
+            startWatchingPosition,
+        };
+    });
 
     // Initial data fetch
     useEffect(() => {
@@ -942,10 +984,10 @@ const ClientBookRideMobile: React.FC = () => {
                             <div className="mobile-saved-locations">
                                 <h3>Your Saved Locations</h3>
                                 <div className="mobile-saved-locations-grid">
-                                    {savedLocations.map(loc => (
-                                        <div key={loc.id} className="mobile-saved-location-chip" onClick={() => useSavedLocation(loc)}>
-                                            <i className={`fas fa-${loc.location_type === 'home' ? 'home' : loc.location_type === 'work' ? 'building' : 'map-pin'}`}></i>
-                                            <div className="name">{loc.name}</div>
+                                    {savedLocations.map((loc, idx) => (
+                                        <div key={idx} className="mobile-saved-location-chip" onClick={() => useSavedLocation(loc)}>
+                                            <i className="fas fa-map-pin"></i>
+                                            <div className="name">{loc.address.substring(0, 20)}</div>
                                             <div className="address">{loc.address.substring(0, 20)}...</div>
                                         </div>
                                     ))}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientSidebarDesktop from '../components/navbars/ClientSidebarDesktop';
 import Swal from 'sweetalert2';
-import api from '../services/api';
+import api, { setToken } from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -84,16 +84,24 @@ const ClientSettings: React.FC = () => {
             ]);
 
             if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
+                const user = profileData.data;
                 setUserData(user);
                 setUserRole(user?.role || 'client');
-                setUserSettings(profileData.data?.settings || profileData.settings || { dark_mode: false, notifications_enabled: true, email_notifications: true, sms_notifications: false, language: 'en', currency: 'NGN' });
-                setPaymentMethods(profileData.data?.payment_methods || profileData.payment_methods || []);
-                setHomeAddress(profileData.data?.home_address || profileData.home_address || '');
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+                const prefs = user?.notification_preferences || {};
+                setUserSettings({
+                    dark_mode: user?.dark_mode ?? false,
+                    notifications_enabled: prefs.notifications_enabled ?? true,
+                    email_notifications: prefs.email_notifications ?? true,
+                    sms_notifications: prefs.sms_notifications ?? false,
+                    language: 'en',
+                    currency: 'NGN'
+                });
+                setHomeAddress('');
+                setNotificationCount(0);
             }
             if (locationsData.success || locationsData.data) {
-                setSavedLocations(locationsData.locations || locationsData.data?.locations || []);
+                const locs = locationsData.data;
+                setSavedLocations(locs?.saved_locations || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -230,7 +238,7 @@ const ClientSettings: React.FC = () => {
 
     // Set language
     const setLanguage = (lang: string) => {
-        toggleSetting('language', lang);
+        setUserSettings(prev => ({ ...prev, language: lang }));
         Swal.fire({
             icon: 'success',
             title: 'Language Updated',
@@ -359,8 +367,14 @@ const ClientSettings: React.FC = () => {
             confirmButtonColor: '#ff5e00'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                await api.auth.logout();
-                window.location.href = '/home';
+                try {
+                    await api.auth.logout();
+                } catch (e) {
+                    // ignore logout errors
+                } finally {
+                    setToken(null);
+                    window.location.href = '/home';
+                }
             }
         });
     };
@@ -385,17 +399,35 @@ const ClientSettings: React.FC = () => {
                 }
                 return true;
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    icon: 'success',
-                    title: 'Account Deleted',
-                    text: 'Your account has been deleted successfully',
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    window.location.href = '/';
+                    title: 'Processing...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
                 });
+
+                try {
+                    await api.auth.deleteAccount();
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Account Deleted',
+                        text: 'Your account has been deleted successfully',
+                        confirmButtonColor: '#ff5e00'
+                    }).then(() => {
+                        setToken(null);
+                        window.location.href = '/';
+                    });
+                } catch (error: any) {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to delete account',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
             }
         });
     };
@@ -499,33 +531,12 @@ const ClientSettings: React.FC = () => {
                             <div className="settings-profile-tier">{userRole === 'client' ? 'Client Member' : 'Driver Member'}</div>
                         </div>
                         <div className="settings-profile-actions">
-                            <button className="settings-profile-btn" onClick={() => {
-                                Swal.fire({
-                                    title: 'Personal Information',
-                                    html: `
-                                        <input type="text" id="personal-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || userData?.full_name || ''}">
-                                        <input type="email" id="personal-email" class="swal2-input" placeholder="Email" value="${userData?.email || ''}">
-                                        <input type="tel" id="personal-phone" class="swal2-input" placeholder="Phone" value="${userData?.phone_number || ''}">
-                                        <textarea id="personal-address" class="swal2-textarea" placeholder="Address">${homeAddress}</textarea>
-                                    `,
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Save Changes',
-                                    confirmButtonColor: '#ff5e00',
-                                    preConfirm: () => {
-                                        const name = (document.getElementById('personal-name') as HTMLInputElement)?.value;
-                                        const email = (document.getElementById('personal-email') as HTMLInputElement)?.value;
-                                        const phone = (document.getElementById('personal-phone') as HTMLInputElement)?.value;
-                                        const address = (document.getElementById('personal-address') as HTMLTextAreaElement)?.value;
-                                        return { full_name: name, email, phone, address };
-                                    }
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        updateProfile(result.value);
-                                    }
-                                });
-                            }}>
-                                <i className="fas fa-edit"></i> Edit Profile
-                            </button>
+                            <button 
+  className="settings-profile-btn" 
+  onClick={() => window.location.href = '/client-profile'}
+>
+  <i className="fas fa-edit"></i> Edit Profile
+</button>
                             <button className="settings-profile-btn" onClick={() => {
                                 Swal.fire({
                                     title: 'Change Password',

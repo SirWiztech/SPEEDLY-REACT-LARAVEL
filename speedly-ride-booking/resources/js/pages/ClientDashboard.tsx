@@ -151,9 +151,9 @@ const ClientDashboard: React.FC = () => {
             if (statsData.success) {
                 const s = statsData.data;
                 setRideStats({
-                    active_count: s.total_rides || 0,
+                    active_count: s.active_rides || 0,
                     completed_count: s.completed_rides || 0,
-                    monthly_change: 0
+                    monthly_change: s.monthly_change || 0
                 });
             }
 
@@ -240,7 +240,7 @@ const ClientDashboard: React.FC = () => {
     const checkForNewNotifications = useCallback(async () => {
         try {
             const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const notifications = data.data?.data || [];
             const unread = notifications.filter((n: any) => !n.is_read).length;
             setNotificationCount(unread);
         } catch (error) {
@@ -300,7 +300,7 @@ const ClientDashboard: React.FC = () => {
 
             Swal.close();
 
-            const rideData = data.ride || data.data?.ride || data.data;
+            const rideData = data.data;
             if (data.success || data.data) {
                 displayRideDetails(rideData);
             } else {
@@ -616,7 +616,7 @@ const ClientDashboard: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const notifications = data.data?.data || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';

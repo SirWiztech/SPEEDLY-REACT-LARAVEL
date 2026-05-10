@@ -58,11 +58,22 @@ const DriverKycMobile: React.FC = () => {
     // Fetch KYC data
     const fetchKycData = useCallback(async () => {
         try {
-            const data = await api.driver.kyc();
+            const results = await Promise.allSettled([
+                api.driver.kyc(),
+                api.driver.profile()
+            ]);
 
-            if (data.success || data.data) {
-                const d = data.data || data;
-                setDriverData(d.driver);
+            const [kycResult, profileResult] = results;
+
+            const profileResponse = profileResult.status === 'fulfilled' ? profileResult.value : null;
+            if (profileResponse && (profileResponse.success || profileResponse.data)) {
+                const p = profileResponse.data?.user || profileResponse.user || profileResponse.data;
+                setDriverData(p);
+            }
+
+            const kycResponse = kycResult.status === 'fulfilled' ? kycResult.value : null;
+            if (kycResponse && (kycResponse.success || kycResponse.data)) {
+                const d = kycResponse.data || kycResponse;
                 setDocuments(d.documents || []);
                 setPendingApproval(d.pending_approval || null);
                 setNotificationCount(d.notification_count || 0);

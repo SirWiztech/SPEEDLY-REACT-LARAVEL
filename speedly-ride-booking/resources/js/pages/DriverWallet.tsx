@@ -69,34 +69,39 @@ const DriverWallet: React.FC = () => {
     const fetchWalletData = useCallback(async () => {
         setLoading(true);
         setApiError(null);
-        
-        try {
-            const [walletData, txData, profileData] = await Promise.all([
-                api.driver.wallet(),
-                api.driver.transactions(),
-                api.driver.profile()
-            ]);
 
-            if (walletData.success || walletData.data) {
-                const w = walletData.data || walletData;
-                setStats(w.stats || { wallet_balance: 0, total_earnings: 0, total_withdrawn: 0, today_earnings: 0, week_earnings: 0, month_earnings: 0, pending_withdrawals: 0 });
-            }
-            if (txData.success || txData.data) {
-                const t = txData.data || txData;
-                setRecentRides(t.recent_rides || t.rides || []);
-                setWithdrawals(t.withdrawals || []);
-            }
-            if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
-                setUserData(user);
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
-            }
-        } catch (error) {
-            console.error('Error fetching wallet data:', error);
+        const results = await Promise.allSettled([
+            api.driver.wallet(),
+            api.driver.transactions(),
+            api.driver.profile()
+        ]);
+
+        const [walletResult, txResult, profileResult] = results;
+
+        if (walletResult.status === 'fulfilled') {
+            const walletData = walletResult.value;
+            const w = walletData.data || walletData;
+            if (w.stats) setStats(w.stats);
+            if (w.user) setUserData(w.user);
+            if (w.notification_count !== undefined) setNotificationCount(w.notification_count);
+        } else {
             setApiError('Network error. Unable to load wallet data.');
-        } finally {
-            setLoading(false);
         }
+
+        if (txResult.status === 'fulfilled') {
+            const txData = txResult.value;
+            const t = txData.data || txData;
+            if (t.recent_rides) setRecentRides(t.recent_rides);
+            if (t.withdrawals) setWithdrawals(t.withdrawals);
+        }
+
+        if (profileResult.status === 'fulfilled') {
+            const profileData = profileResult.value;
+            const user = profileData.data?.user || profileData.user || profileData.data;
+            if (user) setUserData(user);
+        }
+
+        setLoading(false);
     }, []);
 
     // Withdraw funds
@@ -205,7 +210,12 @@ const DriverWallet: React.FC = () => {
                 });
 
                 try {
-                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+                    const data = await api.driver.requestWithdrawal({
+                        amount: result.value.amount,
+                        bank_name: result.value.bank,
+                        account_number: result.value.account,
+                        account_name: result.value.name,
+                    });
 
                     if (data.success) {
                         Swal.fire({
@@ -343,14 +353,15 @@ const DriverWallet: React.FC = () => {
 
     // View all transactions
     const viewAllTransactions = () => {
-        router.visit('/driver-book-history');
+        router.visit('/driverbookhistory');
     };
 
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifications = payload.data || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -595,8 +606,8 @@ const DriverWallet: React.FC = () => {
                             <p>Complete more rides to increase your earnings. Withdrawals are processed within 24-48 hours to your registered bank account.</p>
                         </div>
                         <div className="tips-stat">
-                            <span className="tips-stat-label">Completion Rate</span>
-                            <span className="tips-stat-value">94%</span>
+                            <span className="tips-stat-label">Available Balance</span>
+                            <span className="tips-stat-value">₦{(stats.wallet_balance || 0).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>

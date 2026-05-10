@@ -476,7 +476,7 @@ const DriverProfile: React.FC = () => {
             <div className="driver-profile-header">
                 <h1>Driver Profile</h1>
                 <p>Manage your personal information, vehicle details, and documents</p>
-                <button className="back-btn" onClick={() => router.visit('/driver-dashboard')}>
+                <button className="back-btn" onClick={() => router.visit('/driversettings')}>
                     <i className="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
                 <button className="notification-btn" onClick={showNotifications}>

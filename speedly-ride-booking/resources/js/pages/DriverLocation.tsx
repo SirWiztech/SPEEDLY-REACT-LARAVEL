@@ -6,6 +6,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import DriverLocationMobile from '../components/mobileViewComponent/DriverLocationMobile';
+import api from '../services/api';
 import '../../css/DriverLocation.css';
 
 // Types
@@ -52,6 +53,7 @@ const DriverLocation: React.FC = () => {
     const [nearbyPlaces, setNearbyPlaces] = useState<PlaceResult[]>([]);
     const [showPlaces, setShowPlaces] = useState<boolean>(false);
     const [gpsStatus, setGpsStatus] = useState<string>('WAITING FOR GPS');
+    const [gpsClicked, setGpsClicked] = useState(false);
 
     const watchIdRef = useRef<number | null>(null);
     const mapRef = useRef<HTMLDivElement>(null);
@@ -60,41 +62,12 @@ const DriverLocation: React.FC = () => {
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
-
-    const preloaderLoading = usePreloader(1000);
-    const isMobile = useMobile();
-
-    // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-    // Load Google Maps script
-    useEffect(() => {
-        const loadGoogleMaps = () => {
-            if (document.querySelector('#google-maps-script-location')) {
-                initMap();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.id = 'google-maps-script-location';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocation`;
-            script.async = true;
-            script.defer = true;
-
-            (window as any).initMapLocation = () => {
-                initMap();
-            };
-
-            document.head.appendChild(script);
-        };
-
-        loadGoogleMaps();
-        checkGeolocationPermission();
-    }, []);
+    const mapInitRef = useRef(false);
 
     // Initialize map
-    const initMap = () => {
-        if (!mapRef.current || !window.google) return;
+    const initMap = useCallback(() => {
+        if (!mapRef.current || !window.google || mapInitRef.current) return;
+        mapInitRef.current = true;
 
         const defaultCenter = { lat: 6.2109, lng: 6.7985 };
 
@@ -122,7 +95,65 @@ const DriverLocation: React.FC = () => {
 
         infoWindowRef.current = new google.maps.InfoWindow();
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
-    };
+    }, []);
+
+    const preloaderLoading = usePreloader(1000);
+    const isMobile = useMobile();
+
+    // Google Maps API Key
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+    // Load Google Maps script
+    useEffect(() => {
+        const loadGoogleMaps = () => {
+            if (document.querySelector('#google-maps-script-location')) {
+                initMap();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.id = 'google-maps-script-location';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocation&loading=async`;
+            script.async = true;
+            script.defer = true;
+
+            (window as any).initMapLocation = () => {
+                initMap();
+            };
+
+            document.head.appendChild(script);
+        };
+
+        loadGoogleMaps();
+    }, [initMap]);
+
+    // Retry map init after preloader finishes (ensures map div is in DOM)
+    useEffect(() => {
+        if (!preloaderLoading) {
+            initMap();
+            checkGeolocationPermission();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [preloaderLoading]);
+
+    // Fetch user data for sidebar
+    const fetchUserData = useCallback(async () => {
+        try {
+            const data = await api.driver.profile();
+            if (data.success || data.data) {
+                const user = data.data?.user || data.user || data.data;
+                setUserData(user);
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUserData();
+    }, [fetchUserData]);
+
+
 
     // Check geolocation permission
     const checkGeolocationPermission = () => {
@@ -152,6 +183,7 @@ const DriverLocation: React.FC = () => {
 
     // Request location permission
     const requestLocationPermission = () => {
+        setGpsClicked(true);
         setGpsStatus('REQUESTING GPS ACCESS...');
         
         navigator.geolocation.getCurrentPosition(
@@ -183,6 +215,7 @@ const DriverLocation: React.FC = () => {
             return;
         }
 
+        setGpsClicked(true);
         setGpsStatus('GPS ACTIVE - TRACKING');
         setIsTracking(true);
         updateGPSStatus('active');
@@ -456,7 +489,7 @@ const DriverLocation: React.FC = () => {
 
     return (
         <div className="location-desktop-container">
-            <DriverSidebarDesktop userName={userData?.fullname || userData?.full_name || 'User'} profilePictureUrl={userData?.profile_picture_url} />
+            <DriverSidebarDesktop userName={userData?.fullname || userData?.full_name || 'Driver'} profilePictureUrl={userData?.profile_picture_url} />
 
             <div className="location-desktop-main">
                 {/* Header */}
@@ -517,8 +550,16 @@ const DriverLocation: React.FC = () => {
                     <div className="location-info-panel">
                         <div className="location-gps-header">
                             <span className="desktop-gps-pulse"></span>
-                            <span className="desktop-gps-state">⏳ Waiting for GPS permission</span>
+                            <span className="desktop-gps-state">{gpsStatus}</span>
                         </div>
+
+                        {/* Permission Button */}
+                        {!gpsClicked && (
+                            <button className="location-permission-btn" onClick={requestLocationPermission}>
+                                <i className="fas fa-location-arrow"></i>
+                                ALLOW GPS ACCESS FOR ALL FEATURES
+                            </button>
+                        )}
 
                         {/* Address Card */}
                         <div className="location-address-card">
@@ -571,13 +612,6 @@ const DriverLocation: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Permission Button */}
-                        {!hasPermission && (
-                            <button className="location-permission-btn" onClick={requestLocationPermission}>
-                                <i className="fas fa-location-arrow"></i>
-                                ALLOW GPS ACCESS FOR ALL FEATURES
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>

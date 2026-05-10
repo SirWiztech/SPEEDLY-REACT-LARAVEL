@@ -66,10 +66,10 @@ const ClientRideHistoryMobile: React.FC = () => {
         try {
             const data = await api.client.rideHistory();
 
-            if (data.success || data.data) {
-                const d = data.data || data;
-                setUserData(d.user);
-                setStats(d.stats);
+            if (data.success && data.data) {
+                const d = data.data;
+                setUserData(d.user || null);
+                setStats(d.stats || { total_rides: 0, total_spent: 0, avg_rating_given: 0, completed_rides: 0, upcoming_rides: 0 });
                 setRides(d.rides || []);
                 setNotificationCount(d.notification_count || 0);
             } else {
@@ -340,7 +340,7 @@ const ClientRideHistoryMobile: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifs = data.notifications || data.data?.notifications || [];
+            const notifs = data.data?.data || data.data?.notifications || [];
 
             if (notifs.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -488,7 +488,7 @@ const ClientRideHistoryMobile: React.FC = () => {
                             <div className="mobile-no-rides">
                                 <i className="fas fa-history"></i>
                                 <p>No rides yet</p>
-                                <button className="mobile-book-ride-btn" onClick={() => router.visit('/book-ride')}>
+                                <button className="mobile-book-ride-btn" onClick={() => router.visit('/clientbookride')}>
                                     Book your first ride
                                 </button>
                             </div>
@@ -497,7 +497,7 @@ const ClientRideHistoryMobile: React.FC = () => {
                 </div>
 
                 {/* Book Ride Button */}
-                <button className="mobile-book-ride-fab" onClick={() => router.visit('/book-ride')}>
+                <button className="mobile-book-ride-fab" onClick={() => router.visit('/clientbookride')}>
                     <i className="fas fa-car"></i>
                     <span>Book New Ride</span>
                 </button>

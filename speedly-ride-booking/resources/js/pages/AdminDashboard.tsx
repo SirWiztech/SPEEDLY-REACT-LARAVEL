@@ -82,6 +82,23 @@ interface Dispute {
     raised_against: string;
 }
 
+interface SupportTicketItem {
+    id: string;
+    ticket_number: string;
+    user_name: string;
+    user_email: string;
+    role: string;
+    category: string;
+    subject: string;
+    message: string;
+    priority: string;
+    status: string;
+    admin_reply: string | null;
+    created_at: string;
+    replied_at: string | null;
+    closed_at: string | null;
+}
+
 const AdminDashboard: React.FC = () => {
     const [activePage, setActivePage] = useState<string>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
@@ -105,6 +122,8 @@ const AdminDashboard: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [supportTickets, setSupportTickets] = useState<any[]>([]);
+    const [openTicketsCount, setOpenTicketsCount] = useState<number>(0);
     const [timeLeft, setTimeLeft] = useState<number>(1800);
     const [revenueData, setRevenueData] = useState<number[]>([]);
     const [revenueLabels, setRevenueLabels] = useState<string[]>([]);
@@ -148,6 +167,8 @@ const AdminDashboard: React.FC = () => {
                 setWithdrawals(data.withdrawals || []);
                 setKycDocuments(data.kyc_documents || []);
                 setDisputes(data.disputes || []);
+                setSupportTickets(data.support_tickets || []);
+                setOpenTicketsCount(data.open_tickets_count || 0);
                 setNotificationCount(data.notification_count || 0);
                 setAdminName(data.admin_name || 'Admin');
                 setRevenueData(data.revenue_data || []);
@@ -248,6 +269,13 @@ const AdminDashboard: React.FC = () => {
         fetchDashboardData();
     }, [fetchDashboardData]);
 
+    // Fetch full support tickets when support page is active
+    useEffect(() => {
+        if (activePage === 'support' && !loading) {
+            fetchSupportTickets(filterStatus === 'all' ? undefined : filterStatus);
+        }
+    }, [activePage]);
+
     // Initialize chart when data loads
     useEffect(() => {
         if (!loading && revenueData.length) {
@@ -321,6 +349,8 @@ const AdminDashboard: React.FC = () => {
                 withdrawals={withdrawals}
                 kycDocuments={kycDocuments}
                 disputes={disputes}
+                supportTickets={supportTickets}
+                openTicketsCount={openTicketsCount}
                 notificationCount={notificationCount}
                 adminName={adminName}
                 onLogout={handleLogout}
@@ -342,7 +372,8 @@ const AdminDashboard: React.FC = () => {
         { id: 'disputes', label: 'Disputes', icon: 'fa-exclamation-triangle' },
         { id: 'reports', label: 'Reports', icon: 'fa-chart-line' },
         { id: 'settings', label: 'Settings', icon: 'fa-cog' },
-        { id: 'activity', label: 'Activity Log', icon: 'fa-history' }
+        { id: 'activity', label: 'Activity Log', icon: 'fa-history' },
+        { id: 'support', label: 'Support Tickets', icon: 'fa-headset' }
     ];
 
     // Filter functions for desktop
@@ -381,6 +412,177 @@ const AdminDashboard: React.FC = () => {
             user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.email.toLowerCase().includes(searchTerm.toLowerCase())
         );
+    };
+
+    const handleApproveKyc = async (docId: string) => {
+        const result = await Swal.fire({
+            title: 'Approve Document?',
+            text: 'Are you sure you want to approve this KYC document?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, approve',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const data = await api.admin.approveKyc(docId);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Approved', text: 'KYC document approved successfully', timer: 1500, showConfirmButton: false });
+                    fetchDashboardData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to approve', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to approve document', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleRejectKyc = async (docId: string) => {
+        const { value: reason } = await Swal.fire({
+            title: 'Reject Document',
+            input: 'textarea',
+            inputLabel: 'Reason for rejection',
+            inputPlaceholder: 'Enter the reason for rejection...',
+            inputAttributes: { required: 'true' },
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Reject',
+            cancelButtonText: 'Cancel',
+            preConfirm: (value) => {
+                if (!value) {
+                    Swal.showValidationMessage('Please enter a reason');
+                    return false;
+                }
+                return value;
+            }
+        });
+
+        if (reason) {
+            try {
+                const data = await api.admin.rejectKyc(docId, { reason });
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Rejected', text: 'KYC document rejected', timer: 1500, showConfirmButton: false });
+                    fetchDashboardData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to reject', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reject document', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const fetchSupportTickets = async (status?: string) => {
+        try {
+            const data = await api.admin.supportTickets({ status });
+            if (data.success) {
+                const tickets = data.data?.data || data.data || [];
+                setSupportTickets(tickets);
+            }
+        } catch (error) {
+            console.error('Error fetching support tickets:', error);
+        }
+    };
+
+    const handleReplyTicket = async (ticketId: string) => {
+        const { value: reply } = await Swal.fire({
+            title: 'Reply to Ticket',
+            input: 'textarea',
+            inputLabel: 'Your reply',
+            inputPlaceholder: 'Type your response to the user...',
+            inputAttributes: { required: 'true' },
+            showCancelButton: true,
+            confirmButtonColor: '#ff4500',
+            confirmButtonText: 'Send Reply',
+            cancelButtonText: 'Cancel',
+            preConfirm: (value) => {
+                if (!value || value.trim().length < 5) {
+                    Swal.showValidationMessage('Reply must be at least 5 characters');
+                    return false;
+                }
+                return value;
+            }
+        });
+
+        if (reply) {
+            try {
+                const data = await api.admin.replyTicket(ticketId, { reply });
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Reply Sent', text: 'Your reply has been sent to the user.', timer: 1500, showConfirmButton: false });
+                    fetchSupportTickets(filterStatus === 'all' ? undefined : filterStatus);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to send reply', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to send reply', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleCloseTicket = async (ticketId: string) => {
+        const result = await Swal.fire({
+            title: 'Close Ticket?',
+            text: 'Are you sure you want to close this support ticket?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, close',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const data = await api.admin.closeTicket(ticketId);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Closed', text: 'Support ticket closed', timer: 1500, showConfirmButton: false });
+                    fetchSupportTickets(filterStatus === 'all' ? undefined : filterStatus);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to close ticket', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to close ticket', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const viewTicketDetails = (ticket: SupportTicketItem) => {
+        const priorityColors: Record<string, string> = { low: '#10b981', normal: '#f59e0b', high: '#ef4444' };
+        const priorityLabel = ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1);
+
+        Swal.fire({
+            title: `Ticket #${ticket.ticket_number}`,
+            html: `
+                <div style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span><strong>Status:</strong> <span style="text-transform:capitalize">${ticket.status}</span></span>
+                        <span><strong>Priority:</strong> <span style="color:${priorityColors[ticket.priority] || '#999'}">${priorityLabel}</span></span>
+                    </div>
+                    <div style="margin-bottom: 8px;"><strong>From:</strong> ${ticket.user_name} (${ticket.user_email})</div>
+                    <div style="margin-bottom: 8px;"><strong>Category:</strong> ${ticket.category}</div>
+                    <div style="margin-bottom: 8px;"><strong>Subject:</strong> ${ticket.subject}</div>
+                    <hr style="margin: 12px 0; border-color: #eee;">
+                    <div style="margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                        <strong>Message:</strong>
+                        <p style="margin-top: 8px; white-space: pre-wrap;">${ticket.message}</p>
+                    </div>
+                    ${ticket.admin_reply ? `
+                        <hr style="margin: 12px 0; border-color: #eee;">
+                        <div style="padding: 12px; background: #fff7ed; border-radius: 8px; border-left: 3px solid #ff4500;">
+                            <strong>Admin Reply:</strong>
+                            <p style="margin-top: 8px; white-space: pre-wrap;">${ticket.admin_reply}</p>
+                            ${ticket.replied_at ? `<p style="font-size: 11px; color: #999; margin-top: 8px;">Replied: ${new Date(ticket.replied_at).toLocaleString()}</p>` : ''}
+                        </div>
+                    ` : ''}
+                    <p style="font-size: 11px; color: #999; margin-top: 12px;">Created: ${new Date(ticket.created_at).toLocaleString()}</p>
+                </div>
+            `,
+            confirmButtonColor: '#ff4500',
+            confirmButtonText: 'Close',
+            width: '600px'
+        });
     };
 
     return (
@@ -580,7 +782,139 @@ const AdminDashboard: React.FC = () => {
                 )}
 
                 {/* Additional pages... */}
-                {['wallets', 'kyc', 'disputes', 'payments', 'reports', 'settings', 'activity'].includes(activePage) && (
+                {/* KYC Approvals Page */}
+                {activePage === 'kyc' && (
+                    <div className="kyc-page">
+                        <div className="page-header">
+                            <h2>KYC Document Approvals</h2>
+                            <div className="filter-tabs">
+                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
+                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
+                                <button className={`filter-tab ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => setFilterStatus('approved')}>Approved</button>
+                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => setFilterStatus('rejected')}>Rejected</button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Driver</th>
+                                        <th>Document Type</th>
+                                        <th>Uploaded</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {getFilteredKYC().length > 0 ? getFilteredKYC().map(doc => (
+                                        <tr key={doc.id}>
+                                            <td>{doc.full_name}</td>
+                                            <td style={{ textTransform: 'capitalize' }}>{doc.document_type.replace(/_/g, ' ')}</td>
+                                            <td>{new Date(doc.created_at).toLocaleDateString()}</td>
+                                            <td><span className={getStatusBadgeClass(doc.verification_status)}>{doc.verification_status}</span></td>
+                                            <td className="actions-cell">
+                                                {doc.verification_status === 'pending' && (
+                                                    <>
+                                                        <button className="action-btn approve" title="Approve" onClick={() => handleApproveKyc(doc.id)}>
+                                                            <i className="fas fa-check-circle"></i>
+                                                        </button>
+                                                        <button className="action-btn danger" title="Reject" onClick={() => handleRejectKyc(doc.id)}>
+                                                            <i className="fas fa-times-circle"></i>
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {doc.verification_status !== 'pending' && (
+                                                    <span style={{ fontSize: '12px', color: '#999' }}>Processed</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                No KYC documents found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Support Tickets Page */}
+                {activePage === 'support' && (
+                    <div className="support-tickets-page">
+                        <div className="page-header">
+                            <h2>Support Tickets {openTicketsCount > 0 ? <span style={{ fontSize: '14px', color: '#ef4444', fontWeight: 'normal' }}>({openTicketsCount} open)</span> : ''}</h2>
+                            <div className="filter-tabs">
+                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); fetchSupportTickets(); }}>All</button>
+                                <button className={`filter-tab ${filterStatus === 'open' ? 'active' : ''}`} onClick={() => { setFilterStatus('open'); fetchSupportTickets('open'); }}>Open</button>
+                                <button className={`filter-tab ${filterStatus === 'in_progress' ? 'active' : ''}`} onClick={() => { setFilterStatus('in_progress'); fetchSupportTickets('in_progress'); }}>In Progress</button>
+                                <button className={`filter-tab ${filterStatus === 'closed' ? 'active' : ''}`} onClick={() => { setFilterStatus('closed'); fetchSupportTickets('closed'); }}>Closed</button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ticket #</th>
+                                        <th>User</th>
+                                        <th>Subject</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {supportTickets.length > 0 ? supportTickets.map((ticket: SupportTicketItem) => (
+                                        <tr key={ticket.id}>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{ticket.ticket_number}</td>
+                                            <td>{ticket.user_name}</td>
+                                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.subject}</td>
+                                            <td>
+                                                <span style={{
+                                                    padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                                                    background: ticket.priority === 'high' ? '#fef2f2' : ticket.priority === 'low' ? '#f0fdf4' : '#fefce8',
+                                                    color: ticket.priority === 'high' ? '#ef4444' : ticket.priority === 'low' ? '#10b981' : '#f59e0b'
+                                                }}>
+                                                    {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
+                                                </span>
+                                            </td>
+                                            <td><span className={getStatusBadgeClass(ticket.status === 'closed' ? 'completed' : ticket.status === 'in_progress' ? 'ongoing' : 'pending')} style={{ textTransform: 'capitalize' }}>{ticket.status.replace('_', ' ')}</span></td>
+                                            <td style={{ fontSize: '12px' }}>{new Date(ticket.created_at).toLocaleDateString()}</td>
+                                            <td className="actions-cell">
+                                                <button className="action-btn" title="View Details" onClick={() => viewTicketDetails(ticket)}>
+                                                    <i className="fas fa-eye"></i>
+                                                </button>
+                                                {ticket.status !== 'closed' && (
+                                                    <>
+                                                        <button className="action-btn" title="Reply" onClick={() => handleReplyTicket(ticket.id)} style={{ color: '#ff4500' }}>
+                                                            <i className="fas fa-reply"></i>
+                                                        </button>
+                                                        <button className="action-btn" title="Close Ticket" onClick={() => handleCloseTicket(ticket.id)} style={{ color: '#6b7280' }}>
+                                                            <i className="fas fa-check"></i>
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                No support tickets found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {['wallets', 'disputes', 'payments', 'reports', 'settings', 'activity'].includes(activePage) && (
                     <div className="coming-soon-page">
                         <div className="coming-soon-card">
                             <i className="fas fa-tools"></i>

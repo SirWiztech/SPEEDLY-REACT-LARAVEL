@@ -52,13 +52,14 @@ const ClientProfile: React.FC = () => {
             ]);
             
             if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
+                const user = profileData.data;
                 setUserData(user);
                 setEditName(user?.full_name || '');
                 setEditPhone(user?.phone_number || '');
             }
             if (statsData.success || statsData.data) {
-                setStats(statsData.data?.stats || statsData.stats || statsData.data || { total_rides: 0, total_spent: 0, avg_rating: 0 });
+                const s = statsData.data;
+                setStats({ total_rides: s?.total_rides || 0, total_spent: s?.total_spent || 0, avg_rating: s?.average_rating || 0 });
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -162,7 +163,7 @@ const ClientProfile: React.FC = () => {
             <div className="client-profile-header">
                 <h1>My Profile</h1>
                 <p>Manage your personal information and preferences</p>
-                <button className="back-btn" onClick={() => router.visit('/client-dashboard')}>
+                <button className="back-btn" onClick={() => router.visit('/clientsettings')}>
                     <i className="fas fa-arrow-left"></i> Back to Dashboard
                 </button>
             </div>

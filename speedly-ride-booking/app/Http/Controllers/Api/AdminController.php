@@ -16,6 +16,7 @@ use App\Models\AdminActivityLog;
 use App\Models\SystemSetting;
 use App\Models\Notification;
 use App\Models\DriverKycDocument;
+use App\Models\SupportTicket;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -25,39 +26,124 @@ class AdminController extends Controller
 {
     public function stats(Request $request)
     {
-        $totalClients = User::where('role', 'client')->count();
+        $totalUsers = User::where('role', 'client')->count();
         $totalDrivers = User::where('role', 'driver')->count();
-        
-        $totalRides = [
-            'pending' => Ride::where('status', 'pending')->count(),
-            'accepted' => Ride::where('status', 'accepted')->count(),
-            'completed' => Ride::where('status', 'completed')->count(),
-            'cancelled' => Ride::where('status', 'cancelled')->count(),
-        ];
-        
+        $activeRides = Ride::whereIn('status', ['accepted', 'driver_assigned', 'driver_arrived', 'ongoing'])->count();
+        $completedRides = Ride::where('status', 'completed')->count();
         $totalRevenue = Ride::where('status', 'completed')->sum('platform_commission');
-            
-        $totalPayouts = DriverWithdrawal::where('status', 'completed')->sum('amount');
-        
-        $pendingWithdrawals = [
-            'count' => DriverWithdrawal::where('status', 'pending')->count(),
-            'amount' => DriverWithdrawal::where('status', 'pending')->sum('amount'),
-        ];
-        
-        $pendingKyc = DriverKycDocument::where('verification_status', 'pending')->count();
-        
+        $pendingWithdrawalsAmount = DriverWithdrawal::where('status', 'pending')->sum('amount');
+        $pendingWithdrawalsCount = DriverWithdrawal::where('status', 'pending')->count();
+
+        $users = User::where('role', 'client')->orderBy('created_at', 'desc')->limit(10)->get()->toArray();
+        $drivers = User::where('role', 'driver')->with('driverProfile.vehicle')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'full_name' => $u->full_name ?? $u->name ?? '',
+                'email' => $u->email,
+                'phone_number' => $u->phone_number ?? '',
+                'verification_status' => $u->driverProfile->verification_status ?? 'pending',
+                'driver_status' => $u->driverProfile->driver_status ?? 'offline',
+                'vehicle_count' => $u->driverProfile->vehicles->count(),
+            ];
+        })->toArray();
+
+        $rides = Ride::with(['client', 'driver'])->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'ride_number' => $r->ride_number ?? $r->id,
+                'pickup_address' => $r->pickup_address ?? '',
+                'destination_address' => $r->destination_address ?? '',
+                'total_fare' => $r->total_fare ?? 0,
+                'status' => $r->status,
+                'payment_status' => $r->payment_status ?? 'pending',
+                'client_name' => $r->client?->user?->full_name ?? $r->client_name ?? 'Unknown',
+                'driver_name' => $r->driver?->user?->full_name ?? $r->driver_name ?? 'Unassigned',
+            ];
+        })->toArray();
+
+        $withdrawals = DriverWithdrawal::with('driver.user')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($w) {
+            return [
+                'id' => $w->id,
+                'driver_name' => $w->driver->user->full_name ?? 'Unknown',
+                'amount' => $w->amount ?? 0,
+                'bank_name' => $w->bank_name ?? '',
+                'account_number' => $w->account_number ?? '',
+                'status' => $w->status,
+                'created_at' => $w->created_at,
+            ];
+        })->toArray();
+
+        $kycDocuments = DriverKycDocument::where('verification_status', 'pending')
+            ->with('driver.user')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($doc) {
+                return [
+                    'id' => $doc->id,
+                    'full_name' => $doc->driver->user->full_name ?? 'Unknown',
+                    'document_type' => $doc->document_type,
+                    'verification_status' => $doc->verification_status,
+                    'created_at' => $doc->created_at,
+                ];
+            })->toArray();
+
+        $openTickets = SupportTicket::whereIn('status', ['open', 'in_progress'])->count();
+        $recentTickets = SupportTicket::with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'ticket_number' => $t->ticket_number,
+                    'user_name' => $t->user->full_name ?? 'Unknown',
+                    'subject' => $t->subject,
+                    'category' => $t->category,
+                    'priority' => $t->priority,
+                    'status' => $t->status,
+                    'created_at' => $t->created_at,
+                ];
+            })->toArray();
+
+        $notificationCount = Notification::whereNull('user_id')->orWhere('is_read', false)->count();
+
+        $adminUser = $request->user();
+
+        $revenueData = [];
+        $revenueLabels = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $revenueLabels[] = $date->format('D');
+            $revenueData[] = (float) Ride::where('status', 'completed')
+                ->whereDate('completed_at', $date->toDateString())
+                ->sum('platform_commission');
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Admin stats retrieved successfully',
-            'data' => [
-                'total_clients' => $totalClients,
+            'stats' => [
+                'total_users' => $totalUsers,
                 'total_drivers' => $totalDrivers,
-                'total_rides' => $totalRides,
+                'active_rides' => $activeRides,
+                'completed_rides' => $completedRides,
                 'total_revenue' => $totalRevenue,
-                'total_payouts' => $totalPayouts,
-                'pending_withdrawals' => $pendingWithdrawals,
-                'pending_kyc' => $pendingKyc,
-            ]
+                'pending_withdrawals' => $pendingWithdrawalsAmount,
+                'pending_count' => $pendingWithdrawalsCount,
+            ],
+            'users' => $users,
+            'drivers' => $drivers,
+            'rides' => $rides,
+            'withdrawals' => $withdrawals,
+            'kyc_documents' => $kycDocuments,
+            'disputes' => [],
+            'support_tickets' => $recentTickets,
+            'open_tickets_count' => $openTickets,
+            'notification_count' => $notificationCount,
+            'admin_name' => $adminUser->full_name ?? $adminUser->name ?? 'Admin',
+            'revenue_data' => $revenueData,
+            'revenue_labels' => $revenueLabels,
         ]);
     }
 
@@ -404,6 +490,120 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'Driver rejected successfully',
             'data' => $driverProfile
+        ]);
+    }
+
+    public function supportTickets(Request $request)
+    {
+        $query = SupportTicket::with('user')
+            ->orderBy('created_at', 'desc');
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        $tickets = $query->paginate($request->get('per_page', 15));
+
+        $tickets->getCollection()->transform(function ($ticket) {
+            return [
+                'id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'user_name' => $ticket->user->full_name ?? 'Unknown',
+                'user_email' => $ticket->user->email ?? '',
+                'role' => $ticket->role,
+                'category' => $ticket->category,
+                'subject' => $ticket->subject,
+                'message' => $ticket->message,
+                'priority' => $ticket->priority,
+                'status' => $ticket->status,
+                'admin_reply' => $ticket->admin_reply,
+                'created_at' => $ticket->created_at,
+                'replied_at' => $ticket->replied_at,
+                'closed_at' => $ticket->closed_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Support tickets retrieved successfully',
+            'data' => $tickets,
+        ]);
+    }
+
+    public function replySupportTicket(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'reply' => 'required|string|max:5000',
+        ]);
+
+        $ticket = SupportTicket::find($id);
+
+        if (!$ticket) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Support ticket not found',
+                'data' => null
+            ], 404);
+        }
+
+        $admin = $request->user();
+
+        $ticket->update([
+            'admin_reply' => $validated['reply'],
+            'replied_by' => $admin->id,
+            'replied_at' => now(),
+            'status' => 'in_progress',
+        ]);
+
+        Notification::create([
+            'user_id' => $ticket->user_id,
+            'type' => 'support_reply',
+            'title' => 'Support Ticket Updated',
+            'message' => "Your ticket {$ticket->ticket_number} has received a reply from support.",
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reply sent successfully',
+            'data' => $ticket,
+        ]);
+    }
+
+    public function closeSupportTicket(Request $request, string $id)
+    {
+        $ticket = SupportTicket::find($id);
+
+        if (!$ticket) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Support ticket not found',
+                'data' => null
+            ], 404);
+        }
+
+        $admin = $request->user();
+
+        $ticket->update([
+            'status' => 'closed',
+            'closed_by' => $admin->id,
+            'closed_at' => now(),
+        ]);
+
+        Notification::create([
+            'user_id' => $ticket->user_id,
+            'type' => 'support_closed',
+            'title' => 'Support Ticket Closed',
+            'message' => "Your ticket {$ticket->ticket_number} has been closed. If you need further assistance, please open a new ticket.",
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Support ticket closed successfully',
+            'data' => $ticket,
         ]);
     }
 }

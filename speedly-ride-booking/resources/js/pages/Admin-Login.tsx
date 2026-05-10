@@ -19,12 +19,12 @@ const AdminLogin: React.FC = () => {
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
-    // Check if already logged in
+    // Check if already logged in as admin
     useEffect(() => {
         const checkSession = async () => {
             try {
                 const data = await api.auth.me();
-                if (data.data?.user) {
+                if (data.data?.user?.role === 'admin') {
                     router.visit('/admin-dashboard');
                 }
             } catch (error) {

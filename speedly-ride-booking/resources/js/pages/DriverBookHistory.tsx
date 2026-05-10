@@ -82,42 +82,57 @@ const DriverBookHistory: React.FC = () => {
     const fetchBookHistory = useCallback(async () => {
         setLoading(true);
         setApiError(null);
-        
-        try {
-            const [historyData, profileData] = await Promise.all([
-                api.driver.rideHistory(),
-                api.driver.profile()
-            ]);
 
-            if (historyData.success || historyData.data) {
-                const h = historyData.data || historyData;
-                setStats(h.stats || { total_rides: 0, completed_rides: 0, cancelled_rides: 0, declined_count: 0, total_fare_amount: 0, total_earnings: 0, total_commission: 0, avg_fare: 0 });
-                setAcceptedRides(h.accepted_rides || []);
-                setDeclinedRides(h.declined_rides || []);
+        const results = await Promise.allSettled([
+            api.driver.rideHistory(),
+            api.driver.profile()
+        ]);
+
+        const [historyResult, profileResult] = results;
+
+        if (historyResult.status === 'fulfilled') {
+            const historyData = historyResult.value;
+            const h = historyData.data || historyData;
+            if (h.stats) {
+                setStats({
+                    total_rides: h.stats.total_rides || 0,
+                    completed_rides: h.stats.completed_rides || 0,
+                    cancelled_rides: h.stats.cancelled_rides || 0,
+                    declined_count: h.stats.declined_count || 0,
+                    total_fare_amount: h.stats.total_fare_amount || 0,
+                    total_earnings: h.stats.total_earnings || 0,
+                    total_commission: h.stats.total_commission || 0,
+                    avg_fare: h.stats.avg_fare || 0,
+                });
             }
-            if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
-                setUserData(user);
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
-            }
-        } catch (error) {
-            console.error('Error fetching book history:', error);
+            if (h.accepted_rides) setAcceptedRides(h.accepted_rides);
+            if (h.declined_rides) setDeclinedRides(h.declined_rides);
+            if (h.user) setUserData(h.user);
+            if (h.notification_count !== undefined) setNotificationCount(h.notification_count);
+        } else {
+            console.error('Error fetching book history:', historyResult.reason);
             setApiError('Unable to load ride history data.');
-        } finally {
-            setLoading(false);
         }
+
+        if (profileResult.status === 'fulfilled') {
+            const profileData = profileResult.value;
+            const user = profileData.data?.user || profileData.user || profileData.data;
+            if (user) setUserData(user);
+        }
+        setLoading(false);
     }, []);
 
     // View ride details
     const viewRideDetails = (rideId: string) => {
-        router.visit(`/generate-receipt?ride_id=${rideId}`);
+        router.visit(`/generatereceipt?rideId=${rideId}`);
     };
 
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifications = payload.data || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -237,7 +252,7 @@ const DriverBookHistory: React.FC = () => {
                         </div>
                         <div>
                             <h3>Earnings Breakdown</h3>
-                            <p>Platform commission: 20% on all completed rides</p>
+                            <p>Platform commission on all completed rides</p>
                         </div>
                     </div>
                     <div className="commission-stats">
@@ -246,8 +261,8 @@ const DriverBookHistory: React.FC = () => {
                             <div className="stat-value">{formatCurrency(stats.total_fare_amount)}</div>
                         </div>
                         <div className="commission-stat">
-                            <div className="stat-label">Commission (20%)</div>
-                            <div className="stat-value" style={{ color: '#fbbf24' }}>-{formatCurrency(stats.total_fare_amount * 0.2)}</div>
+                            <div className="stat-label">Commission</div>
+                            <div className="stat-value" style={{ color: '#fbbf24' }}>-{formatCurrency(stats.total_commission)}</div>
                         </div>
                         <div className="commission-stat">
                             <div className="stat-label">Your Earnings</div>

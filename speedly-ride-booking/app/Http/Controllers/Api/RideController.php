@@ -14,6 +14,7 @@ use App\Models\WalletTransaction;
 use App\Models\Notification;
 use App\Models\DriverRating;
 use App\Models\ClientRating;
+use App\Models\DriverRideDecline;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -230,6 +231,24 @@ class RideController extends Controller
         if (!$driverProfile) {
             return response()->json(['success' => false, 'message' => 'Driver profile not found'], 404);
         }
+
+        $ride = Ride::find($id);
+
+        if (!$ride) {
+            return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
+        }
+
+        if ($ride->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'Ride is no longer available'], 400);
+        }
+
+        DriverRideDecline::create([
+            'id' => Str::uuid(),
+            'ride_id' => $ride->id,
+            'driver_id' => $driverProfile->id,
+            'auto_decline' => false,
+            'response_time_seconds' => 0,
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Ride declined']);
     }

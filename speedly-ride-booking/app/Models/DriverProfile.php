@@ -26,6 +26,7 @@ class DriverProfile extends Model
         'driver_status', 'verification_status', 'is_available',
         'current_latitude', 'current_longitude', 'last_location_update',
         'completed_rides', 'average_rating', 'total_reviews', 'total_earnings',
+        'date_of_birth', 'gender', 'notification_preferences',
     ];
 
     protected $casts = [
@@ -38,6 +39,7 @@ class DriverProfile extends Model
         'average_rating' => 'decimal:2',
         'total_reviews' => 'integer',
         'total_earnings' => 'decimal:2',
+        'notification_preferences' => 'array',
     ];
 
     public function user()

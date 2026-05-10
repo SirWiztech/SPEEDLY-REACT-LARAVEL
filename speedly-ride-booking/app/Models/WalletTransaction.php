@@ -13,7 +13,7 @@ class WalletTransaction extends Model
     protected $fillable = [
         'id', 'user_id', 'transaction_type', 'amount',
         'balance_before', 'balance_after', 'reference',
-        'status', 'description', 'ride_id',
+        'status', 'description', 'ride_id', 'category',
     ];
 
     protected $casts = [

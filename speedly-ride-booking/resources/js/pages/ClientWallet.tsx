@@ -57,26 +57,21 @@ const ClientWallet: React.FC = () => {
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
         try {
-            const [walletData, txData, profileData] = await Promise.all([
+            const [walletData, txData] = await Promise.all([
                 api.client.wallet(),
-                api.client.transactions(),
-                api.client.profile()
+                api.client.transactions()
             ]);
 
-            if (walletData.success || walletData.data) {
-                const w = walletData.data || walletData;
+            if (walletData.success && walletData.data) {
+                const w = walletData.data;
                 setWalletBalance(w.balance || 0);
                 setRideCount(w.ride_count || 0);
+                setPaymentMethods(w.payment_methods || []);
+                setUserData(w.user || null);
+                setNotificationCount(w.notification_count || 0);
             }
-            if (txData.success || txData.data) {
-                const t = txData.data || txData;
-                setTransactions(t.transactions || []);
-                setPaymentMethods(t.payment_methods || []);
-            }
-            if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
-                setUserData(user);
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+            if (txData.success && txData.data) {
+                setTransactions(txData.data.transactions || []);
             }
         } catch (error) {
             console.error('Error fetching wallet data:', error);
@@ -128,17 +123,20 @@ const ClientWallet: React.FC = () => {
         });
 
         try {
-            const data = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
+            const res = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
             Swal.close();
 
-            if (data.success && data.checkout_url) {
-                sessionStorage.setItem('payment_reference', data.reference);
-                window.location.href = data.checkout_url;
+            const checkoutUrl = res.data?.payment_url || res.data?.checkout_url || res.checkout_url;
+            const reference = res.data?.reference || res.reference;
+
+            if (res.success && checkoutUrl) {
+                sessionStorage.setItem('payment_reference', reference || '');
+                window.location.href = checkoutUrl;
             } else {
                 Swal.fire({
                     icon: 'error',
                     title: 'Payment Initiation Failed',
-                    text: data.message || 'Unable to initialize payment. Please try again.',
+                    text: res.message || 'Unable to initialize payment. Please try again.',
                     confirmButtonColor: '#ff5e00'
                 });
             }
@@ -376,7 +374,7 @@ const ClientWallet: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const notifications = data.data?.data || data.data?.notifications || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -575,19 +573,19 @@ const ClientWallet: React.FC = () => {
                                 </div>
                                 <span>Add to Wallet</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/support')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
                                 <div className="desktop-action-icon refunds-icon">
                                     <i className="fas fa-undo-alt"></i>
                                 </div>
                                 <span>Refunds</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/support')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
                                 <div className="desktop-action-icon pending-icon">
                                     <i className="fas fa-clock"></i>
                                 </div>
                                 <span>Pending Payment</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/support')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
                                 <div className="desktop-action-icon support-icon">
                                     <i className="fas fa-headset"></i>
                                 </div>
@@ -605,13 +603,13 @@ const ClientWallet: React.FC = () => {
                                 </div>
                                 <span>Payment Methods</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/ride-history')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientridehistory')}>
                                 <div className="desktop-action-icon history-icon">
                                     <i className="fas fa-history"></i>
                                 </div>
                                 <span>Transaction History</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/support')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
                                 <div className="desktop-action-icon promo-icon">
                                     <i className="fas fa-tag"></i>
                                 </div>
@@ -624,7 +622,7 @@ const ClientWallet: React.FC = () => {
                     <div className="wallet-card large">
                         <div className="card-header">
                             <h2>Recent Transactions</h2>
-                            <button className="see-all-btn" onClick={() => router.visit('/ride-history')}>See All</button>
+                            <button className="see-all-btn" onClick={() => router.visit('/clientridehistory')}>See All</button>
                         </div>
                         <div className="desktop-transactions">
                             <div className="transaction-list">
@@ -674,7 +672,7 @@ const ClientWallet: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    <button className="banner-book-btn" onClick={() => router.visit('/book-ride')}>
+                    <button className="banner-book-btn" onClick={() => router.visit('/clientbookride')}>
                         <i className="fas fa-car"></i>
                         <span>Book a Ride Now</span>
                     </button>

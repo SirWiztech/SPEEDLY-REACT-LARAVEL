@@ -61,6 +61,7 @@ const ClientLocation: React.FC = () => {
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
+    const mapInitRef = useRef(false);
 
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
@@ -81,37 +82,10 @@ const ClientLocation: React.FC = () => {
         fetchProfileData();
     }, [fetchProfileData]);
 
-    // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-    // Load Google Maps script
-    useEffect(() => {
-        const loadGoogleMaps = () => {
-            if (document.querySelector('#google-maps-script-location')) {
-                initMap();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.id = 'google-maps-script-location';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocation`;
-            script.async = true;
-            script.defer = true;
-
-            (window as any).initMapLocation = () => {
-                initMap();
-            };
-
-            document.head.appendChild(script);
-        };
-
-        loadGoogleMaps();
-        checkGeolocationPermission();
-    }, []);
-
-    // Initialize map
-    const initMap = () => {
-        if (!mapRef.current || !window.google) return;
+    // Initialize map (defined before effects that depend on it)
+    const initMap = useCallback(() => {
+        if (!mapRef.current || !window.google || mapInitRef.current) return;
+        mapInitRef.current = true;
 
         const defaultCenter = { lat: 6.2109, lng: 6.7985 };
 
@@ -139,7 +113,42 @@ const ClientLocation: React.FC = () => {
 
         infoWindowRef.current = new google.maps.InfoWindow();
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
-    };
+    }, []);
+
+    // Google Maps API Key
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+    // Load Google Maps script
+    useEffect(() => {
+        const loadGoogleMaps = () => {
+            if (document.querySelector('#google-maps-script-location')) {
+                initMap();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.id = 'google-maps-script-location';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocation&loading=async`;
+            script.async = true;
+            script.defer = true;
+
+            (window as any).initMapLocation = () => {
+                initMap();
+            };
+
+            document.head.appendChild(script);
+        };
+
+        loadGoogleMaps();
+        checkGeolocationPermission();
+    }, [initMap]);
+
+    // Retry map init after preloader finishes (ensures map div is in DOM)
+    useEffect(() => {
+        if (!preloaderLoading) {
+            initMap();
+        }
+    }, [preloaderLoading, initMap]);
 
     // Check geolocation permission
     const checkGeolocationPermission = () => {

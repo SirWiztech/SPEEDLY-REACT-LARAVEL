@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Me / Profile / Password
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/delete-account', [AuthController::class, 'deleteAccount']);
 
     /*
     |--------------------------------------------------------------------------
@@ -144,6 +145,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/kyc/pending', [KYCController::class, 'getPendingKyc']);
         Route::post('/kyc/{id}/approve', [KYCController::class, 'approveKyc']);
         Route::post('/kyc/{id}/reject', [KYCController::class, 'rejectKyc']);
+
+        // Admin Support Ticket management
+        Route::get('/support-tickets', [AdminController::class, 'supportTickets']);
+        Route::post('/support-tickets/{id}/reply', [AdminController::class, 'replySupportTicket']);
+        Route::post('/support-tickets/{id}/close', [AdminController::class, 'closeSupportTicket']);
     });
 
     /*

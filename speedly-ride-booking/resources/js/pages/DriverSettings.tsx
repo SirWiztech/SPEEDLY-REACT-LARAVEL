@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverSidebarDesktop from '../components/navbars/DriverSidebarDesktop';
 import Swal from 'sweetalert2';
-import api from '../services/api';
+import api, { setToken } from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -102,26 +102,43 @@ const DriverSettings: React.FC = () => {
     // Fetch driver settings data
     const fetchSettingsData = useCallback(async () => {
         try {
-            const [profileData, bankData] = await Promise.all([
+            const [profileResult, bankResult] = await Promise.allSettled([
                 api.driver.profile(),
                 api.driver.bankDetails()
             ]);
 
-            if (profileData.success || profileData.data) {
-                const d = profileData.data?.user || profileData.user || profileData.data;
-                setDriverData(d);
-                setLicenseData(d.license || { license_number: '', expiry_date: '' });
-                setVehicleData(d.vehicle || { model: '', color: '', plate_number: '', year: '' });
-                setNotificationSettings(d.notification_settings || { push_notifications: true, email_notifications: false, sms_notifications: false, ride_requests: true, earnings_reports: false });
-                setSchedule(d.schedule || []);
-                setTodayEarnings(d.today_earnings || 0);
-                setTotalEarnings(d.total_earnings || 0);
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
-                setDriverStatus(d.status || 'offline');
+            if (profileResult.status === 'fulfilled') {
+                const profileData = profileResult.value;
+                if (profileData.success || profileData.data) {
+                    const d = profileData.data?.user || profileData.user || profileData.data;
+                    setDriverData(d);
+                    setLicenseData(d.license || { license_number: '', license_expiry: '' });
+                    setVehicleData({
+                        vehicle_id: d.vehicle?.vehicle_id || d.vehicle?.id || '',
+                        vehicle_model: d.vehicle?.vehicle_model || '',
+                        vehicle_year: d.vehicle?.vehicle_year || '',
+                        vehicle_color: d.vehicle?.vehicle_color || '',
+                        plate_number: d.vehicle?.plate_number || '',
+                        vehicle_type: d.vehicle?.vehicle_type || 'economy',
+                        passenger_capacity: d.vehicle?.passenger_capacity || 4,
+                        insurance_expiry: '',
+                        road_worthiness_expiry: '',
+                        vehicle_active: true
+                    });
+                    setNotificationSettings(d.notification_settings || { ride_requests: true, earnings_notif: true, sound_alerts: true, promotions: false });
+                    setSchedule(d.schedule || []);
+                    setTodayEarnings(d.today_earnings || 0);
+                    setTotalEarnings(d.total_earnings || 0);
+                    setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+                    setDriverStatus(d.driver_status || 'offline');
+                }
             }
-            if (bankData.success || bankData.data) {
-                const b = bankData.data || bankData;
-                setBankAccounts(b.bank_accounts || b.accounts || []);
+            if (bankResult.status === 'fulfilled') {
+                const bankData = bankResult.value;
+                if (bankData.success || bankData.data) {
+                    const b = bankData.data || bankData;
+                    setBankAccounts(b.bank_accounts || b.accounts || []);
+                }
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -161,13 +178,10 @@ const DriverSettings: React.FC = () => {
             }
         } catch (error) {
             Swal.fire({
-                icon: 'success',
-                title: 'Profile Updated',
-                text: 'Your driver profile has been updated',
-                timer: 1500,
-                showConfirmButton: false
-            }).then(() => {
-                fetchSettingsData();
+                icon: 'error',
+                title: 'Update Failed',
+                text: 'An error occurred while updating your profile',
+                confirmButtonColor: '#ff5e00'
             });
         }
     };
@@ -203,13 +217,10 @@ const DriverSettings: React.FC = () => {
             }
         } catch (error) {
             Swal.fire({
-                icon: 'success',
-                title: 'License Saved',
-                text: 'License information updated',
-                timer: 1500,
-                showConfirmButton: false
-            }).then(() => {
-                fetchSettingsData();
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while saving license information',
+                confirmButtonColor: '#ff5e00'
             });
         }
     };
@@ -402,8 +413,14 @@ const DriverSettings: React.FC = () => {
             cancelButtonText: 'Cancel'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                await api.auth.logout();
-                window.location.href = '/home';
+                try {
+                    await api.auth.logout();
+                } catch {
+                    // Ignore API errors — clear locally regardless
+                } finally {
+                    setToken(null);
+                    window.location.href = '/home';
+                }
             }
         });
     };
@@ -428,7 +445,7 @@ const DriverSettings: React.FC = () => {
                 }
                 return true;
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
                     title: 'Processing...',
@@ -436,16 +453,27 @@ const DriverSettings: React.FC = () => {
                     didOpen: () => Swal.showLoading()
                 });
 
-                setTimeout(() => {
+                try {
+                    await api.auth.deleteAccount();
+                    Swal.close();
                     Swal.fire({
                         icon: 'success',
                         title: 'Account Deleted',
-                        text: 'Your driver account has been deleted',
+                        text: 'Your account has been deleted successfully',
                         confirmButtonColor: '#ff5e00'
                     }).then(() => {
-                        window.location.href = '/form.php';
+                        setToken(null);
+                        window.location.href = '/home';
                     });
-                }, 2000);
+                } catch (error: any) {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to delete account',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
             }
         });
     };
@@ -515,40 +543,11 @@ const DriverSettings: React.FC = () => {
                             </span>
                         </div>
                     </div>
-                    <button className="driver-edit-btn" onClick={() => {
-                        Swal.fire({
-                            title: 'Edit Driver Profile',
-                            html: `
-                                <input type="text" id="profile-name" class="swal2-input" placeholder="Full Name" value="${driverData?.full_name || ''}">
-                                <input type="email" id="profile-email" class="swal2-input" placeholder="Email" value="${driverData?.email || ''}">
-                                <input type="tel" id="profile-phone" class="swal2-input" placeholder="Phone" value="${driverData?.phone_number || ''}">
-                                <input type="date" id="profile-dob" class="swal2-input" placeholder="Date of Birth" value="${driverData?.date_of_birth || ''}">
-                                <select id="profile-gender" class="swal2-input">
-                                    <option value="male" ${driverData?.gender === 'male' ? 'selected' : ''}>Male</option>
-                                    <option value="female" ${driverData?.gender === 'female' ? 'selected' : ''}>Female</option>
-                                    <option value="other" ${driverData?.gender === 'other' ? 'selected' : ''}>Other</option>
-                                    <option value="prefer-not-to-say" ${driverData?.gender === 'prefer-not-to-say' ? 'selected' : ''}>Prefer not to say</option>
-                                </select>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonText: 'Save Changes',
-                            confirmButtonColor: '#ff5e00',
-                            preConfirm: () => {
-                                const name = (document.getElementById('profile-name') as HTMLInputElement)?.value;
-                                const email = (document.getElementById('profile-email') as HTMLInputElement)?.value;
-                                const phone = (document.getElementById('profile-phone') as HTMLInputElement)?.value;
-                                const dob = (document.getElementById('profile-dob') as HTMLInputElement)?.value;
-                                const gender = (document.getElementById('profile-gender') as HTMLSelectElement)?.value;
-                                return { full_name: name, email, phone, date_of_birth: dob, gender };
-                            }
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                saveDriverProfile(result.value);
-                            }
-                        });
-                    }}>
-                        <i className="fas fa-edit"></i> Edit Profile
-                    </button>
+                    <button 
+  className="settings-profile-btn" 
+  onClick={() => window.location.href = '/driver-profile'}>
+  <i className="fas fa-edit"></i> Edit Profile
+</button>
                 </div>
 
                 {/* Settings Grid */}

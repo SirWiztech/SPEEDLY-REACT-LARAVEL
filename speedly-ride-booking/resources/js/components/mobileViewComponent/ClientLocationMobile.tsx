@@ -57,6 +57,7 @@ const ClientLocationMobile: React.FC = () => {
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
+    const mapInitRef = useRef(false);
 
     const preloaderLoading = usePreloader(1000);
 
@@ -73,7 +74,7 @@ const ClientLocationMobile: React.FC = () => {
 
             const script = document.createElement('script');
             script.id = 'google-maps-script-location-mobile';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocationMobile`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocationMobile&loading=async`;
             script.async = true;
             script.defer = true;
 
@@ -86,11 +87,19 @@ const ClientLocationMobile: React.FC = () => {
 
         loadGoogleMaps();
         checkGeolocationPermission();
-    }, []);
+    }, [initMap]);
+
+    // Retry map init after preloader finishes
+    useEffect(() => {
+        if (!preloaderLoading) {
+            initMap();
+        }
+    }, [preloaderLoading, initMap]);
 
     // Initialize map
-    const initMap = () => {
-        if (!mapRef.current || !window.google) return;
+    const initMap = useCallback(() => {
+        if (!mapRef.current || !window.google || mapInitRef.current) return;
+        mapInitRef.current = true;
 
         const defaultCenter = { lat: 6.2109, lng: 6.7985 };
 
@@ -106,7 +115,7 @@ const ClientLocationMobile: React.FC = () => {
 
         infoWindowRef.current = new google.maps.InfoWindow();
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
-    };
+    }, []);
 
     // Check geolocation permission
     const checkGeolocationPermission = () => {

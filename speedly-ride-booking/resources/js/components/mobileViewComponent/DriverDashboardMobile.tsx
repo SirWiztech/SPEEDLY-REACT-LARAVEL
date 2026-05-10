@@ -26,6 +26,9 @@ interface Earnings {
     total_earnings: number;
     available_balance: number;
     total_withdrawn: number;
+    pending_clearance: number;
+    week_earnings: number;
+    month_earnings: number;
 }
 
 interface RideStats {
@@ -34,6 +37,8 @@ interface RideStats {
     cancelled_rides: number;
     today_rides: number;
     acceptance_rate: number;
+    total_fare_amount: number;
+    total_commission: number;
 }
 
 interface Ride {
@@ -74,14 +79,19 @@ const DriverDashboardMobile: React.FC = () => {
         today_earnings: 0,
         total_earnings: 0,
         available_balance: 0,
-        total_withdrawn: 0
+        total_withdrawn: 0,
+        pending_clearance: 0,
+        week_earnings: 0,
+        month_earnings: 0
     });
     const [stats, setStats] = useState<RideStats>({
         total_rides: 0,
         completed_rides: 0,
         cancelled_rides: 0,
         today_rides: 0,
-        acceptance_rate: 100
+        acceptance_rate: 100,
+        total_fare_amount: 0,
+        total_commission: 0
     });
     const [activeRide, setActiveRide] = useState<Ride | null>(null);
     const [pendingRide, setPendingRide] = useState<Ride | null>(null);
@@ -102,21 +112,76 @@ const DriverDashboardMobile: React.FC = () => {
         setApiError(null);
         
         try {
-            const data = await api.driver.stats();
+            const results = await Promise.allSettled([
+                api.driver.profile(),
+                api.driver.stats(),
+                api.driver.wallet(),
+                api.driver.rides(5),
+                api.notifications.list()
+            ]);
 
-            if (data.success) {
-                setDriverData(data.driver);
-                setEarnings(data.earnings);
-                setStats(data.stats);
-                setActiveRide(data.active_ride || null);
-                setPendingRide(data.pending_ride || null);
-                setRecentRides(data.recent_rides || []);
-                setDriverStatus(data.driver_status || 'offline');
-                setVerificationStatus(data.verification_status || 'pending');
-                setNotificationCount(data.notification_count || 0);
+            const [profileResult, statsResult, walletResult, ridesResult, notifResult] = results;
+
+            // Process profile
+            const profileData = profileResult.status === 'fulfilled' ? profileResult.value : null;
+            if (profileData && (profileData.success || profileData.data)) {
+                const p = profileData.data?.user || profileData.user || profileData.data;
+                setDriverData(p);
+                setDriverStatus(p.driver_status || p.status || 'offline');
+                setVerificationStatus(p.verification_status || 'pending');
+            }
+
+            // Process stats
+            const statsData = statsResult.status === 'fulfilled' ? statsResult.value : null;
+            if (statsData && statsData.success) {
+                const s = statsData.data || statsData;
+                setStats({
+                    total_rides: s.total_rides || 0,
+                    completed_rides: s.completed_rides || 0,
+                    cancelled_rides: s.cancelled_rides || 0,
+                    today_rides: s.today_rides || 0,
+                    acceptance_rate: s.acceptance_rate || 0,
+                    total_fare_amount: s.total_fare_amount || 0,
+                    total_commission: s.total_commission || 0,
+                });
             } else {
-                console.error('Failed to fetch dashboard data:', data.message);
+                console.error('Failed to fetch dashboard data:', statsData?.message || 'Stats unavailable');
                 setApiError('Failed to load dashboard data.');
+            }
+
+            // Process wallet
+            const walletData = walletResult.status === 'fulfilled' ? walletResult.value : null;
+            if (walletData && (walletData.success || walletData.data)) {
+                const w = walletData.data?.wallet || walletData.wallet || walletData.data;
+                setEarnings({
+                    total_earnings: w.total_earnings || w.total_earned || 0,
+                    available_balance: w.available_balance || w.balance || 0,
+                    pending_clearance: w.pending_clearance || 0,
+                    today_earnings: w.today_earnings || 0,
+                    week_earnings: w.week_earnings || 0,
+                    month_earnings: w.month_earnings || 0,
+                });
+            }
+
+            // Process rides
+            const ridesData = ridesResult.status === 'fulfilled' ? ridesResult.value : null;
+            if (ridesData && (ridesData.success || ridesData.data)) {
+                const rides = ridesData.data || ridesData;
+                const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
+
+                const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'in_progress');
+                const pending = ridesArray.find((r: any) => r.status === 'pending');
+                setActiveRide(active || null);
+                setPendingRide(pending || null);
+                setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
+            }
+
+            // Process notifications
+            const notifData = notifResult.status === 'fulfilled' ? notifResult.value : null;
+            if (notifData && (notifData.success || notifData.data)) {
+                const notifs = notifData.data?.data || notifData.notifications || notifData.data?.notifications || [];
+                const unread = notifs.filter((n: any) => n.is_read === false || n.is_read === 0).length;
+                setNotificationCount(unread);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -352,6 +417,12 @@ const DriverDashboardMobile: React.FC = () => {
                 const data = await api.rides.complete(rideId);
 
                 if (data.success) {
+                    if (selectedRating > 0) {
+                        await api.rides.rateClient(rideId, {
+                            rating: selectedRating,
+                            comment: reviewComment
+                        });
+                    }
                     Swal.fire({
                         title: 'Ride Completed!',
                         html: `
@@ -676,8 +747,28 @@ const DriverDashboardMobile: React.FC = () => {
         fetchDashboardData();
     }, []);
 
+    // Periodic polling for new ride requests
+    useEffect(() => {
+        const pollInterval = setInterval(async () => {
+            try {
+                const data = await api.driver.pendingRides();
+                if (data.success && data.data) {
+                    const pending = (Array.isArray(data.data) ? data.data : [data.data])
+                        .find((r: any) => r.status === 'pending');
+                    if (pending && !activeRide) {
+                        setPendingRide(pending);
+                        setCountdown(30);
+                    }
+                }
+            } catch (e) {
+                // silent
+            }
+        }, 30000);
+        return () => clearInterval(pollInterval);
+    }, [activeRide]);
+
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
-    const firstName = driverData?.fullname?.split(' ')[0] || driverData?.full_name?.split(' ')[0] || 'Driver';
+    const firstName = (driverData?.full_name || driverData?.fullname || 'Driver').split(' ')[0];
 
     if (loading || preloaderLoading) {
         return <MobilePreloader />;
@@ -892,7 +983,7 @@ const DriverDashboardMobile: React.FC = () => {
                     <div className="recent-rides-list">
                         {recentRides.length > 0 ? (
                             recentRides.map((ride) => (
-                                <div key={ride.id} className="recent-ride-item" onClick={() => router.visit(`/generate-receipt?ride_id=${ride.id}`)}>
+                                <div key={ride.id} className="recent-ride-item" onClick={() => router.visit(`/generatereceipt?rideId=${ride.id}`)}>
                                     <div className="ride-icon success">
                                         <i className="fas fa-check-circle"></i>
                                     </div>

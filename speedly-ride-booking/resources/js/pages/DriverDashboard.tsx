@@ -106,26 +106,85 @@ const DriverDashboard: React.FC = () => {
     // Fetch driver dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const [profileData, statsData, ridesData] = await Promise.all([
+            const results = await Promise.allSettled([
                 api.driver.profile(),
                 api.driver.stats(),
-                api.driver.rides(5)
+                api.driver.rides(5),
+                api.driver.wallet(),
+                api.notifications.list()
             ]);
 
-            if (statsData.success || statsData.data) {
-                const s = statsData.data || statsData;
-                setEarnings(s.earnings || { total_earnings: 0, available_balance: 0, pending_clearance: 0, today_earnings: 0, week_earnings: 0, month_earnings: 0 });
-                setStats(s.stats || { total_rides: 0, completed_rides: 0, cancelled_rides: 0, acceptance_rate: 0, total_fare_amount: 0, total_commission: 0 });
-                setActiveRide(s.active_ride || null);
-                setPendingRide(s.pending_ride || null);
-                setRecentRides(s.recent_rides || []);
+            const [profileResult, statsResult, ridesResult, walletResult, notifResult] = results;
+
+            if (profileResult.status === 'fulfilled') {
+                const profileData = profileResult.value;
+                if (profileData.success || profileData.data) {
+                    const d = profileData.data?.user || profileData.user || profileData.data;
+                    setDriverData(d);
+                    setDriverStatus(d.driver_status || 'offline');
+                    setVerificationStatus(d.verification_status || 'pending');
+                }
             }
-            if (profileData.success || profileData.data) {
-                const d = profileData.data?.user || profileData.user || profileData.data;
-                setDriverData(d);
-                setDriverStatus(d.status || 'offline');
-                setVerificationStatus(d.verification_status || 'pending');
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+
+            if (statsResult.status === 'fulfilled') {
+                const statsData = statsResult.value;
+                if (statsData.success || statsData.data) {
+                    const s = statsData.data || statsData;
+                    setEarnings(prev => ({
+                        ...prev,
+                        total_earnings: s.total_earnings || 0,
+                        today_earnings: s.today_earnings || 0,
+                    }));
+                    setStats({
+                        total_rides: s.total_rides || 0,
+                        completed_rides: s.completed_rides || 0,
+                        cancelled_rides: s.cancelled_rides || 0,
+                        acceptance_rate: s.acceptance_rate || 100,
+                        total_fare_amount: s.total_fare_amount || 0,
+                        total_commission: s.total_commission || 0,
+                        today_rides: s.today_rides || 0,
+                        avg_fare: s.avg_fare || 0,
+                    });
+                    setDriverData(prev => prev ? {
+                        ...prev,
+                        avg_rating: s.average_rating || prev.avg_rating || 0,
+                        total_reviews: s.total_reviews || prev.total_reviews || 0,
+                    } : prev);
+                }
+            }
+
+            if (walletResult.status === 'fulfilled') {
+                const walletData = walletResult.value;
+                if (walletData.success || walletData.data) {
+                    const w = walletData.data || walletData;
+                    setEarnings(prev => ({
+                        ...prev,
+                        available_balance: w.balance || 0,
+                    }));
+                }
+            }
+
+            if (notifResult.status === 'fulfilled') {
+                const notifData = notifResult.value;
+                if (notifData.success || notifData.data) {
+                    const notifs = notifData.data?.data || notifData.notifications || notifData.data?.notifications || [];
+                    const unread = notifs.filter((n: any) => n.is_read === false || n.is_read === 0).length;
+                    setNotificationCount(unread);
+                }
+            }
+
+            if (ridesResult.status === 'fulfilled') {
+                const ridesData = ridesResult.value;
+                if (ridesData.success || ridesData.data) {
+                    const rides = ridesData.data || ridesData;
+                    const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
+
+                    const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'in_progress');
+                    const pending = ridesArray.find((r: any) => r.status === 'pending');
+                    setActiveRide(active || null);
+                    setPendingRide(pending || null);
+                    setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
+                }
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -475,25 +534,13 @@ const DriverDashboard: React.FC = () => {
             html: `
                 <p class="mb-4">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${availableBalance}" step="100">
-                <select id="bank-name" class="swal2-input">
-                    <option value="">Select Bank</option>
-                    <option value="Access Bank">Access Bank</option>
-                    <option value="GTBank">GTBank</option>
-                    <option value="First Bank">First Bank</option>
-                    <option value="UBA">UBA</option>
-                    <option value="Zenith">Zenith Bank</option>
-                </select>
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
-                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
+                <p class="text-sm text-gray-500 mt-2">Withdrawal will be sent to your default bank account on file.</p>
             `,
             showCancelButton: true,
             confirmButtonText: 'Withdraw',
             confirmButtonColor: '#ff5e00',
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
-                const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
-                const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
-                const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
 
                 if (!amount || amount < 1000) {
                     Swal.showValidationMessage('Minimum withdrawal is ₦1,000');
@@ -503,33 +550,32 @@ const DriverDashboard: React.FC = () => {
                     Swal.showValidationMessage('Insufficient balance');
                     return false;
                 }
-                if (!bank) {
-                    Swal.showValidationMessage('Please select a bank');
-                    return false;
-                }
-                if (!account || account.length !== 10 || !/^\d+$/.test(account)) {
-                    Swal.showValidationMessage('Please enter a valid 10-digit account number');
-                    return false;
-                }
-                if (!name) {
-                    Swal.showValidationMessage('Please enter account name');
-                    return false;
-                }
-                return { amount, bank, account, name };
+                return { amount };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                Swal.fire({
-                    title: 'Withdrawal Request Submitted',
-                    html: `
-                        <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
-                        <p>Bank: ${result.value.bank}</p>
-                        <p>Account: ${result.value.account} (${result.value.name})</p>
-                        <p class="mt-4 text-sm text-gray-500">Your withdrawal will be processed within 24-48 hours.</p>
-                    `,
-                    icon: 'success',
-                    confirmButtonColor: '#ff5e00'
-                });
+                Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'Withdrawal Request Submitted',
+                            html: `
+                                <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
+                                <p class="mt-4 text-sm text-gray-500">Your withdrawal will be processed within 24-48 hours.</p>
+                            `,
+                            icon: 'success',
+                            confirmButtonColor: '#ff5e00'
+                        });
+                        fetchDashboardData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Withdrawal Failed', text: data.message || 'Please add bank details in Settings first', confirmButtonColor: '#ff5e00' });
+                    }
+                } catch (error) {
+                    Swal.close();
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to process withdrawal', confirmButtonColor: '#ff5e00' });
+                }
             }
         });
     };
@@ -574,7 +620,7 @@ const DriverDashboard: React.FC = () => {
                     <div class="stat-item"><div class="stat-label">Acceptance Rate</div><div class="stat-value">${stats.acceptance_rate}%</div></div>
                     <div class="stat-item"><div class="stat-label">Total Fare</div><div class="stat-value">₦${stats.total_fare_amount.toLocaleString()}</div></div>
                     <div class="stat-item"><div class="stat-label">Platform Commission</div><div class="stat-value text-red-600">-₦${stats.total_commission.toLocaleString()}</div></div>
-                    <div class="stat-item col-span-2"><div class="stat-label">Net Earnings</div><div class="stat-value text-green-600">₦${(stats.total_fare_amount * 0.8).toLocaleString()}</div></div>
+                    <div class="stat-item col-span-2"><div class="stat-label">Net Earnings</div><div class="stat-value text-green-600">₦${(stats.total_fare_amount - stats.total_commission).toLocaleString()}</div></div>
                     <div class="stat-item col-span-2"><div class="stat-label">Average Rating</div><div class="stat-value flex items-center justify-center gap-2">${driverData?.avg_rating || 0} ${'★'.repeat(Math.floor(driverData?.avg_rating || 0))}${'☆'.repeat(5 - Math.floor(driverData?.avg_rating || 0))}</div></div>
                 </div>
             `,
@@ -587,7 +633,7 @@ const DriverDashboard: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const notifications = data.data?.data || data.notifications || data.data?.notifications || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
@@ -933,7 +979,7 @@ const DriverDashboard: React.FC = () => {
                         <div className="recent-trips-list">
                             {recentRides.length > 0 ? (
                                 recentRides.map((ride) => (
-                                    <div key={ride.id} className="recent-trip-item" onClick={() => router.visit(`/generate-receipt?ride_id=${ride.id}`)}>
+                                    <div key={ride.id} className="recent-trip-item" onClick={() => router.visit(`/generatereceipt?rideId=${ride.id}`)}>
                                         <div className="trip-icon">
                                             <i className="fas fa-check"></i>
                                         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
-import api from '../../services/api';
+import api, { setToken } from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientSettingsMobile.css';
@@ -70,17 +70,24 @@ const ClientSettingsMobile: React.FC = () => {
             ]);
 
             if (profileData.success || profileData.data) {
-                const user = profileData.data?.user || profileData.user || profileData.data;
+                const user = profileData.data;
                 setUserData(user);
                 setUserRole(user?.role || 'client');
-                setUserSettings(profileData.data?.settings || profileData.settings || { dark_mode: false, notifications_enabled: true, email_notifications: true, sms_notifications: false, language: 'en' });
-                setPaymentMethods(profileData.data?.payment_methods || profileData.payment_methods || []);
-                setEmergencyContactName(profileData.data?.emergency_contact?.name || '');
-                setEmergencyContactPhone(profileData.data?.emergency_contact?.phone || '');
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+                const prefs = user?.notification_preferences || {};
+                setUserSettings({
+                    dark_mode: user?.dark_mode ?? false,
+                    notifications_enabled: prefs.notifications_enabled ?? true,
+                    email_notifications: prefs.email_notifications ?? true,
+                    sms_notifications: prefs.sms_notifications ?? false,
+                    language: 'en'
+                });
+                setEmergencyContactName('');
+                setEmergencyContactPhone('');
+                setNotificationCount(0);
             }
             if (locationsData.success || locationsData.data) {
-                setSavedLocations(locationsData.locations || locationsData.data?.locations || []);
+                const locs = locationsData.data;
+                setSavedLocations(locs?.saved_locations || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -294,7 +301,7 @@ const ClientSettingsMobile: React.FC = () => {
 
     // Set language
     const setLanguage = (lang: string) => {
-        toggleSetting('language', lang);
+        setUserSettings(prev => ({ ...prev, language: lang }));
         Swal.fire({ icon: 'success', title: 'Language Updated', timer: 1500, showConfirmButton: false });
     };
 
@@ -327,8 +334,14 @@ const ClientSettingsMobile: React.FC = () => {
             confirmButtonColor: '#ff5e00'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                await api.auth.logout();
-                window.location.href = '/home';
+                try {
+                    await api.auth.logout();
+                } catch (e) {
+                    // ignore logout errors
+                } finally {
+                    setToken(null);
+                    window.location.href = '/home';
+                }
             }
         });
     };
@@ -352,11 +365,25 @@ const ClientSettingsMobile: React.FC = () => {
                 }
                 return true;
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                Swal.fire({ icon: 'success', title: 'Account Deleted', timer: 2000, showConfirmButton: false }).then(() => {
-                    window.location.href = '/';
+                Swal.fire({
+                    title: 'Processing...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
                 });
+
+                try {
+                    await api.auth.deleteAccount();
+                    Swal.close();
+                    Swal.fire({ icon: 'success', title: 'Account Deleted', text: 'Your account has been deleted successfully', confirmButtonColor: '#ff5e00' }).then(() => {
+                        setToken(null);
+                        window.location.href = '/';
+                    });
+                } catch (error: any) {
+                    Swal.close();
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to delete account', confirmButtonColor: '#ff5e00' });
+                }
             }
         });
     };

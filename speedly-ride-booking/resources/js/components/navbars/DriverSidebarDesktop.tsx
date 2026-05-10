@@ -11,7 +11,7 @@ interface DriverSidebarDesktopProps {
 
 const DriverSidebarDesktop: React.FC<DriverSidebarDesktopProps> = ({
   userName = 'User',
-  userRole = 'client',
+  userRole = 'driver',
   profilePictureUrl = null,
 }) => {
   const { url } = usePage();

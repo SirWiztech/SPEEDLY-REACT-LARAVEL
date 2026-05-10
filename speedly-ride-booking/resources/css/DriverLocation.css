@@ -11,7 +11,7 @@
     width: 100%;
     min-height: 100vh;
     background: #f5f5f5;
-    margin-right: 780px;
+    margin-right: 950px;
 }
 
 .location-desktop-main {
@@ -375,6 +375,8 @@
     gap: 10px;
     box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
     transition: all 0.3s ease;
+    display: block;
+
 }
 
 .location-permission-btn:hover {
@@ -394,4 +396,64 @@
     .location-desktop-main {
         margin-left: 0;
     }
+}
+
+/* Mobile GPS Styles */
+.gps-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #f5f5f5;
+    border-radius: 12px;
+}
+
+.gps-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    flex-shrink: 0;
+}
+
+.gps-dot.active {
+    background: #4ade80;
+    animation: pulse 2s infinite;
+}
+
+.gps-status-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+}
+
+.gps-allow-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff5e00, #ff8c3a);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+    box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.gps-allow-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 94, 0, 0.4);
+}
+
+.location-time {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
 }

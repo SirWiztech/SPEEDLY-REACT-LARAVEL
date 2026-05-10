@@ -400,4 +400,24 @@ class AuthController extends Controller
             ]
         ]);
     }
+
+    public function deleteAccount(Request $request)
+    {
+        $user = $request->user();
+        $user->tokens()->delete();
+
+        if ($user->clientProfile) {
+            $user->clientProfile->delete();
+        }
+        if ($user->driverProfile) {
+            $user->driverProfile->delete();
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Account deleted successfully',
+        ]);
+    }
 }

@@ -997,7 +997,30 @@ select.form-control {
     color: #0369a1;
 }
 
-/* Responsive Design */
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Small desktops / large tablets landscape */
+@media (max-width: 1200px) {
+    .driver-profile-content {
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+        padding: 32px;
+    }
+
+    .driver-profile-header {
+        padding: 32px;
+    }
+
+    .driver-profile-header h1 {
+        font-size: 28px;
+    }
+
+    .driver-profile-main {
+        padding: 24px;
+    }
+}
+
+/* Tablets landscape */
 @media (max-width: 1024px) {
     .driver-profile-content {
         grid-template-columns: 1fr;
@@ -1015,95 +1038,388 @@ select.form-control {
     .kyc-upload-grid {
         grid-template-columns: 1fr;
     }
+
+    .driver-profile-header h1 {
+        font-size: 26px;
+    }
 }
 
-@media (max-width: 768px) {
+/* Tablets portrait */
+@media (max-width: 860px) {
+    body {
+        padding: 12px;
+    }
+
+    .driver-profile-header {
+        padding: 24px 20px;
+    }
+
+    .driver-profile-header h1 {
+        font-size: 24px;
+        padding-right: 120px;
+    }
+
+    .driver-profile-header p {
+        font-size: 14px;
+    }
+
+    .driver-profile-content {
+        padding: 20px;
+        gap: 20px;
+    }
+
+    .driver-profile-sidebar {
+        padding: 24px;
+    }
+
+    .driver-profile-main {
+        padding: 20px;
+    }
+
+    .profile-tabs {
+        gap: 6px;
+    }
+
+    .tab-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .info-label {
+        width: 140px;
+    }
+
+    .info-row {
+        gap: 8px;
+    }
+}
+
+/* Large phones */
+@media (max-width: 640px) {
     body {
         padding: 10px;
     }
-    
+
+    .driver-profile-container {
+        border-radius: 20px;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .driver-profile-header {
-        padding: 20px;
+        padding: 20px 16px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
-    
+
     .driver-profile-header h1 {
-        font-size: 24px;
+        font-size: 22px;
+        padding-right: 110px;
     }
-    
+
     .driver-profile-header p {
         font-size: 13px;
     }
-    
+
     .back-btn {
-        top: 20px;
-        right: 70px;
+        top: 16px;
+        right: 60px;
         padding: 6px 12px;
         font-size: 11px;
     }
-    
+
     .notification-btn {
-        top: 20px;
-        right: 15px;
+        top: 16px;
+        right: 12px;
         width: 36px;
         height: 36px;
         font-size: 16px;
     }
-    
+
     .driver-profile-content {
         padding: 16px;
         gap: 16px;
     }
-    
+
     .driver-profile-sidebar {
         padding: 20px;
     }
-    
-    .driver-profile-main {
-        padding: 20px;
+
+    .profile-pic-container {
+        width: 90px;
+        height: 90px;
     }
-    
-    .profile-tabs {
-        gap: 4px;
+
+    .profile-pic-placeholder {
+        font-size: 36px;
     }
-    
-    .tab-btn {
-        padding: 8px 14px;
+
+    .upload-pic-btn {
+        width: 30px;
+        height: 30px;
         font-size: 12px;
     }
-    
-    .info-row {
-        flex-direction: column;
-        gap: 4px;
+
+    .driver-profile-sidebar h3 {
+        font-size: 18px;
     }
-    
-    .info-label {
-        width: 100%;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
+
     .stats-grid {
         gap: 10px;
     }
-    
+
     .stat-card {
         padding: 12px;
     }
-    
-    .modal-content {
-        margin: 16px;
-        max-height: 85vh;
+
+    .stat-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
     }
-    
+
+    .stat-details .stat-value {
+        font-size: 16px;
+    }
+
+    .driver-profile-main {
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    .profile-tabs {
+        gap: 4px;
+        padding-bottom: 8px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .profile-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .tab-content h3 {
+        font-size: 16px;
+    }
+
+    .info-row {
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px 0;
+    }
+
+    .info-label {
+        width: 100%;
+        font-size: 13px;
+    }
+
+    .info-value {
+        font-size: 14px;
+    }
+
+    .form-grid {
+        gap: 14px;
+    }
+
+    .form-control {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 24px;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 20px;
+    }
+
+    .kyc-upload-grid {
+        gap: 16px;
+    }
+
+    .kyc-upload-card {
+        padding: 20px;
+    }
+
+    .kyc-upload-card i {
+        font-size: 36px;
+    }
+
+    .kyc-approved i {
+        font-size: 36px;
+    }
+
+    .vehicle-info-card,
+    .bank-info-card {
+        padding: 16px;
+    }
+
+    .modal-content {
+        margin: 12px;
+        max-height: 85vh;
+        border-radius: 18px;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 12px 20px;
+        flex-direction: column;
+    }
+
+    .balance-info h2 {
+        font-size: 28px;
+    }
+
     .withdrawal-history {
-        margin: 20px;
+        margin: 16px;
+    }
+
+    .withdrawal-item {
+        flex-direction: column;
+        gap: 8px;
+        padding: 14px 16px;
+    }
+
+    .security-tips {
+        margin-top: 24px;
+        padding-top: 16px;
+    }
+
+    .security-tips li {
+        font-size: 12px;
+    }
+}
+
+/* Small phones */
+@media (max-width: 400px) {
+    body {
+        padding: 6px;
+    }
+
+    .driver-profile-header {
+        padding: 16px 12px;
+    }
+
+    .driver-profile-header h1 {
+        font-size: 18px;
+        padding-right: 90px;
+    }
+
+    .driver-profile-header p {
+        font-size: 12px;
+    }
+
+    .back-btn {
+        top: 12px;
+        right: 50px;
+        padding: 4px 10px;
+        font-size: 10px;
+    }
+
+    .notification-btn {
+        top: 12px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .driver-profile-content {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .driver-profile-sidebar {
+        padding: 16px;
+    }
+
+    .profile-pic-container {
+        width: 70px;
+        height: 70px;
+    }
+
+    .profile-pic-placeholder {
+        font-size: 28px;
+    }
+
+    .upload-pic-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 10px;
+    }
+
+    .driver-profile-sidebar h3 {
+        font-size: 16px;
+    }
+
+    .stats-grid {
+        gap: 8px;
+    }
+
+    .stat-card {
+        padding: 10px;
+    }
+
+    .stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .stat-details .stat-value {
+        font-size: 15px;
+    }
+
+    .driver-profile-main {
+        padding: 12px;
+    }
+
+    .tab-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .form-grid {
+        gap: 12px;
+    }
+
+    .kyc-upload-grid {
+        gap: 12px;
+    }
+
+    .kyc-upload-card {
+        padding: 16px;
+    }
+
+    .kyc-upload-card i {
+        font-size: 28px;
+    }
+
+    .withdrawal-history {
+        margin: 10px;
     }
 }
 

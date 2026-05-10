@@ -76,14 +76,14 @@ const DriverBookHistoryMobile: React.FC = () => {
     const fetchBookHistory = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.driver.rideHistory();
-            if (data.success || data.data) {
-                const d = data.data || data;
-                setUserData(d.user);
-                setStats(d.stats);
-                setAcceptedRides(d.accepted_rides || []);
-                setDeclinedRides(d.declined_rides || []);
-                setNotificationCount(d.notification_count || 0);
+            const response = await api.driver.rideHistory();
+            if (response.success && response.data) {
+                const d = response.data;
+                if (d.user) setUserData(d.user);
+                if (d.stats) setStats(d.stats);
+                if (d.accepted_rides) setAcceptedRides(d.accepted_rides);
+                if (d.declined_rides) setDeclinedRides(d.declined_rides);
+                if (d.notification_count !== undefined) setNotificationCount(d.notification_count);
             }
         } catch (error) {
             console.error('Error:', error);
@@ -93,16 +93,39 @@ const DriverBookHistoryMobile: React.FC = () => {
     }, []);
 
     const viewRideDetails = (rideId: string) => {
-        router.visit(`/generate-receipt?ride_id=${rideId}`);
+        router.visit(`/generatereceipt?rideId=${rideId}`);
     };
 
     const checkNotifications = async () => {
-        Swal.fire({
-            title: 'Notifications',
-            text: 'No new notifications',
-            icon: 'info',
-            confirmButtonColor: '#ff5e00'
-        });
+        try {
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifs = payload.data || [];
+            const count = notifs.length;
+            if (count === 0) {
+                Swal.fire({
+                    title: 'Notifications',
+                    text: 'No new notifications',
+                    icon: 'info',
+                    confirmButtonColor: '#ff5e00'
+                });
+            } else {
+                const list = (notifs?.data || notifs).slice(0, 5).map((n: any) => n.message || n.title || 'Notification').join('\n• ');
+                Swal.fire({
+                    title: `Notifications (${count})`,
+                    html: `• ${list}`,
+                    icon: 'info',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                title: 'Notifications',
+                text: 'Unable to load notifications',
+                icon: 'error',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
     };
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;

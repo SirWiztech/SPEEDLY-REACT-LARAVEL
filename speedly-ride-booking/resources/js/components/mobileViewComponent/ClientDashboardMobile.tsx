@@ -96,20 +96,61 @@ const ClientDashboardMobile: React.FC = () => {
     // Fetch dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const data = await api.client.stats();
+            const [profileResult, statsResult, ridesResult, walletResult] = await Promise.allSettled([
+                api.client.profile(),
+                api.client.stats(),
+                api.client.rides(5),
+                api.client.wallet()
+            ]);
 
-            if (data.success) {
-                setUserData(data.user);
-                setWalletBalance(data.wallet_balance);
-                setRideStats({
-                    active_count: data.active_rides,
-                    completed_count: data.completed_rides,
-                    monthly_change: data.monthly_change
+            if (profileResult.status === 'fulfilled' && profileResult.value.success) {
+                const p = profileResult.value.data;
+                setUserData({
+                    id: p.id || '',
+                    fullname: p.full_name || '',
+                    profile_picture_url: p.profile_picture_url || null,
+                    is_verified: p.is_verified || false,
+                    membership_tier: (p.membership_tier || 'basic') as 'basic' | 'premium' | 'gold',
+                    created_at: p.created_at || ''
                 });
-                setRecentRides(data.recent_rides || []);
-                setNotificationCount(data.notification_count || 0);
-            } else {
-                console.error('Failed to fetch dashboard data:', data.message);
+            }
+
+            if (statsResult.status === 'fulfilled' && statsResult.value.success) {
+                const s = statsResult.value.data;
+                setRideStats({
+                    active_count: s.active_rides || 0,
+                    completed_count: s.completed_rides || 0,
+                    monthly_change: s.monthly_change || 0
+                });
+            }
+
+            if (ridesResult.status === 'fulfilled' && ridesResult.value.success && Array.isArray(ridesResult.value.data)) {
+                const rides = ridesResult.value.data.map((ride: any) => ({
+                    id: ride.id,
+                    status: ride.status,
+                    pickup_address: ride.pickup_location || '',
+                    destination_address: ride.dropoff_location || '',
+                    total_fare: parseFloat(ride.fare_amount) || 0,
+                    created_at: ride.created_at,
+                    formatted_date: '',
+                    formatted_time: '',
+                    driver_name: ride.driver_name || null,
+                    driver_photo: null,
+                    vehicle_model: ride.vehicle_type || null,
+                    distance_km: 0,
+                    notification_type: null,
+                    notification_message: null,
+                    user_rating: null,
+                    pickup_latitude: null,
+                    pickup_longitude: null,
+                    destination_latitude: null,
+                    destination_longitude: null
+                }));
+                setRecentRides(rides);
+            }
+
+            if (walletResult.status === 'fulfilled' && walletResult.value.success) {
+                setWalletBalance(parseFloat(walletResult.value.data.balance) || 0);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -155,11 +196,9 @@ const ClientDashboardMobile: React.FC = () => {
     const checkForNewNotifications = useCallback(async () => {
         try {
             const data = await api.notifications.list();
-            if (data.success && data.count > 0) {
-                setNotificationCount(data.count);
-            } else if (data.count === 0) {
-                setNotificationCount(0);
-            }
+            const notifications = data.data?.data || [];
+            const unread = notifications.filter((n: any) => !n.is_read).length;
+            setNotificationCount(unread);
         } catch (error) {
             console.error('Error checking notifications:', error);
         }
@@ -211,17 +250,19 @@ const ClientDashboardMobile: React.FC = () => {
 
             Swal.close();
 
-            if (data.success && data.ride) {
+            const rideData = data.data;
+            if (rideData) {
+                const driverName = rideData.driver?.user?.full_name || null;
                 Swal.fire({
                     title: 'Ride Details',
                     html: `
                         <div style="text-align: left;">
-                            <p><strong>Ride #:</strong> ${data.ride.ride_number || data.ride.id}</p>
-                            <p><strong>From:</strong> ${data.ride.pickup_address || 'N/A'}</p>
-                            <p><strong>To:</strong> ${data.ride.destination_address || 'N/A'}</p>
-                            <p><strong>Fare:</strong> ${formatCurrency(data.ride.total_fare)}</p>
-                            <p><strong>Status:</strong> ${getStatusDisplay(data.ride.status)}</p>
-                            ${data.ride.driver_name ? `<p><strong>Driver:</strong> ${data.ride.driver_name}</p>` : ''}
+                            <p><strong>Ride #:</strong> ${rideData.ride_number || rideData.id}</p>
+                            <p><strong>From:</strong> ${rideData.pickup_address || 'N/A'}</p>
+                            <p><strong>To:</strong> ${rideData.destination_address || 'N/A'}</p>
+                            <p><strong>Fare:</strong> ${formatCurrency(rideData.total_fare)}</p>
+                            <p><strong>Status:</strong> ${getStatusDisplay(rideData.status)}</p>
+                            ${driverName ? `<p><strong>Driver:</strong> ${driverName}</p>` : ''}
                         </div>
                     `,
                     confirmButtonColor: '#ff5e00',
@@ -251,10 +292,11 @@ const ClientDashboardMobile: React.FC = () => {
     const checkNotifications = async () => {
         try {
             const data = await api.notifications.list();
+            const notifications = data.data?.data || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: Notification) => {
+                notifications.forEach((notif: Notification) => {
                     html += `
                         <div style="padding: 10px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title}</strong></p>
@@ -267,7 +309,7 @@ const ClientDashboardMobile: React.FC = () => {
 
                 const result = await Swal.fire({
                     icon: 'info',
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'Close',
@@ -279,9 +321,6 @@ const ClientDashboardMobile: React.FC = () => {
                 if (result.isDenied) {
                     await api.notifications.clearAll();
                     Swal.fire({ icon: 'success', title: 'Cleared!', text: 'All notifications cleared', confirmButtonColor: '#ff5e00' });
-                    setNotificationCount(0);
-                } else {
-                    await api.notifications.clearAll();
                     setNotificationCount(0);
                 }
             } else {
@@ -359,27 +398,27 @@ const ClientDashboardMobile: React.FC = () => {
 
                 {/* Quick Actions */}
                 <div className="mobile-quick-actions">
-                    <button className="mobile-action-btn" onClick={() => router.visit('/book-ride')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/clientbookride')}>
                         <div className="mobile-action-icon"><i className="fas fa-car"></i></div>
                         <span>Book Ride</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/ride-history')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/clientridehistory')}>
                         <div className="mobile-action-icon"><i className="fas fa-history"></i></div>
                         <span>History</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/wallet')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/clientwallet')}>
                         <div className="mobile-action-icon"><i className="fas fa-wallet"></i></div>
                         <span>Wallet</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/location')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/clientlocation')}>
                         <div className="mobile-action-icon"><i className="fas fa-map-marked-alt"></i></div>
                         <span>Locations</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/settings')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/clientsettings')}>
                         <div className="mobile-action-icon"><i className="fas fa-cog"></i></div>
                         <span>Settings</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/ai-assistant')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/clientaiassistant')}>
                         <div className="mobile-action-icon"><i className="fas fa-robot"></i></div>
                         <span>AI Assistant</span>
                     </button>
@@ -389,7 +428,7 @@ const ClientDashboardMobile: React.FC = () => {
                 <div className="mobile-transactions-section">
                     <div className="mobile-section-header">
                         <div className="mobile-section-title">Recent Rides</div>
-                        <button className="mobile-see-all-btn" onClick={() => router.visit('/ride-history')}>See All</button>
+                        <button className="mobile-see-all-btn" onClick={() => router.visit('/clientridehistory')}>See All</button>
                     </div>
                     <div className="mobile-transaction-list">
                         {recentRides.length > 0 ? (
@@ -430,7 +469,7 @@ const ClientDashboardMobile: React.FC = () => {
                                 <i className="fas fa-car-side mobile-text-4xl mobile-mb-2 mobile-opacity-50"></i>
                                 <p>No rides yet</p>
                                 <p className="mobile-text-sm mobile-mt-2">Book your first ride now!</p>
-                                <button className="mobile-mt-4 mobile-bg-[#ff5e00] mobile-text-white mobile-px-6 mobile-py-2 mobile-rounded-xl mobile-text-sm mobile-font-medium" onClick={() => router.visit('/book-ride')}>
+                                <button className="mobile-mt-4 mobile-bg-[#ff5e00] mobile-text-white mobile-px-6 mobile-py-2 mobile-rounded-xl mobile-text-sm mobile-font-medium" onClick={() => router.visit('/clientbookride')}>
                                     Book a Ride
                                 </button>
                             </div>

@@ -75,11 +75,22 @@ const DriverKyc: React.FC = () => {
     // Fetch KYC data
     const fetchKycData = useCallback(async () => {
         try {
-            const data = await api.driver.kyc();
+            const results = await Promise.allSettled([
+                api.driver.kyc(),
+                api.driver.profile()
+            ]);
 
-            if (data.success || data.data) {
-                const d = data.data || data;
-                setDriverData(d.driver || d);
+            const [kycResult, profileResult] = results;
+
+            const profileResponse = profileResult.status === 'fulfilled' ? profileResult.value : null;
+            if (profileResponse && (profileResponse.success || profileResponse.data)) {
+                const p = profileResponse.data?.user || profileResponse.user || profileResponse.data;
+                setDriverData(p);
+            }
+
+            const kycResponse = kycResult.status === 'fulfilled' ? kycResult.value : null;
+            if (kycResponse && (kycResponse.success || kycResponse.data)) {
+                const d = kycResponse.data || kycResponse;
                 setDocuments(d.documents || []);
                 setPendingApproval(d.pending_approval || null);
                 setNotificationCount(d.notification_count || 0);
@@ -87,7 +98,7 @@ const DriverKyc: React.FC = () => {
                 setLicenseNumber(d.license_number || '');
                 setLicenseExpiry(d.license_expiry || '');
             } else {
-                console.error('Failed to fetch KYC data:', data.message);
+                console.error('Failed to fetch KYC data:', kycResponse?.message || 'KYC fetch failed');
             }
         } catch (error) {
             console.error('Error fetching KYC data:', error);
@@ -355,8 +366,8 @@ const DriverKyc: React.FC = () => {
             <DriverSidebarDesktop 
                 userName={driverData?.full_name || 'Driver'} 
                 userRole="driver"
-                profilePictureUrl={null}
-                driverStatus="offline"
+                profilePictureUrl={driverData?.profile_picture_url || null}
+                driverStatus={driverData?.driver_status || 'offline'}
                 verificationStatus={driverData?.verification_status || 'pending'}
             />
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import ClientNavMobile from '../../components/navbars/DriverNavMobile';
+import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
@@ -150,7 +150,7 @@ const DriverSupportMobile: React.FC = () => {
                     setMessage('');
                     setCharCount(0);
                     setTimeout(() => {
-                        router.visit('/client-dashboard');
+                        router.visit('/driverdashboard');
                     }, 2000);
                 });
             } else {
@@ -345,7 +345,7 @@ const DriverSupportMobile: React.FC = () => {
                 </div>
 
                 {/* Bottom Navigation */}
-                <ClientNavMobile />
+                <DriverNavMobile />
             </div>
         </div>
     );

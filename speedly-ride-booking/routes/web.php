@@ -23,9 +23,10 @@ Route::middleware(['guest'])->group(function () {
     Route::inertia('/forgot-password', 'ForgotPassword')->name('password.request');
     Route::inertia('/reset-password', 'ResetPassword')->name('password.reset');
     Route::inertia('/verify-otp', 'VerifyOtp')->name('verify.otp');
-    Route::inertia('/admin-login', 'Admin-Login')->name('admin.login');
-    Route::inertia('/forgot-admin-password', 'ForgotAdminPassword')->name('admin.forgot-password');
 });
+
+Route::inertia('/admin-login', 'Admin-Login')->name('admin.login');
+Route::inertia('/forgot-admin-password', 'ForgotAdminPassword')->name('admin.forgot-password');
 
 /*
 |--------------------------------------------------------------------------

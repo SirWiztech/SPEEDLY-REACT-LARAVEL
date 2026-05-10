@@ -65,14 +65,15 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
             }
 
             try {
-                const data = await api.rides.receipt(rideId);
+                const response = await api.rides.receipt(rideId);
+                const payload = response.data || response;
 
-                if (data.success && data.ride) {
-                    setRide(data.ride);
-                    setPayment(data.payment || null);
-                    setFareBreakdown(data.fare_breakdown || null);
+                if (response.success && payload.ride) {
+                    setRide(payload.ride);
+                    setPayment(payload.payment || null);
+                    setFareBreakdown(payload.fare_breakdown || null);
                 } else {
-                    setError(data.message || 'Failed to load ride details');
+                    setError(response.message || 'Failed to load ride details');
                 }
             } catch (error) {
                 console.error('Error fetching ride data:', error);

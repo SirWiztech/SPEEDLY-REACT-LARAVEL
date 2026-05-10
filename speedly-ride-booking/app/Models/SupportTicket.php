@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class ClientProfile extends Model
+class SupportTicket extends Model
 {
     protected $primaryKey = 'id';
     public $incrementing = false;
@@ -22,17 +22,15 @@ class ClientProfile extends Model
     }
 
     protected $fillable = [
-        'id', 'user_id', 'membership_tier', 'total_rides',
-        'average_rating', 'total_reviews',
-        'notification_preferences', 'dark_mode',
+        'id', 'user_id', 'role', 'category', 'subject', 'message',
+        'priority', 'status', 'ticket_number',
+        'admin_reply', 'replied_by', 'replied_at',
+        'closed_by', 'closed_at',
     ];
 
     protected $casts = [
-        'average_rating' => 'decimal:2',
-        'total_rides' => 'integer',
-        'total_reviews' => 'integer',
-        'notification_preferences' => 'array',
-        'dark_mode' => 'boolean',
+        'replied_at' => 'datetime',
+        'closed_at' => 'datetime',
     ];
 
     public function user()
@@ -40,13 +38,13 @@ class ClientProfile extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function rides()
+    public function repliedBy()
     {
-        return $this->hasMany(Ride::class, 'client_id');
+        return $this->belongsTo(User::class, 'replied_by');
     }
 
-    public function clientRatings()
+    public function closedBy()
     {
-        return $this->hasMany(ClientRating::class, 'client_id');
+        return $this->belongsTo(User::class, 'closed_by');
     }
 }

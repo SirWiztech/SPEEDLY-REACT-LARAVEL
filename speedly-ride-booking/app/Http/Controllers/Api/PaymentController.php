@@ -45,7 +45,7 @@ class PaymentController extends Controller
                     'name' => $validated['name'],
                 ],
                 'reference' => $reference,
-                'redirect_url' => config('app.url') . '/payment/callback',
+                'redirect_url' => env('KORAPAY_REDIRECT_URL', config('app.url') . '/payment/callback'),
                 'metadata' => $validated['metadata'] ?? [],
             ]);
 
@@ -149,13 +149,12 @@ class PaymentController extends Controller
             ]);
 
             WalletTransaction::create([
+                'id' => Str::uuid(),
                 'user_id' => $paymentSession->user_id,
-                'type' => 'credit',
+                'transaction_type' => 'credit',
                 'category' => 'wallet_funding',
                 'amount' => $paymentSession->amount,
-                'currency' => $paymentSession->currency,
-                'status' => 'success',
-                'gateway_response' => json_encode($verifyData),
+                'status' => 'completed',
             ]);
 
             PaymentGatewayTransaction::where('payment_session_id', $paymentSession->id)
@@ -226,13 +225,12 @@ class PaymentController extends Controller
                 ]);
 
                 WalletTransaction::create([
+                    'id' => Str::uuid(),
                     'user_id' => $paymentSession->user_id,
-                    'type' => 'credit',
+                    'transaction_type' => 'credit',
                     'category' => 'wallet_funding',
                     'amount' => $paymentSession->amount,
-                    'currency' => $paymentSession->currency,
-                    'status' => 'success',
-                    'gateway_response' => json_encode($verifyData),
+                    'status' => 'completed',
                 ]);
 
                 PaymentGatewayTransaction::where('payment_session_id', $paymentSession->id)
@@ -302,13 +300,12 @@ class PaymentController extends Controller
                 ]);
 
                 WalletTransaction::create([
+                    'id' => Str::uuid(),
                     'user_id' => $paymentSession->user_id,
-                    'type' => 'credit',
+                    'transaction_type' => 'credit',
                     'category' => 'wallet_funding',
                     'amount' => $paymentSession->amount,
-                    'currency' => $paymentSession->currency,
-                    'status' => 'success',
-                    'gateway_response' => json_encode($data),
+                    'status' => 'completed',
                 ]);
 
                 PaymentGatewayTransaction::where('payment_session_id', $paymentSession->id)

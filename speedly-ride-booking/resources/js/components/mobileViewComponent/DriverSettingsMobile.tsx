@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
-import api from '../../services/api';
+import api, { setToken } from '../../services/api';
 import { usePreloader } from '../../hooks/usePreloader';
 import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverSettingsMobile.css';
@@ -57,26 +57,32 @@ const DriverSettingsMobile: React.FC = () => {
     // Fetch settings data
     const fetchSettingsData = useCallback(async () => {
         try {
-            const [profileData, bankData] = await Promise.all([
+            const [profileResult, bankResult] = await Promise.allSettled([
                 api.driver.profile(),
                 api.driver.bankDetails()
             ]);
 
-            if (profileData.success || profileData.data) {
-                const d = profileData.data?.user || profileData.user || profileData.data;
-                setDriverData(d);
-                setLicenseNumber(d.license?.license_number || '');
-                setLicenseExpiry(d.license?.license_expiry || '');
-                setVehicleModel(d.vehicle?.vehicle_model || '');
-                setPlateNumber(d.vehicle?.plate_number || '');
-                setTodayEarnings(d.today_earnings || 0);
-                setTotalEarnings(d.total_earnings || 0);
-                setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
-                setNotificationSettings(d.notification_settings || { ride_requests: true, earnings_notif: true, sound_alerts: true, promotions: false });
+            if (profileResult.status === 'fulfilled') {
+                const profileData = profileResult.value;
+                if (profileData.success || profileData.data) {
+                    const d = profileData.data?.user || profileData.user || profileData.data;
+                    setDriverData(d);
+                    setLicenseNumber(d.license?.license_number || '');
+                    setLicenseExpiry(d.license?.license_expiry || '');
+                    setVehicleModel(d.vehicle?.vehicle_model || '');
+                    setPlateNumber(d.vehicle?.plate_number || '');
+                    setTodayEarnings(d.today_earnings || 0);
+                    setTotalEarnings(d.total_earnings || 0);
+                    setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
+                    setNotificationSettings(d.notification_settings || { ride_requests: true, earnings_notif: true, sound_alerts: true, promotions: false });
+                }
             }
-            if (bankData.success || bankData.data) {
-                const b = bankData.data || bankData;
-                setBankAccounts(b.bank_accounts || b.accounts || []);
+            if (bankResult.status === 'fulfilled') {
+                const bankData = bankResult.value;
+                if (bankData.success || bankData.data) {
+                    const b = bankData.data || bankData;
+                    setBankAccounts(b.bank_accounts || b.accounts || []);
+                }
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
@@ -100,6 +106,13 @@ const DriverSettingsMobile: React.FC = () => {
                 <input type="text" id="profile-name" class="swal2-input" placeholder="Full Name" value="${driverData?.full_name || ''}">
                 <input type="email" id="profile-email" class="swal2-input" placeholder="Email" value="${driverData?.email || ''}">
                 <input type="tel" id="profile-phone" class="swal2-input" placeholder="Phone" value="${driverData?.phone_number || ''}">
+                <input type="date" id="profile-dob" class="swal2-input" placeholder="Date of Birth" value="${(driverData as any)?.date_of_birth || ''}">
+                <select id="profile-gender" class="swal2-input">
+                    <option value="male" ${(driverData as any)?.gender === 'male' ? 'selected' : ''}>Male</option>
+                    <option value="female" ${(driverData as any)?.gender === 'female' ? 'selected' : ''}>Female</option>
+                    <option value="other" ${(driverData as any)?.gender === 'other' ? 'selected' : ''}>Other</option>
+                    <option value="prefer-not-to-say" ${(driverData as any)?.gender === 'prefer-not-to-say' ? 'selected' : ''}>Prefer not to say</option>
+                </select>
             `,
             showCancelButton: true,
             confirmButtonText: 'Save Changes',
@@ -108,7 +121,9 @@ const DriverSettingsMobile: React.FC = () => {
                 const name = (document.getElementById('profile-name') as HTMLInputElement)?.value;
                 const email = (document.getElementById('profile-email') as HTMLInputElement)?.value;
                 const phone = (document.getElementById('profile-phone') as HTMLInputElement)?.value;
-                return { full_name: name, email, phone_number: phone };
+                const dob = (document.getElementById('profile-dob') as HTMLInputElement)?.value;
+                const gender = (document.getElementById('profile-gender') as HTMLSelectElement)?.value;
+                return { full_name: name, email, phone_number: phone, date_of_birth: dob, gender };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
@@ -125,9 +140,7 @@ const DriverSettingsMobile: React.FC = () => {
                     }
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'success', title: 'Profile Updated', timer: 1500, showConfirmButton: false }).then(() => {
-                        fetchSettingsData();
-                    });
+                    Swal.fire({ icon: 'error', title: 'Update Failed', text: 'An error occurred while updating your profile', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -164,7 +177,7 @@ const DriverSettingsMobile: React.FC = () => {
                     }
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'success', title: 'License Saved', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'An error occurred while saving license information', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -196,11 +209,18 @@ const DriverSettingsMobile: React.FC = () => {
                 Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    // TODO: update vehicle endpoint not yet available
-                    throw new Error('Vehicle endpoint not yet migrated');
+                    const { model, plate, type } = result.value;
+                    await api.driver.updateVehicle({
+                        vehicle_model: model,
+                        plate_number: plate,
+                        vehicle_type: type,
+                    });
+                    Swal.close();
+                    Swal.fire({ icon: 'success', title: 'Saved!', text: 'Vehicle updated successfully', timer: 1500, showConfirmButton: false });
+                    fetchSettingsData();
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Not Available', text: 'Vehicle update coming soon', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update vehicle', timer: 1500, showConfirmButton: false });
                 }
             }
         });
@@ -278,11 +298,12 @@ const DriverSettingsMobile: React.FC = () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    // TODO: set default bank endpoint not yet available
-                    throw new Error('Set default bank endpoint not yet migrated');
+                    await api.driver.setDefaultBank(bankId);
+                    Swal.fire({ icon: 'success', title: 'Default Set', text: 'Default bank account updated', timer: 1500, showConfirmButton: false, confirmButtonColor: '#ff5e00' });
+                    fetchSettingsData();
                 } catch (error) {
                     console.error('Error setting default bank:', error);
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Feature not available yet', confirmButtonColor: '#ff5e00' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to set default bank', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -365,8 +386,14 @@ const DriverSettingsMobile: React.FC = () => {
             cancelButtonText: 'Cancel'
         }).then(async (result) => {
             if (result.isConfirmed) {
-                await api.auth.logout();
-                window.location.href = '/home';
+                try {
+                    await api.auth.logout();
+                } catch {
+                    // Ignore API errors — clear locally regardless
+                } finally {
+                    setToken(null);
+                    window.location.href = '/home';
+                }
             }
         });
     };
@@ -391,20 +418,31 @@ const DriverSettingsMobile: React.FC = () => {
                 }
                 return true;
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
-                setTimeout(() => {
+                try {
+                    await api.auth.deleteAccount();
+                    Swal.close();
                     Swal.fire({
                         icon: 'success',
                         title: 'Account Deleted',
-                        text: 'Your driver account has been deleted',
+                        text: 'Your account has been deleted successfully',
                         confirmButtonColor: '#ff5e00'
                     }).then(() => {
-                        window.location.href = '/form.php';
+                        setToken(null);
+                        window.location.href = '/home';
                     });
-                }, 2000);
+                } catch (error: any) {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to delete account',
+                        confirmButtonColor: '#ff5e00'
+                    });
+                }
             }
         });
     };

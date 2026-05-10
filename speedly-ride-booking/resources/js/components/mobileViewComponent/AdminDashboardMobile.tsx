@@ -75,6 +75,17 @@ interface Dispute {
     raised_against?: string;
 }
 
+interface SupportTicketItem {
+    id: string;
+    ticket_number: string;
+    user_name: string;
+    subject: string;
+    category: string;
+    priority: string;
+    status: string;
+    created_at: string;
+}
+
 interface AdminDashboardMobileProps {
     stats: DashboardStats;
     users: User[];
@@ -83,6 +94,8 @@ interface AdminDashboardMobileProps {
     withdrawals: Withdrawal[];
     kycDocuments: KYCDocument[];
     disputes: Dispute[];
+    supportTickets: SupportTicketItem[];
+    openTicketsCount: number;
     notificationCount: number;
     adminName: string;
     onLogout: () => void;
@@ -98,6 +111,8 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
     withdrawals,
     kycDocuments,
     disputes,
+    supportTickets,
+    openTicketsCount,
     notificationCount,
     adminName,
     onLogout,
@@ -118,6 +133,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
         { id: 'rides', label: 'Rides', icon: 'fa-car', color: '#22c55e' },
         { id: 'wallets', label: 'Wallets', icon: 'fa-wallet', color: '#f59e0b' },
         { id: 'kyc', label: 'KYC', icon: 'fa-file-alt', color: '#8b5cf6' },
+        { id: 'support', label: 'Support', icon: 'fa-headset', color: '#06b6d4' },
         { id: 'disputes', label: 'Disputes', icon: 'fa-exclamation-triangle', color: '#ef4444' },
     ];
 
@@ -319,19 +335,101 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
         </div>
     );
 
+    const handleApproveKyc = async (docId: string) => {
+        const result = await Swal.fire({
+            title: 'Approve Document?',
+            text: 'Are you sure you want to approve this KYC document?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, approve',
+            cancelButtonText: 'Cancel'
+        });
+        if (result.isConfirmed) {
+            try {
+                const { default: api } = await import('../../services/api');
+                const data = await api.admin.approveKyc(docId);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Approved', text: 'KYC document approved', timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to approve', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to approve document', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleRejectKyc = async (docId: string) => {
+        const { value: reason } = await Swal.fire({
+            title: 'Reject Document',
+            input: 'textarea',
+            inputLabel: 'Reason for rejection',
+            inputPlaceholder: 'Enter the reason...',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Reject',
+            cancelButtonText: 'Cancel',
+            preConfirm: (value) => {
+                if (!value) {
+                    Swal.showValidationMessage('Please enter a reason');
+                    return false;
+                }
+                return value;
+            }
+        });
+        if (reason) {
+            try {
+                const { default: api } = await import('../../services/api');
+                const data = await api.admin.rejectKyc(docId, { reason });
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Rejected', text: 'KYC document rejected', timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to reject', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reject document', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
     const renderKYC = () => (
         <div className="mobile-kyc">
+            <div className="mobile-filter-tabs">
+                <button className={`filter-chip ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
+                <button className={`filter-chip ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
+                <button className={`filter-chip ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => setFilterStatus('approved')}>Approved</button>
+                <button className={`filter-chip ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => setFilterStatus('rejected')}>Rejected</button>
+            </div>
             <div className="mobile-kyc-list">
-                {kycDocuments.map(doc => (
+                {kycDocuments.filter(doc => filterStatus === 'all' || doc.verification_status === filterStatus).map(doc => (
                     <div key={doc.id} className="mobile-kyc-card">
                         <div className="kyc-info">
                             <h4>{doc.full_name}</h4>
                             <p>{doc.document_type.replace('_', ' ')}</p>
                             <p className="kyc-date">Uploaded: {new Date(doc.created_at).toLocaleDateString()}</p>
                         </div>
-                        <span className={getStatusBadgeClass(doc.verification_status)}>{doc.verification_status}</span>
+                        <div className="kyc-actions">
+                            <span className={getStatusBadgeClass(doc.verification_status)}>{doc.verification_status}</span>
+                            {doc.verification_status === 'pending' && (
+                                <div className="kyc-action-buttons" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                    <button className="action-btn approve" onClick={() => handleApproveKyc(doc.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                                        <i className="fas fa-check"></i> Approve
+                                    </button>
+                                    <button className="action-btn danger" onClick={() => handleRejectKyc(doc.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                                        <i className="fas fa-times"></i> Reject
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ))}
+                {kycDocuments.filter(doc => filterStatus === 'all' || doc.verification_status === filterStatus).length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                        <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                        No KYC documents found
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -355,6 +453,58 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                         </div>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+
+    const viewTicketDetails = async (ticket: SupportTicketItem) => {
+        const { default: Swal } = await import('sweetalert2');
+        const priorityColors: Record<string, string> = { low: '#10b981', normal: '#f59e0b', high: '#ef4444' };
+        Swal.fire({
+            title: `#${ticket.ticket_number}`,
+            html: `
+                <div style="text-align: left; font-size: 13px;">
+                    <p><strong>From:</strong> ${ticket.user_name}</p>
+                    <p><strong>Subject:</strong> ${ticket.subject}</p>
+                    <p><strong>Category:</strong> ${ticket.category}</p>
+                    <p><strong>Priority:</strong> <span style="color:${priorityColors[ticket.priority] || '#999'}">${ticket.priority}</span></p>
+                    <p><strong>Status:</strong> ${ticket.status}</p>
+                </div>
+            `,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Close'
+        });
+    };
+
+    const renderSupportTickets = () => (
+        <div className="mobile-support-tickets">
+            <div className="mobile-section-header">
+                <h3>Support Tickets {openTicketsCount > 0 ? <span style={{ color: '#ef4444', fontSize: '12px' }}>({openTicketsCount} open)</span> : ''}</h3>
+            </div>
+            <div className="mobile-ticket-list">
+                {supportTickets.length > 0 ? supportTickets.map(ticket => (
+                    <div key={ticket.id} className="mobile-ticket-card" style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }} onClick={() => viewTicketDetails(ticket)}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#999' }}>{ticket.ticket_number}</span>
+                            <span className={getStatusBadgeClass(ticket.status === 'closed' ? 'completed' : ticket.status === 'in_progress' ? 'ongoing' : 'pending')} style={{ fontSize: '10px', textTransform: 'capitalize' }}>{ticket.status.replace('_', ' ')}</span>
+                        </div>
+                        <p style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>{ticket.subject}</p>
+                        <p style={{ fontSize: '12px', color: '#666' }}>{ticket.user_name} &middot; {ticket.category}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                            <span style={{
+                                padding: '1px 6px', borderRadius: '10px', fontSize: '10px', fontWeight: 600,
+                                background: ticket.priority === 'high' ? '#fef2f2' : ticket.priority === 'low' ? '#f0fdf4' : '#fefce8',
+                                color: ticket.priority === 'high' ? '#ef4444' : ticket.priority === 'low' ? '#10b981' : '#f59e0b'
+                            }}>{ticket.priority}</span>
+                            <span style={{ fontSize: '11px', color: '#999' }}>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                )) : (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                        <i className="fas fa-ticket-alt" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                        No support tickets
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -425,6 +575,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                 {activeTab === 'rides' && renderRides()}
                 {activeTab === 'wallets' && renderWallets()}
                 {activeTab === 'kyc' && renderKYC()}
+                {activeTab === 'support' && renderSupportTickets()}
                 {activeTab === 'disputes' && renderDisputes()}
             </div>
         </div>
