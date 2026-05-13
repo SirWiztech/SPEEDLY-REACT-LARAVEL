@@ -124,10 +124,10 @@ class KYCController extends Controller
                     $existing->delete();
                 }
 
-                $path = $request->file($field)->store('kyc-documents');
+                $path = $request->file($field)->store('kyc-documents', 'public');
 
                 $doc = DriverKycDocument::create([
-                    'id' => Str::uuid()->toString(),
+                    'id' => Str::random(32),
                     'driver_id' => $driverProfile->id,
                     'document_type' => $docType,
                     'document_url' => $path,
@@ -167,7 +167,7 @@ class KYCController extends Controller
                 'full_name' => $doc->driver->user->full_name ?? 'Unknown',
                 'email' => $doc->driver->user->email ?? '',
                 'document_type' => $doc->document_type,
-                'document_url' => $doc->document_url,
+                'document_url' => $doc->document_url ? Storage::url($doc->document_url) : null,
                 'verification_status' => $doc->verification_status,
                 'created_at' => $doc->created_at,
             ];
@@ -194,6 +194,7 @@ class KYCController extends Controller
 
         $document->update([
             'verification_status' => 'approved',
+            'verified_by' => $request->user()->id,
             'verified_at' => now(),
         ]);
 
@@ -205,19 +206,23 @@ class KYCController extends Controller
             $driverProfile->update(['verification_status' => 'approved']);
 
             Notification::create([
+                'id' => Str::random(32),
                 'user_id' => $driverProfile->user_id,
                 'title' => 'KYC Approved',
                 'message' => 'All your KYC documents have been approved. You are now verified.',
                 'type' => 'kyc_approved',
+                'is_read' => false,
             ]);
         } else {
             $pendingCount = $allDocs->where('verification_status', 'pending')->count();
 
             Notification::create([
+                'id' => Str::random(32),
                 'user_id' => $driverProfile->user_id,
                 'title' => 'Document Approved',
                 'message' => "Your {$document->document_type} has been approved. {$pendingCount} document(s) still pending review.",
                 'type' => 'document_approved',
+                'is_read' => false,
             ]);
         }
 
@@ -247,6 +252,7 @@ class KYCController extends Controller
         $document->update([
             'verification_status' => 'rejected',
             'rejection_reason' => $validated['reason'],
+            'verified_by' => $request->user()->id,
             'verified_at' => now(),
         ]);
 
@@ -254,10 +260,12 @@ class KYCController extends Controller
         $driverProfile->update(['verification_status' => 'rejected']);
 
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $driverProfile->user_id,
             'title' => 'KYC Document Rejected',
             'message' => "Your {$document->document_type} has been rejected. Reason: {$validated['reason']}. Please re-upload.",
             'type' => 'kyc_rejected',
+            'is_read' => false,
         ]);
 
         return response()->json([

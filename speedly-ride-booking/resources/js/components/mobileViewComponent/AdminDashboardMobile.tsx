@@ -31,6 +31,7 @@ interface Driver {
     verification_status: string;
     driver_status: string;
     vehicle_count: number;
+    ride_count: number;
 }
 
 interface Ride {
@@ -58,7 +59,9 @@ interface Withdrawal {
 interface KYCDocument {
     id: string;
     full_name: string;
+    email: string;
     document_type: string;
+    document_url: string;
     verification_status: string;
     created_at: string;
 }
@@ -101,6 +104,7 @@ interface AdminDashboardMobileProps {
     onLogout: () => void;
     formatCurrency: (amount: number) => string;
     getStatusBadgeClass: (status: string) => string;
+    onTabChange?: (tab: string) => void;
 }
 
 const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
@@ -117,12 +121,18 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
     adminName,
     onLogout,
     formatCurrency,
-    getStatusBadgeClass
+    getStatusBadgeClass,
+    onTabChange
 }) => {
     const [activeTab, setActiveTab] = useState<string>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        onTabChange?.(tab);
+    };
 
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -192,19 +202,19 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
             <div className="mobile-quick-actions">
                 <h3>Quick Actions</h3>
                 <div className="quick-actions-grid">
-                    <button className="quick-action-btn" onClick={() => setActiveTab('users')}>
+                    <button className="quick-action-btn" onClick={() => handleTabChange('users')}>
                         <i className="fas fa-users"></i>
                         <span>Manage Users</span>
                     </button>
-                    <button className="quick-action-btn" onClick={() => setActiveTab('drivers')}>
+                    <button className="quick-action-btn" onClick={() => handleTabChange('drivers')}>
                         <i className="fas fa-id-card"></i>
                         <span>Manage Drivers</span>
                     </button>
-                    <button className="quick-action-btn" onClick={() => setActiveTab('rides')}>
+                    <button className="quick-action-btn" onClick={() => handleTabChange('rides')}>
                         <i className="fas fa-car"></i>
                         <span>View Rides</span>
                     </button>
-                    <button className="quick-action-btn" onClick={() => setActiveTab('wallets')}>
+                    <button className="quick-action-btn" onClick={() => handleTabChange('wallets')}>
                         <i className="fas fa-wallet"></i>
                         <span>Withdrawals</span>
                     </button>
@@ -335,6 +345,26 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
         </div>
     );
 
+    const viewKycDocument = (doc: KYCDocument) => {
+        if (!doc.document_url) {
+            Swal.fire({ icon: 'info', title: 'No Document', text: 'Document URL not available', confirmButtonColor: '#ff5e00' });
+            return;
+        }
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.document_url);
+        if (isImage) {
+            Swal.fire({
+                title: doc.document_type.replace(/_/g, ' ') + ' - ' + doc.full_name,
+                imageUrl: doc.document_url,
+                imageWidth: 400,
+                imageAlt: doc.document_type,
+                confirmButtonColor: '#ff5e00',
+                confirmButtonText: 'Close'
+            });
+        } else {
+            window.open(doc.document_url, '_blank');
+        }
+    };
+
     const handleApproveKyc = async (docId: string) => {
         const result = await Swal.fire({
             title: 'Approve Document?',
@@ -411,16 +441,21 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                         </div>
                         <div className="kyc-actions">
                             <span className={getStatusBadgeClass(doc.verification_status)}>{doc.verification_status}</span>
-                            {doc.verification_status === 'pending' && (
-                                <div className="kyc-action-buttons" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                                    <button className="action-btn approve" onClick={() => handleApproveKyc(doc.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                                        <i className="fas fa-check"></i> Approve
-                                    </button>
-                                    <button className="action-btn danger" onClick={() => handleRejectKyc(doc.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                                        <i className="fas fa-times"></i> Reject
-                                    </button>
-                                </div>
-                            )}
+                            <div className="kyc-action-buttons" style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                <button onClick={() => viewKycDocument(doc)} style={{ background: '#6366f1', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                                    <i className="fas fa-eye"></i> View
+                                </button>
+                                {doc.verification_status === 'pending' && (
+                                    <>
+                                        <button className="action-btn approve" onClick={() => handleApproveKyc(doc.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                                            <i className="fas fa-check"></i> Approve
+                                        </button>
+                                        <button className="action-btn danger" onClick={() => handleRejectKyc(doc.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                                            <i className="fas fa-times"></i> Reject
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -550,7 +585,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                                     key={item.id}
                                     className={`mobile-nav-item ${activeTab === item.id ? 'active' : ''}`}
                                     onClick={() => {
-                                        setActiveTab(item.id);
+                                        handleTabChange(item.id);
                                         setSidebarOpen(false);
                                     }}
                                 >

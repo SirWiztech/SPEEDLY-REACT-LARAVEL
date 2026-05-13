@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
-import Swal from 'sweetalert2';
 import api, { setToken } from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
@@ -8,16 +7,42 @@ import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/AdminLogin.css';
 
+interface Toast {
+    id: number;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    removing?: boolean;
+}
+
 const AdminLogin: React.FC = () => {
     const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [rememberMe, setRememberMe] = useState<boolean>(false);
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string>('');
-    
+    const [toasts, setToasts] = useState<Toast[]>([]);
+
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
+
+    const showToast = useCallback((type: Toast['type'], title: string, message: string) => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, type, title, message }]);
+        setTimeout(() => {
+            setToasts(prev => prev.map(t => t.id === id ? { ...t, removing: true } : t));
+            setTimeout(() => {
+                setToasts(prev => prev.filter(t => t.id !== id));
+            }, 300);
+        }, 4000);
+    }, []);
+
+    const removeToast = useCallback((id: number) => {
+        setToasts(prev => prev.map(t => t.id === id ? { ...t, removing: true } : t));
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 300);
+    }, []);
 
     // Check if already logged in as admin
     useEffect(() => {
@@ -38,76 +63,33 @@ const AdminLogin: React.FC = () => {
         e.preventDefault();
         
         if (!username || !password) {
-            setError('Please enter both username and password');
+            showToast('warning', 'Missing Information', 'Please enter both username and password');
             return;
         }
         
         setLoading(true);
-        setError('');
         
         try {
-            const data = await api.auth.adminLogin({ email: username, password });
+            const data = await api.auth.adminLogin({ login: username, password });
             
             if (data.status === 'success' || data.success) {
                 if (data.data?.token) setToken(data.data.token);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Login Successful!',
-                    text: 'Redirecting to dashboard...',
-                    timer: 1500,
-                    showConfirmButton: false
-                }).then(() => {
-                    router.visit('/admin-dashboard');
-                });
+                showToast('success', 'Login Successful!', 'Redirecting to dashboard...');
+                setTimeout(() => {
+                    window.location.href = '/admindashboard';
+                }, 1000);
             } else {
-                setError(data.message || 'Invalid username or password');
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Login Failed',
-                    text: data.message || 'Invalid credentials',
-                    confirmButtonColor: '#ff5e00'
-                });
+                showToast('error', 'Login Failed', data.message || 'Invalid credentials');
             }
         } catch (error) {
-            setError('Connection error. Please try again.');
-            Swal.fire({
-                icon: 'error',
-                title: 'Connection Error',
-                text: 'Unable to connect to the server',
-                confirmButtonColor: '#ff5e00'
-            });
+            showToast('error', 'Connection Error', 'Unable to connect to the server. Please check your network and try again.');
         } finally {
             setLoading(false);
         }
     };
 
     const handleForgotPassword = () => {
-        Swal.fire({
-            title: 'Reset Password',
-            html: `
-                <input type="email" id="resetEmail" class="swal2-input" placeholder="Enter your email">
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Send Reset Link',
-            confirmButtonColor: '#ff5e00',
-            preConfirm: () => {
-                const email = (document.getElementById('resetEmail') as HTMLInputElement)?.value;
-                if (!email || !email.includes('@')) {
-                    Swal.showValidationMessage('Please enter a valid email');
-                    return false;
-                }
-                return email;
-            }
-        }).then((result) => {
-            if (result.isConfirmed && result.value) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Reset Link Sent!',
-                    text: 'Check your email for password reset instructions.',
-                    confirmButtonColor: '#ff5e00'
-                });
-            }
-        });
+        window.location.href = '/forgot-password';
     };
 
     if (preloaderLoading) {
@@ -116,6 +98,20 @@ const AdminLogin: React.FC = () => {
 
     return (
         <div className="admin-login-container">
+            {/* Toast Container */}
+            <div className="toast-container">
+                {toasts.map(toast => (
+                    <div key={toast.id} className={`toast toast-${toast.type}${toast.removing ? ' toast-removing' : ''}`}>
+                        <i className={`bx ${toast.type === 'success' ? 'bx-check-circle' : toast.type === 'error' ? 'bx-x-circle' : 'bx-alert-circle'} toast-icon`}></i>
+                        <div className="toast-content">
+                            <div className="toast-title">{toast.title}</div>
+                            <div className="toast-message">{toast.message}</div>
+                        </div>
+                        <button className="toast-close" onClick={() => removeToast(toast.id)}>✕</button>
+                    </div>
+                ))}
+            </div>
+
             <div className="admin-login-card">
                 <div className="login-header">
                     <div className="logo-wrapper">
@@ -126,19 +122,12 @@ const AdminLogin: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="login-form">
-                    {error && (
-                        <div className="error-message">
-                            <i className="fas fa-exclamation-circle"></i>
-                            <span>{error}</span>
-                        </div>
-                    )}
-
                     <div className="input-group">
                         <i className="fas fa-user input-icon"></i>
                         <input
                             type="text"
                             className="input-field"
-                            placeholder="Username"
+                            placeholder="Username or Email"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
@@ -171,7 +160,7 @@ const AdminLogin: React.FC = () => {
                             />
                             <span>Remember me</span>
                         </label>
-                        <button type="button" className="forgot-password" onClick={handleForgotPassword}>
+                        <button type="button" className="forgot-password" onClick={() => window.location.href = '/forgot-password'}>
                             Forgot Password?
                         </button>
                     </div>

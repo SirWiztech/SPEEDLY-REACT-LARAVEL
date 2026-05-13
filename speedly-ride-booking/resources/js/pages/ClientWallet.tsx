@@ -142,11 +142,11 @@ const ClientWallet: React.FC = () => {
             }
         } catch (error) {
             Swal.close();
-            console.error('Error:', error);
+            const msg = error instanceof Error ? error.message : 'Unable to connect to payment gateway. Please try again.';
             Swal.fire({
                 icon: 'error',
-                title: 'Connection Error',
-                text: 'Unable to connect to payment gateway. Please try again.',
+                title: 'Payment Failed',
+                text: msg,
                 confirmButtonColor: '#ff5e00'
             });
         }
@@ -306,6 +306,7 @@ const ClientWallet: React.FC = () => {
     const viewTransaction = (transaction: Transaction) => {
         const amountPrefix = transaction.is_credit ? '+' : '-';
         const amountColor = transaction.is_credit ? '#4CAF50' : '#f44336';
+        const isPending = transaction.status === 'pending' || transaction.status === 'processing';
 
         const html = `
             <div style="text-align: left; padding: 10px;">
@@ -357,6 +358,13 @@ const ClientWallet: React.FC = () => {
                             <td style="padding: 10px 0; text-align: right; font-weight: 500; color: #ff5e00;">₦${transaction.balance_after.toLocaleString()}</td>
                         </tr>
                     </table>
+                    ${isPending && transaction.reference ? `
+                    <div style="margin-top: 15px;">
+                        <button onclick="window.checkPaymentStatus('${transaction.reference}')" style="width: 100%; padding: 12px; background: #ff5e00; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Check Payment Status
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -413,6 +421,50 @@ const ClientWallet: React.FC = () => {
         }
     };
 
+    // Check payment status for pending transactions
+    const checkPaymentStatus = async (reference: string) => {
+        Swal.fire({
+            title: 'Checking Payment Status',
+            text: 'Please wait...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        try {
+            const data = await api.payment.verify(reference);
+            Swal.close();
+            if (data.data?.status === 'success' || data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Payment Confirmed!',
+                    text: 'Your wallet has been credited.',
+                    confirmButtonColor: '#ff5e00'
+                }).then(() => fetchWalletData());
+            } else if (data.data?.status === 'failed') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Payment Failed',
+                    text: 'The payment was not successful. Please try again.',
+                    confirmButtonColor: '#ff5e00'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Still Processing',
+                    text: 'Your payment is still being processed. Please check back later.',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        } catch (error) {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Unable to check payment status. Please try again.',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
+    };
+
     // Set default payment method (global for modal)
     useEffect(() => {
         (window as any).setDefaultPaymentMethod = (methodId: string) => {
@@ -451,9 +503,14 @@ const ClientWallet: React.FC = () => {
             });
         };
 
+        (window as any).checkPaymentStatus = (reference: string) => {
+            checkPaymentStatus(reference);
+        };
+
         return () => {
             delete (window as any).setDefaultPaymentMethod;
             delete (window as any).removePaymentMethodMethod;
+            delete (window as any).checkPaymentStatus;
         };
     }, [fetchWalletData]);
 
@@ -639,8 +696,15 @@ const ClientWallet: React.FC = () => {
                                                     <p className="text-xs text-gray-400">{transaction.display_id}</p>
                                                 </div>
                                             </div>
-                                            <div className={`transaction-amount ${transaction.is_credit ? 'positive' : 'negative'}`}>
-                                                {transaction.is_credit ? '+' : '-'}{transaction.formatted_amount}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {(transaction.status === 'pending' || transaction.status === 'processing') && (
+                                                    <span style={{ background: '#FF9800', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 600 }}>
+                                                        PENDING
+                                                    </span>
+                                                )}
+                                                <div className={`transaction-amount ${transaction.is_credit ? 'positive' : 'negative'}`}>
+                                                    {transaction.is_credit ? '+' : '-'}{transaction.formatted_amount}
+                                                </div>
                                             </div>
                                         </div>
                                     ))

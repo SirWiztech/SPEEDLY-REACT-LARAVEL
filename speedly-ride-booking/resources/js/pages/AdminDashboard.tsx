@@ -38,6 +38,7 @@ interface Driver {
     verification_status: string;
     driver_status: string;
     vehicle_count: number;
+    ride_count: number;
 }
 
 interface Ride {
@@ -65,7 +66,9 @@ interface Withdrawal {
 interface KYCDocument {
     id: string;
     full_name: string;
+    email: string;
     document_type: string;
+    document_url: string;
     verification_status: string;
     created_at: string;
 }
@@ -127,6 +130,17 @@ const AdminDashboard: React.FC = () => {
     const [timeLeft, setTimeLeft] = useState<number>(1800);
     const [revenueData, setRevenueData] = useState<number[]>([]);
     const [revenueLabels, setRevenueLabels] = useState<string[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [paymentsLoading, setPaymentsLoading] = useState<boolean>(false);
+    const [wallets, setWallets] = useState<any[]>([]);
+    const [walletsLoading, setWalletsLoading] = useState<boolean>(false);
+    const [settings, setSettings] = useState<Record<string, string>>({});
+    const [settingsLoading, setSettingsLoading] = useState<boolean>(false);
+    const [activityLogs, setActivityLogs] = useState<any[]>([]);
+    const [activityLoading, setActivityLoading] = useState<boolean>(false);
+    const [reportsData, setReportsData] = useState<any>(null);
+    const [reportsLoading, setReportsLoading] = useState<boolean>(false);
+    const [page, setPage] = useState<number>(1);
     
     let chartInstance: Chart | null = null;
     
@@ -176,8 +190,107 @@ const AdminDashboard: React.FC = () => {
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+            const msg = error instanceof Error ? error.message : 'Failed to load dashboard data';
+            Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonColor: '#ff4500' });
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const fetchPayments = useCallback(async () => {
+        setPaymentsLoading(true);
+        try {
+            const data = await api.admin.payments();
+            if (data.success) {
+                setPayments(data.data?.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching payments:', error);
+        } finally {
+            setPaymentsLoading(false);
+        }
+    }, []);
+
+    const fetchWallets = useCallback(async () => {
+        setWalletsLoading(true);
+        try {
+            const data = await api.admin.wallets();
+            if (data.success) {
+                setWallets(data.data?.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching wallets:', error);
+        } finally {
+            setWalletsLoading(false);
+        }
+    }, []);
+
+    const fetchSettings = useCallback(async () => {
+        setSettingsLoading(true);
+        try {
+            const data = await api.admin.settings();
+            if (data.success) {
+                setSettings(data.data || {});
+            }
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+        } finally {
+            setSettingsLoading(false);
+        }
+    }, []);
+
+    const fetchActivityLogs = useCallback(async () => {
+        setActivityLoading(true);
+        try {
+            const data = await api.admin.activityLogs();
+            if (data.success) {
+                setActivityLogs(data.data?.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching activity logs:', error);
+        } finally {
+            setActivityLoading(false);
+        }
+    }, []);
+
+    const fetchReports = useCallback(async () => {
+        setReportsLoading(true);
+        try {
+            const data = await api.admin.reports({ type: 'daily', from: '', to: '' });
+            if (data.success) {
+                setReportsData(data.data || {});
+            }
+        } catch (error: any) {
+            console.error('Error fetching reports:', error);
+            if (error?.message) {
+                Swal.fire({ title: 'Reports Error', text: error.message, icon: 'error', confirmButtonColor: '#ff4500' });
+            }
+        } finally {
+            setReportsLoading(false);
+        }
+    }, []);
+
+    const fetchFullDrivers = useCallback(async (pageNum = 1) => {
+        try {
+            const data = await api.admin.drivers({ page: pageNum });
+            if (data.success) {
+                setDrivers(data.data?.data || []);
+                setPage(pageNum);
+            }
+        } catch (error) {
+            console.error('Error fetching full drivers:', error);
+        }
+    }, []);
+
+    const fetchFullRides = useCallback(async (params?: { status?: string; page?: number }) => {
+        try {
+            const data = await api.admin.rides({ ...params, page: params?.page || 1, per_page: 15 });
+            if (data.success) {
+                setRides(data.data?.data || []);
+                if (params?.page) setPage(params.page);
+            }
+        } catch (error) {
+            console.error('Error fetching full rides:', error);
         }
     }, []);
 
@@ -276,6 +389,48 @@ const AdminDashboard: React.FC = () => {
         }
     }, [activePage]);
 
+    useEffect(() => {
+        if (activePage === 'drivers' && !loading) {
+            fetchFullDrivers();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'rides' && !loading) {
+            fetchFullRides();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'payments' && !loading) {
+            fetchPayments();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'wallets' && !loading) {
+            fetchWallets();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'reports' && !loading) {
+            fetchReports();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'settings' && !loading) {
+            fetchSettings();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'activity' && !loading) {
+            fetchActivityLogs();
+        }
+    }, [activePage, loading]);
+
     // Initialize chart when data loads
     useEffect(() => {
         if (!loading && revenueData.length) {
@@ -356,6 +511,10 @@ const AdminDashboard: React.FC = () => {
                 onLogout={handleLogout}
                 formatCurrency={formatCurrency}
                 getStatusBadgeClass={getStatusBadgeClass}
+                onTabChange={(tab) => {
+                    if (tab === 'drivers') fetchFullDrivers();
+                    if (tab === 'rides') fetchFullRides();
+                }}
             />
         );
     }
@@ -440,6 +599,26 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
+    const viewKycDocument = (doc: KYCDocument) => {
+        if (!doc.document_url) {
+            Swal.fire({ icon: 'info', title: 'No Document', text: 'Document URL not available', confirmButtonColor: '#ff5e00' });
+            return;
+        }
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.document_url);
+        if (isImage) {
+            Swal.fire({
+                title: doc.document_type.replace(/_/g, ' ') + ' - ' + doc.full_name,
+                imageUrl: doc.document_url,
+                imageWidth: 500,
+                imageAlt: doc.document_type,
+                confirmButtonColor: '#ff5e00',
+                confirmButtonText: 'Close'
+            });
+        } else {
+            window.open(doc.document_url, '_blank');
+        }
+    };
+
     const handleRejectKyc = async (docId: string) => {
         const { value: reason } = await Swal.fire({
             title: 'Reject Document',
@@ -471,6 +650,57 @@ const AdminDashboard: React.FC = () => {
                 }
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reject document', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleApproveDriver = async (driverId: string) => {
+        const result = await Swal.fire({
+            title: 'Approve Driver?',
+            text: 'Are you sure you want to approve this driver?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, approve',
+            cancelButtonText: 'Cancel'
+        });
+        if (result.isConfirmed) {
+            try {
+                const data = await api.admin.approveDriver(driverId);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Approved', text: 'Driver approved successfully', timer: 1500, showConfirmButton: false });
+                    fetchFullDrivers();
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to approve driver', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleRejectDriver = async (driverId: string) => {
+        const { value: reason } = await Swal.fire({
+            title: 'Reject Driver',
+            input: 'textarea',
+            inputLabel: 'Reason for rejection',
+            inputPlaceholder: 'Enter the reason for rejection...',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Reject',
+            cancelButtonText: 'Cancel',
+            preConfirm: (value) => {
+                if (!value) { Swal.showValidationMessage('Please enter a reason'); return false; }
+                return value;
+            }
+        });
+        if (reason) {
+            try {
+                const data = await api.admin.rejectDriver(driverId, { reason });
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Rejected', text: 'Driver rejected', timer: 1500, showConfirmButton: false });
+                    fetchFullDrivers();
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reject driver', confirmButtonColor: '#ff5e00' });
             }
         }
     };
@@ -517,7 +747,7 @@ const AdminDashboard: React.FC = () => {
                     Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to send reply', confirmButtonColor: '#ff5e00' });
                 }
             } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to send reply', confirmButtonColor: '#ff5e00' });
+                Swal.fire({ icon: 'error', title: 'Error', text: error instanceof Error ? error.message : 'Failed to send reply', confirmButtonColor: '#ff5e00' });
             }
         }
     };
@@ -543,7 +773,7 @@ const AdminDashboard: React.FC = () => {
                     Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to close ticket', confirmButtonColor: '#ff5e00' });
                 }
             } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to close ticket', confirmButtonColor: '#ff5e00' });
+                Swal.fire({ icon: 'error', title: 'Error', text: error instanceof Error ? error.message : 'Failed to close ticket', confirmButtonColor: '#ff5e00' });
             }
         }
     };
@@ -729,7 +959,7 @@ const AdminDashboard: React.FC = () => {
                                             <div className="performer-rank">#{idx + 1}</div>
                                             <div>
                                                 <h4>{driver.full_name}</h4>
-                                                <p>{driver.vehicle_count} rides</p>
+                                                <p>{driver.ride_count ?? driver.vehicle_count} rides</p>
                                             </div>
                                         </div>
                                     ))}
@@ -781,7 +1011,101 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* Additional pages... */}
+                {/* Drivers Page */}
+                {activePage === 'drivers' && (
+                    <div className="drivers-page">
+                        <div className="page-header">
+                            <h2>Driver Management</h2>
+                            <div className="filter-tabs">
+                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); fetchFullDrivers(); }}>All</button>
+                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => { setFilterStatus('pending'); fetchFullDrivers(); }}>Pending</button>
+                                <button className={`filter-tab ${filterStatus === 'approved' ? 'active' : ''}`} onClick={() => { setFilterStatus('approved'); fetchFullDrivers(); }}>Approved</button>
+                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => { setFilterStatus('rejected'); fetchFullDrivers(); }}>Rejected</button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Vehicles</th><th>Rides</th><th>Verification</th><th>Status</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    {drivers.length > 0 ? drivers.map(driver => (
+                                        <tr key={driver.id}>
+                                            <td>{driver.full_name}</td>
+                                            <td>{driver.email}</td>
+                                            <td>{driver.phone_number}</td>
+                                            <td>{driver.vehicle_count}</td>
+                                            <td>{driver.ride_count}</td>
+                                            <td><span className={getStatusBadgeClass(driver.verification_status)}>{driver.verification_status}</span></td>
+                                            <td><span className={getStatusBadgeClass(driver.driver_status)}>{driver.driver_status}</span></td>
+                                            <td className="actions-cell">
+                                                <button className="action-btn" title="View"><i className="fas fa-eye"></i></button>
+                                                {driver.verification_status === 'pending' && (
+                                                    <>
+                                                        <button className="action-btn approve" title="Approve" onClick={() => handleApproveDriver(driver.id)}><i className="fas fa-check-circle"></i></button>
+                                                        <button className="action-btn danger" title="Reject" onClick={() => handleRejectDriver(driver.id)}><i className="fas fa-times-circle"></i></button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                No drivers found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Rides Page */}
+                {activePage === 'rides' && (
+                    <div className="rides-page">
+                        <div className="page-header">
+                            <h2>Ride Management</h2>
+                            <div className="filter-tabs">
+                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); fetchFullRides(); }}>All</button>
+                                <button className={`filter-tab ${filterStatus === 'ongoing' ? 'active' : ''}`} onClick={() => { setFilterStatus('ongoing'); fetchFullRides({ status: 'ongoing' }); }}>Ongoing</button>
+                                <button className={`filter-tab ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => { setFilterStatus('completed'); fetchFullRides({ status: 'completed' }); }}>Completed</button>
+                                <button className={`filter-tab ${filterStatus === 'cancelled' ? 'active' : ''}`} onClick={() => { setFilterStatus('cancelled'); fetchFullRides({ status: 'cancelled' }); }}>Cancelled</button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>Ride #</th><th>Client</th><th>Driver</th><th>Pickup</th><th>Destination</th><th>Fare</th><th>Status</th><th>Payment</th><th>Date</th></tr>
+                                </thead>
+                                <tbody>
+                                    {rides.length > 0 ? rides.map(ride => (
+                                        <tr key={ride.id}>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{ride.ride_number}</td>
+                                            <td>{ride.client_name}</td>
+                                            <td>{ride.driver_name}</td>
+                                            <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ride.pickup_address}</td>
+                                            <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ride.destination_address}</td>
+                                            <td>{formatCurrency(ride.total_fare)}</td>
+                                            <td><span className={getStatusBadgeClass(ride.status)}>{ride.status}</span></td>
+                                            <td><span className={getStatusBadgeClass(ride.payment_status)}>{ride.payment_status}</span></td>
+                                            <td style={{ fontSize: '12px' }}>{new Date(ride.created_at).toLocaleDateString()}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                No rides found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {/* KYC Approvals Page */}
                 {activePage === 'kyc' && (
                     <div className="kyc-page">
@@ -813,6 +1137,9 @@ const AdminDashboard: React.FC = () => {
                                             <td>{new Date(doc.created_at).toLocaleDateString()}</td>
                                             <td><span className={getStatusBadgeClass(doc.verification_status)}>{doc.verification_status}</span></td>
                                             <td className="actions-cell">
+                                                <button className="action-btn view" title="View Document" onClick={() => viewKycDocument(doc)} style={{ marginRight: '4px' }}>
+                                                    <i className="fas fa-eye"></i>
+                                                </button>
                                                 {doc.verification_status === 'pending' && (
                                                     <>
                                                         <button className="action-btn approve" title="Approve" onClick={() => handleApproveKyc(doc.id)}>
@@ -914,15 +1241,240 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {['wallets', 'disputes', 'payments', 'reports', 'settings', 'activity'].includes(activePage) && (
-                    <div className="coming-soon-page">
-                        <div className="coming-soon-card">
-                            <i className="fas fa-tools"></i>
-                            <h2>Coming Soon</h2>
-                            <p>This feature is under development. Please check back later.</p>
-                            <button className="btn-premium" onClick={() => setActivePage('dashboard')}>
-                                Back to Dashboard
-                            </button>
+                {/* Payments Page */}
+                {activePage === 'payments' && (
+                    <div className="payments-page">
+                        <div className="page-header">
+                            <h2>Payment Transactions</h2>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>User</th><th>Type</th><th>Amount</th><th>Balance</th><th>Description</th><th>Status</th><th>Date</th></tr>
+                                </thead>
+                                <tbody>
+                                    {payments.length > 0 ? payments.map((p: any) => (
+                                        <tr key={p.id}>
+                                            <td>{p.user?.full_name || p.user?.name || 'Unknown'}</td>
+                                            <td style={{ textTransform: 'capitalize' }}>{p.transaction_type || p.type}</td>
+                                            <td>{formatCurrency(p.amount || 0)}</td>
+                                            <td>{formatCurrency(p.balance_after || p.balance || 0)}</td>
+                                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.description || '-'}</td>
+                                            <td><span className={getStatusBadgeClass(p.status || 'pending')}>{p.status || 'pending'}</span></td>
+                                            <td style={{ fontSize: '12px' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                {paymentsLoading ? 'Loading...' : 'No payment transactions found'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Wallets Page */}
+                {activePage === 'wallets' && (
+                    <div className="wallets-page">
+                        <div className="page-header">
+                            <h2>User Wallets</h2>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>Name</th><th>Email</th><th>Role</th><th>Balance</th></tr>
+                                </thead>
+                                <tbody>
+                                    {wallets.length > 0 ? wallets.map((w: any) => (
+                                        <tr key={w.id}>
+                                            <td>{w.name || 'Unknown'}</td>
+                                            <td>{w.email}</td>
+                                            <td style={{ textTransform: 'capitalize' }}>{w.role}</td>
+                                            <td style={{ fontWeight: 600 }}>{formatCurrency(w.balance || 0)}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                {walletsLoading ? 'Loading...' : 'No wallets found'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Reports Page */}
+                {activePage === 'reports' && (
+                    <div className="reports-page">
+                        <div className="page-header">
+                            <h2>Reports</h2>
+                        </div>
+                        <div className="reports-grid">
+                            <div className="card">
+                                <div className="card-header"><h3>Rides Per Day</h3></div>
+                                <div className="card-body" style={{ padding: '16px' }}>
+                                    {reportsData?.rides_per_day?.length > 0 ? (
+                                        <table className="data-table">
+                                            <thead><tr><th>Date</th><th>Count</th></tr></thead>
+                                            <tbody>
+                                                {reportsData.rides_per_day.slice(0, 10).map((r: any, i: number) => (
+                                                    <tr key={i}><td>{r.date}</td><td>{r.count}</td></tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>{reportsLoading ? 'Loading...' : 'No ride data'}</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="card">
+                                <div className="card-header"><h3>Revenue Per Day</h3></div>
+                                <div className="card-body" style={{ padding: '16px' }}>
+                                    {reportsData?.revenue_per_day?.length > 0 ? (
+                                        <table className="data-table">
+                                            <thead><tr><th>Date</th><th>Revenue</th></tr></thead>
+                                            <tbody>
+                                                {reportsData.revenue_per_day.slice(0, 10).map((r: any, i: number) => (
+                                                    <tr key={i}><td>{r.date}</td><td>{formatCurrency(r.total || 0)}</td></tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>{reportsLoading ? 'Loading...' : 'No revenue data'}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Settings Page */}
+                {activePage === 'settings' && (
+                    <div className="settings-page">
+                        <div className="page-header">
+                            <h2>System Settings</h2>
+                        </div>
+                        <div className="card">
+                            <div className="card-body" style={{ padding: '24px' }}>
+                                {settingsLoading ? (
+                                    <p style={{ textAlign: 'center', color: '#999' }}>Loading settings...</p>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {Object.entries(settings).map(([key, value]) => (
+                                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <label style={{ fontWeight: 600, fontSize: '13px', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</label>
+                                                <input
+                                                    type="text"
+                                                    value={String(value)}
+                                                    onChange={(e) => setSettings(prev => ({ ...prev, [key]: e.target.value }))}
+                                                    style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+                                                />
+                                            </div>
+                                        ))}
+                                        <button
+                                            className="btn-premium"
+                                            style={{ marginTop: '12px', alignSelf: 'flex-start' }}
+                                            onClick={async () => {
+                                                try {
+                                                    const data = await api.admin.saveSettings(settings);
+                                                    if (data.success) {
+                                                        Swal.fire({ icon: 'success', title: 'Saved', text: 'Settings saved successfully', timer: 1500, showConfirmButton: false });
+                                                    }
+                                                } catch (error) {
+                                                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save settings', confirmButtonColor: '#ff5e00' });
+                                                }
+                                            }}
+                                        >
+                                            <i className="fas fa-save"></i> Save Settings
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Activity Log Page */}
+                {activePage === 'activity' && (
+                    <div className="activity-page">
+                        <div className="page-header">
+                            <h2>Activity Log</h2>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>Admin</th><th>Action</th><th>Details</th><th>IP Address</th><th>Date</th></tr>
+                                </thead>
+                                <tbody>
+                                    {activityLogs.length > 0 ? activityLogs.map((log: any) => (
+                                        <tr key={log.id}>
+                                            <td>{log.admin?.name || log.admin?.full_name || 'System'}</td>
+                                            <td style={{ textTransform: 'capitalize' }}>{log.action || log.type}</td>
+                                            <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.details || log.description || '-'}</td>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{log.ip_address || '-'}</td>
+                                            <td style={{ fontSize: '12px' }}>{log.created_at ? new Date(log.created_at).toLocaleString() : '-'}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                {activityLoading ? 'Loading...' : 'No activity logs found'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Disputes Page */}
+                {activePage === 'disputes' && (
+                    <div className="disputes-page">
+                        <div className="page-header">
+                            <h2>Disputes & Reports</h2>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>Ticket #</th><th>Raised By</th><th>Type</th><th>Priority</th><th>Messages</th><th>Status</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    {disputes.length > 0 ? disputes.map((d: any) => (
+                                        <tr key={d.id}>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{d.dispute_number}</td>
+                                            <td>{d.raised_by}</td>
+                                            <td style={{ textTransform: 'capitalize' }}>{d.type}</td>
+                                            <td>
+                                                <span style={{
+                                                    padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                                                    background: d.priority === 'high' ? '#fef2f2' : d.priority === 'low' ? '#f0fdf4' : '#fefce8',
+                                                    color: d.priority === 'high' ? '#ef4444' : d.priority === 'low' ? '#10b981' : '#f59e0b'
+                                                }}>{d.priority}</span>
+                                            </td>
+                                            <td><i className="fas fa-comment"></i> {d.message_count}</td>
+                                            <td><span className={getStatusBadgeClass(d.status)}>{d.status}</span></td>
+                                            <td className="actions-cell">
+                                                <button className="action-btn" title="View"><i className="fas fa-eye"></i></button>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                No disputes or reports found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

@@ -640,7 +640,7 @@ const ClientBookRide: React.FC = () => {
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'View Receipt'
                 }).then(() => {
-                    router.visit(`/generate_receipt?ride_id=${rideData?.id || ''}`);
+                    router.visit(`/generatereceipt?rideId=${rideData?.id || ''}`);
                 });
             } else if (data.insufficient_balance) {
                 Swal.fire({ icon: 'error', title: 'Insufficient Balance', text: data.message, confirmButtonColor: '#ff5e00' });

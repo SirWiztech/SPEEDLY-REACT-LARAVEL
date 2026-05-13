@@ -21,10 +21,15 @@ class WalletController extends Controller
     {
         $user = $request->user();
 
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
+        $debitTypes = ['withdrawal', 'ride_payment', 'debit'];
+
         $credits = WalletTransaction::where('user_id', $user->id)
-            ->where('transaction_type', 'credit')->sum('amount');
+            ->whereIn('transaction_type', $creditTypes)
+            ->where('status', 'completed')->sum('amount');
         $debits = WalletTransaction::where('user_id', $user->id)
-            ->where('transaction_type', 'debit')->sum('amount');
+            ->whereIn('transaction_type', $debitTypes)
+            ->where('status', 'completed')->sum('amount');
         $balance = $credits - $debits;
 
         $recentTransactions = WalletTransaction::where('user_id', $user->id)
@@ -62,6 +67,7 @@ class WalletController extends Controller
 
     private function formatTransaction($t)
     {
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
         return [
             'id' => $t->id,
             'transaction_type' => $t->transaction_type,
@@ -76,8 +82,8 @@ class WalletController extends Controller
             'balance_after' => (float) ($t->balance_after ?? 0),
             'ride_number' => null,
             'display_id' => substr($t->id, 0, 8) . '...',
-            'is_credit' => $t->transaction_type === 'credit',
-            'type_display' => $t->category ? ucfirst(str_replace('_', ' ', $t->category)) : ($t->transaction_type === 'credit' ? 'Deposit' : 'Withdrawal'),
+            'is_credit' => in_array($t->transaction_type, $creditTypes),
+            'type_display' => $t->category ? ucfirst(str_replace('_', ' ', $t->category)) : (in_array($t->transaction_type, $creditTypes) ? 'Deposit' : 'Withdrawal'),
         ];
     }
 
@@ -90,10 +96,15 @@ class WalletController extends Controller
         $startOfWeek = Carbon::now()->startOfWeek();
         $startOfMonth = Carbon::now()->startOfMonth();
 
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
+        $debitTypes = ['withdrawal', 'ride_payment', 'debit'];
+
         $credits = WalletTransaction::where('user_id', $user->id)
-            ->where('transaction_type', 'credit')->sum('amount');
+            ->whereIn('transaction_type', $creditTypes)
+            ->where('status', 'completed')->sum('amount');
         $debits = WalletTransaction::where('user_id', $user->id)
-            ->where('transaction_type', 'debit')->sum('amount');
+            ->whereIn('transaction_type', $debitTypes)
+            ->where('status', 'completed')->sum('amount');
         $balance = $credits - $debits;
 
         $totalEarnings = WalletTransaction::where('user_id', $user->id)
@@ -303,7 +314,7 @@ class WalletController extends Controller
             $balanceAfter = $balanceBefore - $amount;
 
             WalletTransaction::create([
-                'id' => Str::uuid(),
+                'id' => Str::random(32),
                 'user_id' => $user->id,
                 'transaction_type' => 'debit',
                 'amount' => $amount,

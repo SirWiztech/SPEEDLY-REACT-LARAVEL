@@ -69,7 +69,7 @@ export const api = {
       apiFetch('/verify-otp', { method: 'POST', body: JSON.stringify(data) }),
     forgotPassword: (data: { email: string }) =>
       apiFetch('/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
-    resetPassword: (data: { token: string; password: string }) =>
+    resetPassword: (data: { email: string; token: string; password: string }) =>
       apiFetch('/reset-password', { method: 'POST', body: JSON.stringify(data) }),
   },
 
@@ -100,6 +100,7 @@ export const api = {
     locations: () => apiFetch('/client/locations'),
     support: (data: { category: string; subject: string; message: string; priority: string }) =>
       apiFetch('/client/support', { method: 'POST', body: JSON.stringify(data) }),
+    supportTickets: () => apiFetch('/client/support/tickets'),
   },
 
   // Driver
@@ -143,6 +144,7 @@ export const api = {
     },
     support: (data: { category: string; subject: string; message: string; priority: string }) =>
       apiFetch('/driver/support', { method: 'POST', body: JSON.stringify(data) }),
+    supportTickets: () => apiFetch('/driver/support/tickets'),
     bankDetails: () => apiFetch('/driver/bank'),
     saveBankDetails: (data: { bank_name: string; account_number: string; account_name: string }) =>
       apiFetch('/driver/bank/save', { method: 'POST', body: JSON.stringify(data) }),
@@ -192,8 +194,13 @@ export const api = {
       return apiFetch(`/admin/payments?${qs}`);
     },
     wallets: (page?: number) => apiFetch(`/admin/wallets${page ? `?page=${page}` : ''}`),
-    reports: (data: { type: string; from: string; to: string }) =>
-      apiFetch('/admin/reports', { method: 'POST', body: JSON.stringify(data) }),
+    reports: (params: { type: string; from: string; to: string }) => {
+      const qs = new URLSearchParams();
+      qs.set('type', params.type);
+      if (params.from) qs.set('from', params.from);
+      if (params.to) qs.set('to', params.to);
+      return apiFetch(`/admin/reports?${qs}`);
+    },
     activityLogs: (page?: number) => apiFetch(`/admin/activity-logs${page ? `?page=${page}` : ''}`),
     withdrawals: (params?: { status?: string; page?: number }) => {
       const qs = new URLSearchParams();
@@ -209,6 +216,14 @@ export const api = {
     saveSettings: (data: Record<string, string | number>) =>
       apiFetch('/admin/settings', { method: 'POST', body: JSON.stringify(data) }),
     getUser: (id: string) => apiFetch(`/admin/users/${id}`),
+    rides: (params?: { status?: string; search?: string; page?: number; per_page?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set('status', params.status);
+      if (params?.search) qs.set('search', params.search);
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.per_page) qs.set('per_page', String(params.per_page));
+      return apiFetch(`/admin/rides?${qs}`);
+    },
     drivers: (params?: { status?: string; verification?: string; page?: number }) => {
       const qs = new URLSearchParams();
       if (params?.status) qs.set('status', params.status);

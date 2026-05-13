@@ -77,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/profile/update', [\App\Http\Controllers\Api\ClientController::class, 'updateProfile']);
         Route::get('/locations', [LocationController::class, 'getClientLocations']);
         Route::post('/support', [\App\Http\Controllers\Api\ClientController::class, 'support']);
+        Route::get('/support/tickets', [\App\Http\Controllers\Api\ClientController::class, 'supportTickets']);
 
         // Client KYC
         Route::get('/kyc', [KYCController::class, 'getClientKyc']);
@@ -96,12 +97,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/wallet', [WalletController::class, 'getDriverWallet']);
         Route::get('/wallet/transactions', [WalletController::class, 'getDriverTransactions']);
         Route::post('/wallet/withdraw', [WalletController::class, 'requestWithdrawal']);
+        Route::post('/wallet/payout', [PaymentController::class, 'payoutWithdraw']);
         Route::get('/profile', [DriverController::class, 'profile']);
         Route::post('/profile/update', [DriverController::class, 'updateProfile']);
         Route::get('/locations', [LocationController::class, 'getDriverLocations']);
         Route::post('/toggle-status', [DriverController::class, 'toggleStatus']);
         Route::post('/update-location', [DriverController::class, 'updateLocation']);
         Route::post('/support', [DriverController::class, 'support']);
+        Route::get('/support/tickets', [DriverController::class, 'supportTickets']);
 
         // Driver KYC
         Route::get('/kyc', [KYCController::class, 'getDriverKyc']);
@@ -138,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::get('/users/{id}', [AdminController::class, 'getUser']);
         Route::get('/drivers', [AdminController::class, 'drivers']);
+        Route::get('/rides', [AdminController::class, 'rides']);
         Route::post('/drivers/{id}/approve', [AdminController::class, 'approveDriver']);
         Route::post('/drivers/{id}/reject', [AdminController::class, 'rejectDriver']);
 
@@ -163,12 +167,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Payment Routes
+    | Payment Routes (authenticated)
     |--------------------------------------------------------------------------
     */
     Route::post('/payment/initiate', [PaymentController::class, 'initiate']);
-    Route::get('/payment/callback', [PaymentController::class, 'callback']);
-    Route::get('/payment/verify', [PaymentController::class, 'verify']);
 
     /*
     |--------------------------------------------------------------------------
@@ -181,7 +183,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Payment Webhook (no auth required)
+| Payment Public Routes (no auth required)
 |--------------------------------------------------------------------------
 */
+Route::get('/payment/callback', [PaymentController::class, 'callback']);
+Route::get('/payment/verify', [PaymentController::class, 'verify']);
 Route::post('/payment/webhook/korapay', [PaymentController::class, 'webhook']);

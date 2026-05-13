@@ -20,4 +20,9 @@ class AdminActivityLog extends Model
         'new_values' => 'array',
         'created_at' => 'datetime',
     ];
+
+    public function admin()
+    {
+        return $this->belongsTo(User::class, 'admin_id');
+    }
 }

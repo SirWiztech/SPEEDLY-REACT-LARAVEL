@@ -470,10 +470,12 @@ class DriverController extends Controller
 
         if ($newStatus === 'online' && $previousStatus !== 'online') {
             Notification::create([
+                'id' => Str::random(32),
                 'user_id' => $user->id,
                 'type' => 'driver_status',
                 'title' => 'Status Updated',
                 'message' => 'You are now online and can receive ride requests',
+                'is_read' => false,
             ]);
         }
 
@@ -586,7 +588,7 @@ class DriverController extends Controller
             'category' => 'required|string|max:50',
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'priority' => 'sometimes|string|in:low,medium,normal,high'
+            'priority' => 'sometimes|string'
         ]);
 
         $priority = $request->priority ?? 'normal';
@@ -613,10 +615,12 @@ class DriverController extends Controller
         $adminUsers = User::where('role', 'admin')->get();
         foreach ($adminUsers as $admin) {
             Notification::create([
+                'id' => Str::random(32),
                 'user_id' => $admin->id,
                 'type' => 'support_ticket',
                 'title' => 'New Support Ticket: ' . $request->subject,
                 'message' => 'Ticket ' . $ticketNumber . ' submitted by ' . $user->full_name . ' (' . $normalizedPriority . ' priority)',
+                'is_read' => false,
             ]);
         }
 
@@ -629,6 +633,34 @@ class DriverController extends Controller
                 'ticket_id' => $ticket->id,
                 'status' => 'open',
             ]
+        ]);
+    }
+
+    public function supportTickets(Request $request)
+    {
+        $user = $request->user();
+        $tickets = SupportTicket::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'category' => $ticket->category,
+                    'subject' => $ticket->subject,
+                    'message' => $ticket->message,
+                    'priority' => $ticket->priority,
+                    'status' => $ticket->status,
+                    'admin_reply' => $ticket->admin_reply,
+                    'created_at' => $ticket->created_at,
+                    'replied_at' => $ticket->replied_at,
+                    'closed_at' => $ticket->closed_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $tickets,
         ]);
     }
 }

@@ -73,6 +73,24 @@ class RideController extends Controller
         ]);
     }
 
+    private function getWalletBalance(string $userId): float
+    {
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
+        $debitTypes = ['withdrawal', 'ride_payment', 'debit'];
+
+        $credit = WalletTransaction::where('user_id', $userId)
+            ->whereIn('transaction_type', $creditTypes)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        $debit = WalletTransaction::where('user_id', $userId)
+            ->whereIn('transaction_type', $debitTypes)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        return $credit - $debit;
+    }
+
     public function book(Request $request)
     {
         $request->validate([
@@ -111,40 +129,90 @@ class RideController extends Controller
         ];
 
         $rideType = $rideTypes[$request->ride_type];
-        $totalFare = $rideType['base_fare'] + ($distance * $rideType['per_km']);
-        $platformCommission = $totalFare * 0.15;
-        $driverPayout = $totalFare - $platformCommission;
+        $totalFare = round($rideType['base_fare'] + ($distance * $rideType['per_km']), 2);
+        $platformCommission = round($totalFare * 0.15, 2);
+        $driverPayout = round($totalFare - $platformCommission, 2);
 
-        $ride = Ride::create([
-            'id' => Str::uuid(),
-            'ride_number' => 'RIDE-' . strtoupper(Str::random(8)),
-            'client_id' => $clientProfile->id,
-            'pickup_address' => $request->pickup_location,
-            'destination_address' => $request->dropoff_location,
-            'pickup_latitude' => $pickupLat,
-            'pickup_longitude' => $pickupLng,
-            'destination_latitude' => $dropoffLat,
-            'destination_longitude' => $dropoffLng,
-            'ride_type' => $request->ride_type,
-            'total_fare' => round($totalFare, 2),
-            'platform_commission' => round($platformCommission, 2),
-            'driver_payout' => round($driverPayout, 2),
-            'distance_km' => round($distance, 2),
-            'status' => 'pending',
-            'payment_status' => 'pending',
-        ]);
+        $balanceBefore = $this->getWalletBalance($user->id);
 
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            Notification::create([
-                'user_id' => $admin->id,
-                'type' => 'new_ride',
-                'title' => 'New Ride Booking',
-                'message' => "A new ride has been booked by {$user->full_name}.",
-            ]);
+        if ($balanceBefore < $totalFare) {
+            return response()->json([
+                'success' => false,
+                'insufficient_balance' => true,
+                'message' => 'Insufficient wallet balance. Please top up your wallet.',
+                'data' => [
+                    'balance' => $balanceBefore,
+                    'required' => $totalFare,
+                    'shortfall' => round($totalFare - $balanceBefore, 2),
+                ],
+            ], 400);
         }
 
-        return response()->json(['success' => true, 'message' => 'Ride booked successfully', 'data' => $ride]);
+        $balanceAfter = round($balanceBefore - $totalFare, 2);
+        $reference = 'RIDE-' . strtoupper(Str::random(12));
+        $rideId = Str::random(32);
+
+        DB::beginTransaction();
+        try {
+            $ride = Ride::create([
+                'id' => $rideId,
+                'ride_number' => 'RIDE-' . strtoupper(Str::random(8)),
+                'client_id' => $clientProfile->id,
+                'pickup_address' => $request->pickup_location,
+                'destination_address' => $request->dropoff_location,
+                'pickup_latitude' => $pickupLat,
+                'pickup_longitude' => $pickupLng,
+                'destination_latitude' => $dropoffLat,
+                'destination_longitude' => $dropoffLng,
+                'ride_type' => $request->ride_type,
+                'total_fare' => $totalFare,
+                'platform_commission' => $platformCommission,
+                'driver_payout' => $driverPayout,
+                'distance_km' => round($distance, 2),
+                'status' => 'pending',
+                'payment_status' => 'completed',
+            ]);
+
+            WalletTransaction::create([
+                'id' => Str::random(32),
+                'user_id' => $user->id,
+                'transaction_type' => 'ride_payment',
+                'amount' => $totalFare,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'reference' => $reference,
+                'status' => 'completed',
+                'category' => 'ride_booking',
+                'description' => "Payment for ride #{$ride->ride_number}",
+                'ride_id' => $rideId,
+            ]);
+
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                Notification::create([
+                    'id' => Str::random(32),
+                    'user_id' => $admin->id,
+                    'type' => 'new_ride',
+                    'title' => 'New Ride Booking',
+                    'message' => "A new ride has been booked by {$user->full_name}.",
+                    'is_read' => false,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ride booked successfully',
+                'data' => $ride,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to book ride. Please try again.',
+            ], 500);
+        }
     }
 
     public function show(Request $request, $id)
@@ -166,9 +234,14 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
-        if ($ride->status !== 'completed') {
-            return response()->json(['success' => false, 'message' => 'Receipt only available for completed rides'], 400);
+        if (in_array($ride->status, ['cancelled', 'pending_cancellation'])) {
+            return response()->json(['success' => false, 'message' => 'Receipt not available for cancelled rides'], 400);
         }
+
+        $ride->distance_km = (float) $ride->distance_km;
+        $ride->total_fare = (float) $ride->total_fare;
+        $ride->platform_commission = (float) ($ride->platform_commission ?? 0);
+        $ride->driver_payout = (float) ($ride->driver_payout ?? 0);
 
         $fareBreakdown = [
             'base_fare' => $ride->total_fare * 0.6,
@@ -213,10 +286,12 @@ class RideController extends Controller
             ]);
 
             Notification::create([
+                'id' => Str::random(32),
                 'user_id' => $ride->client->user_id,
                 'type' => 'ride_accepted',
                 'title' => 'Ride Accepted',
                 'message' => 'Your ride has been accepted by a driver. They are on the way to pick you up.',
+                'is_read' => false,
             ]);
 
             return response()->json(['success' => true, 'message' => 'Ride accepted successfully']);
@@ -324,10 +399,12 @@ class RideController extends Controller
             ]);
 
             Notification::create([
+                'id' => Str::random(32),
                 'user_id' => $ride->client->user_id,
                 'type' => 'ride_completed',
                 'title' => 'Ride Completed',
                 'message' => 'Your ride has been completed. Thank you for riding with us!',
+                'is_read' => false,
             ]);
 
             return response()->json(['success' => true, 'message' => 'Ride completed successfully']);
@@ -368,7 +445,7 @@ class RideController extends Controller
             ]);
 
             RideCancellation::create([
-                'id' => Str::uuid(),
+                'id' => Str::random(32),
                 'ride_id' => $ride->id,
                 'cancelled_by' => $isClient ? 'client' : 'driver',
                 'reason' => $request->reason,
@@ -377,17 +454,21 @@ class RideController extends Controller
 
             if ($isClient && $ride->driver_id) {
                 Notification::create([
+                    'id' => Str::random(32),
                     'user_id' => $ride->driver->user_id,
                     'type' => 'ride_cancelled',
                     'title' => 'Ride Cancelled',
                     'message' => 'The client has cancelled the ride.',
+                    'is_read' => false,
                 ]);
             } elseif ($isDriver) {
                 Notification::create([
+                    'id' => Str::random(32),
                     'user_id' => $ride->client->user_id,
                     'type' => 'ride_cancelled',
                     'title' => 'Ride Cancelled',
                     'message' => 'The driver has cancelled the ride.',
+                    'is_read' => false,
                 ]);
             }
 

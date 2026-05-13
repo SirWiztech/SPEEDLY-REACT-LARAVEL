@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
 use App\Mail\OtpMail;
+use App\Mail\PasswordResetMail;
 use Laravel\Sanctum\NewAccessToken;
 
 class AuthController extends Controller
@@ -174,6 +175,8 @@ class AuthController extends Controller
 
         $user->update(['last_login' => Carbon::now()]);
 
+        Auth::guard('web')->login($user);
+
         $token = $user->createToken('admin_token')->plainTextToken;
 
         return response()->json([
@@ -206,6 +209,11 @@ class AuthController extends Controller
     public function adminLogout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json([
             'success' => true,
@@ -307,8 +315,10 @@ class AuthController extends Controller
             'expires_at' => Carbon::now()->addMinutes(60),
         ]);
 
+        $resetUrl = config('app.url') . '/reset-password?token=' . $token . '&email=' . urlencode($user->email);
+
         try {
-            Mail::to($user->email)->send(new OtpMail($token, $user->full_name ?? $user->name));
+            Mail::to($user->email)->send(new PasswordResetMail($token, $user->full_name ?? $user->name, $resetUrl));
         } catch (\Exception $e) {
             // Log email failure
         }

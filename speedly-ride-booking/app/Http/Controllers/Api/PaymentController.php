@@ -4,28 +4,72 @@ namespace App\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\PaymentSession;
 use App\Models\PaymentGatewayTransaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Models\Notification;
+use App\Models\SystemSetting;
+use App\Models\DriverProfile;
+use App\Models\DriverWithdrawal;
+use App\Models\DriverBankDetail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Carbon;
 
 class PaymentController extends Controller
 {
+    private function getKorapayConfig(string $key, string $default = ''): string
+    {
+        $setting = SystemSetting::where('setting_key', $key)->first();
+        return $setting->setting_value ?? env(strtoupper($key), $default);
+    }
+
+    private function getKorapaySecretKey(): string
+    {
+        return env('KORAPAY_SECRET_KEY', '');
+    }
+
+    private function getKorapayPublicKey(): string
+    {
+        return env('KORAPAY_PUBLIC_KEY', '');
+    }
+
+    private function getKorapayEnvironment(): string
+    {
+        return env('KORAPAY_ENVIRONMENT', 'sandbox');
+    }
+
+    private function getWalletBalance(string $userId): float
+    {
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
+        $debitTypes = ['withdrawal', 'ride_payment', 'debit'];
+
+        $credit = WalletTransaction::where('user_id', $userId)
+            ->whereIn('transaction_type', $creditTypes)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        $debit = WalletTransaction::where('user_id', $userId)
+            ->whereIn('transaction_type', $debitTypes)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        return $credit - $debit;
+    }
+
     public function initiate(Request $request)
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:100',
             'email' => 'required|email',
             'name' => 'required|string|max:255',
             'reference' => 'nullable|string|max:255',
             'metadata' => 'nullable|array',
         ]);
 
-        $reference = $validated['reference'] ?? 'SPEEDLY-' . now()->timestamp . Str::random(8);
+        $reference = $validated['reference'] ?? 'SPD-' . strtoupper(Str::random(8)) . '-' . now()->format('YmdHis');
         $user = $request->user();
 
         if (!$user) {
@@ -36,58 +80,75 @@ class PaymentController extends Controller
             ], 401);
         }
 
-        $korapayResponse = Http::withToken(env('KORAPAY_SECRET_KEY'))
-            ->post('https://api.korapay.com/merchant/api/v1/charges/normal', [
-                'amount' => $validated['amount'],
-                'currency' => 'NGN',
-                'customer' => [
-                    'email' => $validated['email'],
-                    'name' => $validated['name'],
-                ],
-                'reference' => $reference,
-                'redirect_url' => env('KORAPAY_REDIRECT_URL', config('app.url') . '/payment/callback'),
-                'metadata' => $validated['metadata'] ?? [],
-            ]);
-
-        $korapayData = $korapayResponse->json();
-
-        if (!$korapayResponse->successful() || ($korapayData['status'] ?? '') !== 'success') {
+        if ($validated['amount'] < 100) {
             return response()->json([
                 'success' => false,
-                'message' => $korapayData['message'] ?? 'Failed to initiate KoraPay payment',
-                'data' => $korapayData,
+                'message' => 'Minimum deposit amount is ₦100',
+                'data' => null,
             ], 400);
         }
 
-        $paymentSession = PaymentSession::create([
-            'user_id' => $user->id,
-            'gateway' => 'korapay',
-            'reference' => $reference,
-            'amount' => $validated['amount'],
-            'currency' => 'NGN',
-            'status' => 'pending',
-            'metadata' => isset($validated['metadata']) ? json_encode($validated['metadata']) : null,
-            'expires_at' => Carbon::now()->addHours(24),
-            'gateway_response' => json_encode($korapayData),
-        ]);
+        $secretKey = $this->getKorapaySecretKey();
+        if (empty($secretKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment gateway not configured. Please set KORAPAY_SECRET_KEY.',
+                'data' => null,
+            ], 502);
+        }
+
+        try {
+            $korapayResponse = Http::withOptions(['verify' => false])->withToken($secretKey)
+                ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
+                    'amount' => $validated['amount'],
+                    'currency' => 'NGN',
+                    'reference' => $reference,
+                    'redirect_url' => $this->getKorapayConfig('korapay_redirect_url', config('app.url') . '/payment/callback'),
+                    'notification_url' => $this->getKorapayConfig('korapay_webhook_url'),
+                    'customer' => [
+                        'email' => $validated['email'],
+                        'name' => $validated['name'],
+                    ],
+                    'merchant_bears_cost' => true,
+                    'metadata' => !empty($validated['metadata']) ? $validated['metadata'] : ['source' => 'Speedly Wallet'],
+                ]);
+
+            $korapayData = $korapayResponse->json();
+
+            if (!$korapayResponse->successful() || ($korapayData['status'] ?? false) !== true) {
+                $errorMsg = $korapayData['message'] ?? ($korapayData['status'] === false ? $korapayData['message'] : 'Failed to initiate payment');
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMsg,
+                    'data' => $korapayData,
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('KoraPay initiate failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to connect to payment gateway. Please try again.',
+                'data' => null,
+            ], 502);
+        }
 
         PaymentGatewayTransaction::create([
-            'payment_session_id' => $paymentSession->id,
+            'id' => Str::uuid(),
             'user_id' => $user->id,
-            'gateway' => 'korapay',
-            'gateway_transaction_id' => $korapayData['data']['transaction_id'] ?? null,
-            'type' => 'charge',
+            'transaction_reference' => $reference,
             'amount' => $validated['amount'],
             'currency' => 'NGN',
             'status' => 'pending',
+            'gateway_reference' => $korapayData['data']['reference'] ?? null,
             'gateway_response' => json_encode($korapayData),
+            'expires_at' => Carbon::now()->addMinutes(30),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Payment initiated successfully',
             'data' => [
-                'payment_url' => $korapayData['data']['checkout_url'] ?? null,
+                'checkout_url' => $korapayData['data']['checkout_url'] ?? null,
                 'reference' => $reference,
             ],
         ]);
@@ -95,84 +156,59 @@ class PaymentController extends Controller
 
     public function callback(Request $request)
     {
-        $paymentId = $request->query('paymentId');
-        $payerId = $request->query('PayerID');
+        $reference = $request->query('reference');
 
-        if (!$paymentId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment ID is required',
-                'data' => null,
-            ], 400);
+        if (!$reference) {
+            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('No reference provided');
+            return redirect($redirectUrl);
         }
 
-        $verifyResponse = Http::withToken(env('KORAPAY_SECRET_KEY'))
-            ->get("https://api.korapay.com/merchant/api/v1/transactions/{$paymentId}");
+        $transaction = PaymentGatewayTransaction::where('transaction_reference', $reference)->first();
 
-        $verifyData = $verifyResponse->json();
-
-        if (!$verifyResponse->successful() || ($verifyData['status'] ?? '') !== 'success') {
-            return response()->json([
-                'success' => false,
-                'message' => $verifyData['message'] ?? 'Failed to verify payment',
-                'data' => $verifyData,
-            ], 400);
+        if (!$transaction) {
+            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('Transaction not found');
+            return redirect($redirectUrl);
         }
 
-        $transaction = $verifyData['data'] ?? [];
-        $reference = $transaction['reference'] ?? $paymentId;
-
-        $paymentSession = PaymentSession::where('reference', $reference)
-            ->where('gateway', 'korapay')
-            ->first();
-
-        if (!$paymentSession) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment session not found',
-                'data' => null,
-            ], 404);
+        if ($transaction->status === 'success') {
+            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=completed&reference=' . $reference;
+            return redirect($redirectUrl);
         }
 
-        if ($paymentSession->status === 'success') {
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment already verified',
-                'data' => $paymentSession,
-            ]);
+        $secretKey = $this->getKorapaySecretKey();
+        if (empty($secretKey)) {
+            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('Payment gateway not configured');
+            return redirect($redirectUrl);
         }
 
-        DB::transaction(function () use ($paymentSession, $transaction, $verifyData) {
-            $paymentSession->update([
-                'status' => 'success',
-                'gateway_response' => json_encode($verifyData),
-            ]);
+        try {
+            $verifyResponse = Http::withOptions(['verify' => false])->withToken($secretKey)
+                ->get("https://api.korapay.com/merchant/api/v1/charges/{$reference}");
 
-            WalletTransaction::create([
-                'id' => Str::uuid(),
-                'user_id' => $paymentSession->user_id,
-                'transaction_type' => 'credit',
-                'category' => 'wallet_funding',
-                'amount' => $paymentSession->amount,
-                'status' => 'completed',
-            ]);
+            $verifyData = $verifyResponse->json();
 
-            PaymentGatewayTransaction::where('payment_session_id', $paymentSession->id)
-                ->update([
-                    'gateway_transaction_id' => $transaction['id'] ?? null,
-                    'status' => 'success',
-                    'gateway_response' => json_encode($verifyData),
-                ]);
-        });
+            if ($verifyResponse->successful() && ($verifyData['status'] ?? false) === true) {
+                $txnData = $verifyData['data'] ?? [];
+                $txnStatus = $txnData['status'] ?? '';
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment verified successfully',
-            'data' => [
-                'payment_session' => $paymentSession->fresh(),
-                'transaction' => $transaction,
-            ],
-        ]);
+                if ($txnStatus === 'success') {
+                    $this->processSuccessfulPayment($transaction, $txnData, $verifyData);
+                } elseif ($txnStatus === 'failed') {
+                    $transaction->update([
+                        'status' => 'failed',
+                        'gateway_response' => json_encode($verifyData),
+                    ]);
+                }
+            }
+
+            $status = $transaction->fresh()->status;
+            $frontendStatus = $status === 'success' ? 'completed' : $status;
+            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=' . $frontendStatus . '&reference=' . $reference;
+        } catch (\Exception $e) {
+            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('Verification failed');
+        }
+
+        return redirect($redirectUrl);
     }
 
     public function verify(Request $request)
@@ -187,141 +223,319 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        $paymentSession = PaymentSession::where('reference', $reference)
-            ->where('gateway', 'korapay')
-            ->first();
+        $transaction = PaymentGatewayTransaction::where('transaction_reference', $reference)->first();
 
-        if (!$paymentSession) {
+        if (!$transaction) {
             return response()->json([
                 'success' => false,
-                'message' => 'Payment session not found',
+                'message' => 'Transaction not found',
                 'data' => null,
             ], 404);
         }
 
-        if ($paymentSession->status !== 'pending') {
+        if ($transaction->status !== 'pending') {
+            $balance = $this->getWalletBalance($transaction->user_id);
             return response()->json([
                 'success' => true,
                 'message' => 'Payment status retrieved',
+                'amount' => (float) $transaction->amount,
+                'new_balance' => $balance,
                 'data' => [
-                    'status' => $paymentSession->status,
-                    'payment_session' => $paymentSession,
+                    'status' => $transaction->status,
+                    'transaction' => $transaction,
                 ],
             ]);
         }
 
-        $verifyResponse = Http::withToken(env('KORAPAY_SECRET_KEY'))
-            ->get("https://api.korapay.com/merchant/api/v1/transactions/{$reference}");
-
-        $verifyData = $verifyResponse->json();
-
-        if ($verifyResponse->successful() && ($verifyData['status'] ?? '') === 'success') {
-            $transaction = $verifyData['data'] ?? [];
-
-            DB::transaction(function () use ($paymentSession, $transaction, $verifyData) {
-                $paymentSession->update([
-                    'status' => 'success',
-                    'gateway_response' => json_encode($verifyData),
-                ]);
-
-                WalletTransaction::create([
-                    'id' => Str::uuid(),
-                    'user_id' => $paymentSession->user_id,
-                    'transaction_type' => 'credit',
-                    'category' => 'wallet_funding',
-                    'amount' => $paymentSession->amount,
-                    'status' => 'completed',
-                ]);
-
-                PaymentGatewayTransaction::where('payment_session_id', $paymentSession->id)
-                    ->update([
-                        'gateway_transaction_id' => $transaction['id'] ?? null,
-                        'status' => 'success',
-                        'gateway_response' => json_encode($verifyData),
-                    ]);
-            });
-
-            $message = 'Payment verified successfully';
-        } else {
-            if (($verifyData['data']['status'] ?? '') === 'failed') {
-                $paymentSession->update(['status' => 'failed']);
-            }
-            $message = 'Payment pending or verification failed';
+        $secretKey = $this->getKorapaySecretKey();
+        if (empty($secretKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment gateway not configured',
+                'data' => null,
+            ], 502);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => [
-                'status' => $paymentSession->fresh()->status,
-                'payment_session' => $paymentSession->fresh(),
-            ],
-        ]);
+        try {
+            $verifyResponse = Http::withOptions(['verify' => false])->withToken($secretKey)
+                ->get("https://api.korapay.com/merchant/api/v1/charges/{$reference}");
+
+            $verifyData = $verifyResponse->json();
+
+            if ($verifyResponse->successful() && ($verifyData['status'] ?? false) === true) {
+                $txnData = $verifyData['data'] ?? [];
+                $txnStatus = $txnData['status'] ?? '';
+
+                if ($txnStatus === 'success') {
+                    $this->processSuccessfulPayment($transaction, $txnData, $verifyData);
+                } elseif ($txnStatus === 'failed') {
+                    $transaction->update([
+                        'status' => 'failed',
+                        'gateway_response' => json_encode($verifyData),
+                    ]);
+                }
+            }
+
+            $transaction = $transaction->fresh();
+            $balance = $this->getWalletBalance($transaction->user_id);
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment status retrieved',
+                'amount' => (float) $transaction->amount,
+                'new_balance' => $balance,
+                'data' => [
+                    'status' => $transaction->status,
+                    'transaction' => $transaction,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to verify payment. Please try again.',
+                'data' => null,
+            ], 502);
+        }
     }
 
     public function webhook(Request $request)
     {
         $payload = $request->getContent();
+        $data = json_decode($payload, true);
+        $event = $data['event'] ?? '';
+        $txnData = $data['data'] ?? [];
+        $reference = $txnData['reference'] ?? null;
+
+        if ($event === 'test.webhook') {
+            return response('OK', 200);
+        }
+
+        $secretKey = $this->getKorapaySecretKey();
         $signature = $request->header('x-korapay-signature');
 
-        if ($signature) {
-            $expectedSignature = hash_hmac('sha256', $payload, env('KORAPAY_SECRET_KEY'));
+        if ($signature && !empty($secretKey)) {
+            $expectedSignature = hash_hmac('sha256', $payload, $secretKey);
             if (!hash_equals($expectedSignature, $signature)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid webhook signature',
-                    'data' => null,
                 ], 401);
             }
         }
-
-        $data = json_decode($payload, true);
-        $event = $data['event'] ?? '';
-        $transaction = $data['data'] ?? [];
-        $reference = $transaction['reference'] ?? null;
 
         if (!$reference) {
             return response('OK', 200);
         }
 
-        $paymentSession = PaymentSession::where('reference', $reference)
-            ->where('gateway', 'korapay')
-            ->first();
+        $transaction = PaymentGatewayTransaction::where('transaction_reference', $reference)->first();
 
-        if (!$paymentSession) {
+        if (!$transaction) {
             return response('OK', 200);
         }
 
-        if ($event === 'charge.success') {
-            DB::transaction(function () use ($paymentSession, $transaction, $data) {
-                $paymentSession->update([
-                    'status' => 'success',
-                    'gateway_response' => json_encode($data),
-                ]);
+        if ($transaction->status === 'success') {
+            return response('OK', 200);
+        }
 
-                WalletTransaction::create([
-                    'id' => Str::uuid(),
-                    'user_id' => $paymentSession->user_id,
-                    'transaction_type' => 'credit',
-                    'category' => 'wallet_funding',
-                    'amount' => $paymentSession->amount,
-                    'status' => 'completed',
-                ]);
-
-                PaymentGatewayTransaction::where('payment_session_id', $paymentSession->id)
-                    ->update([
-                        'gateway_transaction_id' => $transaction['id'] ?? null,
-                        'status' => 'success',
-                        'gateway_response' => json_encode($data),
-                    ]);
-            });
-        } elseif ($event === 'charge.failed') {
-            $paymentSession->update([
+        if (in_array($event, ['charge.success', 'transfer.success'])) {
+            $this->processSuccessfulPayment($transaction, $txnData, $data);
+        } elseif (in_array($event, ['charge.failed', 'transfer.failed'])) {
+            $transaction->update([
                 'status' => 'failed',
-                'gateway_response' => json_encode($data),
+                'webhook_received' => true,
+                'webhook_data' => $payload,
+                'gateway_response' => $payload,
             ]);
         }
 
         return response('OK', 200);
+    }
+
+    public function payoutWithdraw(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:100',
+            'password' => 'required|string',
+            'bank_code' => 'required|string|max:10',
+            'account_number' => 'required|string|max:20',
+            'account_name' => 'required|string|max:255',
+            'bank_name' => 'nullable|string|max:100',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Incorrect password',
+                'data' => null,
+            ], 401);
+        }
+
+        $driverProfile = DriverProfile::where('user_id', $user->id)->first();
+        if (!$driverProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Driver profile not found',
+                'data' => null,
+            ], 404);
+        }
+
+        $amount = $validated['amount'];
+        $balance = $this->getWalletBalance($user->id);
+
+        if ($amount > $balance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Insufficient balance. Available: ₦' . number_format($balance, 2),
+                'data' => null,
+            ], 400);
+        }
+
+        $secretKey = $this->getKorapaySecretKey();
+        if (empty($secretKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment gateway not configured',
+                'data' => null,
+            ], 502);
+        }
+
+        $reference = 'WTH-' . strtoupper(Str::random(8)) . '-' . now()->format('YmdHis');
+
+        try {
+            $korapayResponse = Http::withOptions(['verify' => false])->withToken($secretKey)
+                ->post('https://api.korapay.com/merchant/api/v1/transactions/disburse', [
+                    'reference' => $reference,
+                    'destination' => [
+                        'type' => 'bank_account',
+                        'amount' => $amount,
+                        'currency' => 'NGN',
+                        'narration' => 'Driver withdrawal - ' . $user->full_name,
+                        'bank_account' => [
+                            'bank' => $validated['bank_code'],
+                            'account' => $validated['account_number'],
+                        ],
+                    ],
+                    'customer' => [
+                        'name' => $validated['account_name'],
+                        'email' => $user->email,
+                    ],
+                ]);
+
+            $korapayData = $korapayResponse->json();
+
+            if (!$korapayResponse->successful() || ($korapayData['status'] ?? false) !== true) {
+                $errorMsg = $korapayData['message'] ?? 'Payout failed';
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMsg,
+                    'data' => $korapayData,
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('KoraPay payout failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to process payout. Please try again.',
+                'data' => null,
+            ], 502);
+        }
+
+        DB::transaction(function () use ($user, $driverProfile, $amount, $reference, $validated, $korapayData) {
+            $balanceBefore = $this->getWalletBalance($user->id);
+            $balanceAfter = $balanceBefore - $amount;
+
+            DriverWithdrawal::create([
+                'id' => Str::random(32),
+                'driver_id' => $driverProfile->id,
+                'amount' => $amount,
+                'status' => 'completed',
+                'bank_name' => $validated['bank_name'] ?? '',
+                'account_number' => $validated['account_number'],
+                'account_name' => $validated['account_name'],
+                'processed_at' => now(),
+            ]);
+
+            WalletTransaction::create([
+                'id' => Str::random(32),
+                'user_id' => $user->id,
+                'transaction_type' => 'withdrawal',
+                'amount' => $amount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'reference' => $reference,
+                'status' => 'completed',
+                'category' => 'withdrawal',
+                'description' => 'Withdrawal to ' . $validated['account_name'] . ' - ' . $validated['account_number'],
+            ]);
+
+            try {
+                Notification::create([
+                    'id' => Str::random(32),
+                    'user_id' => $user->id,
+                    'type' => 'withdrawal',
+                    'title' => 'Withdrawal Successful',
+                    'message' => 'Your withdrawal of ₦' . number_format($amount, 2) . ' has been processed. New balance: ₦' . number_format($balanceAfter, 2),
+                    'is_read' => false,
+                ]);
+            } catch (\Exception $e) {
+                // Notification is non-critical
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Withdrawal processed successfully',
+            'data' => [
+                'reference' => $reference,
+                'amount' => $amount,
+            ],
+        ]);
+    }
+
+    private function processSuccessfulPayment($transaction, array $txnData, array $rawData): void
+    {
+        $amount = $txnData['amount'] ?? $transaction->amount;
+        $userId = $transaction->user_id;
+
+        DB::transaction(function () use ($transaction, $txnData, $rawData, $amount, $userId) {
+            $transaction->update([
+                'status' => 'success',
+                'gateway_reference' => $transaction->gateway_reference ?? ($txnData['reference'] ?? null),
+                'payment_method' => $txnData['payment_method'] ?? null,
+                'gateway_response' => json_encode($rawData),
+                'webhook_received' => true,
+                'webhook_data' => json_encode($rawData),
+            ]);
+
+            $balanceBefore = $this->getWalletBalance($userId);
+            $balanceAfter = $balanceBefore + $amount;
+
+            WalletTransaction::create([
+                'id' => Str::random(32),
+                'user_id' => $userId,
+                'transaction_type' => 'deposit',
+                'amount' => $amount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'reference' => $transaction->transaction_reference,
+                'status' => 'completed',
+                'category' => 'wallet_funding',
+                'description' => 'Wallet deposit via KoraPay - Ref: ' . $transaction->transaction_reference,
+            ]);
+
+            try {
+                Notification::create([
+                    'id' => Str::random(32),
+                    'user_id' => $userId,
+                    'type' => 'payment',
+                    'title' => 'Deposit Successful',
+                    'message' => 'Your deposit of ₦' . number_format($amount, 2) . ' has been successful. New balance: ₦' . number_format($balanceAfter, 2),
+                    'is_read' => false,
+                ]);
+            } catch (\Exception $e) {
+                // Notification is non-critical
+            }
+        });
     }
 }

@@ -191,7 +191,7 @@ const DriverDashboardMobile: React.FC = () => {
         }
     }, []);
 
-    // Toggle driver status
+    // Toggle driver status — one click
     const toggleDriverStatus = async () => {
         if (verificationStatus !== 'approved') {
             Swal.fire({
@@ -204,48 +204,41 @@ const DriverDashboardMobile: React.FC = () => {
         }
 
         const newStatus = driverStatus === 'online' ? 'offline' : 'online';
+        const previousStatus = driverStatus;
 
-        const result = await Swal.fire({
-            title: newStatus === 'online' ? 'Go Online' : 'Go Offline',
-            text: `Are you sure you want to go ${newStatus}?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: newStatus === 'online' ? '#10b981' : '#ef4444',
-            confirmButtonText: `Yes, go ${newStatus}`,
-            cancelButtonText: 'Cancel'
-        });
+        setDriverStatus(newStatus);
 
-        if (result.isConfirmed) {
-            try {
-                const data = await api.driver.toggleStatus({ status: newStatus });
+        try {
+            const data = await api.driver.toggleStatus({ status: newStatus });
 
-                if (data.success) {
-                    setDriverStatus(newStatus);
-                    Swal.fire({
-                        title: 'Success',
-                        text: `You are now ${newStatus}`,
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    fetchDashboardData();
-                } else {
-                    Swal.fire({
-                        title: 'Error',
-                        text: data.message || 'Failed to update status',
-                        icon: 'error',
-                        confirmButtonColor: '#ff5e00'
-                    });
-                }
-            } catch (error) {
-                console.error('Error:', error);
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: `You are now ${newStatus}`,
+                    timer: 1200,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+                fetchDashboardData();
+            } else {
+                setDriverStatus(previousStatus);
                 Swal.fire({
                     title: 'Error',
-                    text: 'Failed to update status',
+                    text: data.message || 'Failed to update status',
                     icon: 'error',
                     confirmButtonColor: '#ff5e00'
                 });
             }
+        } catch (error) {
+            setDriverStatus(previousStatus);
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to update status',
+                icon: 'error',
+                confirmButtonColor: '#ff5e00'
+            });
         }
     };
 

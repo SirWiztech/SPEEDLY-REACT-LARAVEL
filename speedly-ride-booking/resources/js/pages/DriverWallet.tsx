@@ -331,10 +331,11 @@ const DriverWallet: React.FC = () => {
                         });
                     }
                 } catch (error) {
+                    const msg = error instanceof Error ? error.message : 'Network error. Please try again.';
                     Swal.fire({
                         icon: 'error',
-                        title: 'Connection Error',
-                        text: 'Network error. Please try again.',
+                        title: 'Payment Failed',
+                        text: msg,
                         confirmButtonColor: '#ff5e00'
                     });
                 }

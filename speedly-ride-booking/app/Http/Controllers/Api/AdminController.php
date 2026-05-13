@@ -19,6 +19,7 @@ use App\Models\DriverKycDocument;
 use App\Models\SupportTicket;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -36,14 +37,19 @@ class AdminController extends Controller
 
         $users = User::where('role', 'client')->orderBy('created_at', 'desc')->limit(10)->get()->toArray();
         $drivers = User::where('role', 'driver')->with('driverProfile.vehicle')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($u) {
+            $rideCount = 0;
+            if ($u->driverProfile) {
+                $rideCount = Ride::where('driver_id', $u->driverProfile->id)->where('status', 'completed')->count();
+            }
             return [
                 'id' => $u->id,
                 'full_name' => $u->full_name ?? $u->name ?? '',
                 'email' => $u->email,
                 'phone_number' => $u->phone_number ?? '',
-                'verification_status' => $u->driverProfile->verification_status ?? 'pending',
-                'driver_status' => $u->driverProfile->driver_status ?? 'offline',
-                'vehicle_count' => $u->driverProfile->vehicles->count(),
+                'verification_status' => $u->driverProfile?->verification_status ?? 'pending',
+                'driver_status' => $u->driverProfile?->driver_status ?? 'offline',
+                'vehicle_count' => $u->driverProfile?->vehicles?->count() ?? 0,
+                'ride_count' => $rideCount,
             ];
         })->toArray();
 
@@ -73,16 +79,17 @@ class AdminController extends Controller
             ];
         })->toArray();
 
-        $kycDocuments = DriverKycDocument::where('verification_status', 'pending')
-            ->with('driver.user')
+        $kycDocuments = DriverKycDocument::with('driver.user')
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(20)
             ->get()
             ->map(function ($doc) {
                 return [
                     'id' => $doc->id,
                     'full_name' => $doc->driver->user->full_name ?? 'Unknown',
+                    'email' => $doc->driver->user->email ?? '',
                     'document_type' => $doc->document_type,
+                    'document_url' => $doc->document_url ? Storage::url($doc->document_url) : null,
                     'verification_status' => $doc->verification_status,
                     'created_at' => $doc->created_at,
                 ];
@@ -103,6 +110,7 @@ class AdminController extends Controller
                     'priority' => $t->priority,
                     'status' => $t->status,
                     'created_at' => $t->created_at,
+                    'admin_reply' => $t->admin_reply,
                 ];
             })->toArray();
 
@@ -137,7 +145,19 @@ class AdminController extends Controller
             'rides' => $rides,
             'withdrawals' => $withdrawals,
             'kyc_documents' => $kycDocuments,
-            'disputes' => [],
+            'disputes' => collect($recentTickets)->map(function ($t) {
+                return [
+                    'id' => $t['id'] ?? '',
+                    'dispute_number' => $t['ticket_number'] ?? '',
+                    'ride_number' => '',
+                    'type' => $t['category'] ?? 'support',
+                    'priority' => $t['priority'] ?? 'normal',
+                    'status' => $t['status'] ?? 'open',
+                    'message_count' => $t['admin_reply'] ? 2 : 1,
+                    'raised_by' => $t['user_name'] ?? 'Unknown',
+                    'raised_against' => '',
+                ];
+            })->toArray(),
             'support_tickets' => $recentTickets,
             'open_tickets_count' => $openTickets,
             'notification_count' => $notificationCount,
@@ -277,10 +297,12 @@ class AdminController extends Controller
         ]);
         
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $withdrawal->driver->user_id,
             'title' => 'Withdrawal Approved',
             'message' => "Your withdrawal of ₦{$withdrawal->amount} has been approved and processed.",
             'type' => 'withdrawal_approved',
+            'is_read' => false,
         ]);
         
         return response()->json([
@@ -317,7 +339,7 @@ class AdminController extends Controller
         $balanceAfter = $balanceBefore + $withdrawal->amount;
         
         WalletTransaction::create([
-            'id' => Str::uuid(),
+            'id' => Str::random(32),
             'user_id' => $user->id,
             'transaction_type' => 'credit',
             'amount' => $withdrawal->amount,
@@ -328,10 +350,12 @@ class AdminController extends Controller
         ]);
         
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $withdrawal->driver->user_id,
             'title' => 'Withdrawal Rejected',
             'message' => "Your withdrawal of ₦{$withdrawal->amount} has been rejected. Reason: {$request->reason}",
             'type' => 'withdrawal_rejected',
+            'is_read' => false,
         ]);
         
         return response()->json([
@@ -443,6 +467,57 @@ class AdminController extends Controller
         ]);
     }
 
+    public function rides(Request $request)
+    {
+        $query = Ride::with(['client.user', 'driver.user']);
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('status')) {
+            if ($request->status === 'ongoing') {
+                $query->whereIn('status', ['accepted', 'driver_assigned', 'driver_arrived', 'ongoing']);
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('ride_number', 'like', "%{$search}%")
+                  ->orWhere('pickup_address', 'like', "%{$search}%")
+                  ->orWhere('destination_address', 'like', "%{$search}%");
+            });
+        }
+
+        $rides = $query->orderBy('created_at', 'desc')->paginate($request->get('per_page', 15));
+
+        $rides->getCollection()->transform(function ($r) {
+            return [
+                'id' => $r->id,
+                'ride_number' => $r->ride_number ?? $r->id,
+                'pickup_address' => $r->pickup_address ?? '',
+                'destination_address' => $r->destination_address ?? '',
+                'total_fare' => $r->total_fare ?? 0,
+                'platform_commission' => $r->platform_commission ?? 0,
+                'status' => $r->status,
+                'payment_status' => $r->payment_status ?? 'pending',
+                'client_name' => $r->client?->user?->full_name ?? $r->client_name ?? 'Unknown',
+                'driver_name' => $r->driver?->user?->full_name ?? $r->driver_name ?? 'Unassigned',
+                'created_at' => $r->created_at,
+                'completed_at' => $r->completed_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rides retrieved successfully',
+            'data' => $rides,
+        ]);
+    }
+
     public function approveDriver(Request $request, $id)
     {
         $driverProfile = DriverProfile::where('user_id', $id)->firstOrFail();
@@ -454,10 +529,12 @@ class AdminController extends Controller
         DriverApprovalQueue::where('driver_profile_id', $driverProfile->id)->delete();
         
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $id,
             'title' => 'Driver Approved',
             'message' => 'Your driver application has been approved. You can now start accepting rides.',
             'type' => 'driver_approved',
+            'is_read' => false,
         ]);
         
         return response()->json([
@@ -480,10 +557,12 @@ class AdminController extends Controller
         DriverApprovalQueue::where('driver_profile_id', $driverProfile->id)->delete();
         
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $id,
             'title' => 'Driver Rejected',
             'message' => "Your driver application has been rejected. Reason: {$request->reason}",
             'type' => 'driver_rejected',
+            'is_read' => false,
         ]);
         
         return response()->json([
@@ -560,10 +639,12 @@ class AdminController extends Controller
         ]);
 
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $ticket->user_id,
             'type' => 'support_reply',
             'title' => 'Support Ticket Updated',
             'message' => "Your ticket {$ticket->ticket_number} has received a reply from support.",
+            'is_read' => false,
         ]);
 
         return response()->json([
@@ -594,10 +675,12 @@ class AdminController extends Controller
         ]);
 
         Notification::create([
+            'id' => Str::random(32),
             'user_id' => $ticket->user_id,
             'type' => 'support_closed',
             'title' => 'Support Ticket Closed',
             'message' => "Your ticket {$ticket->ticket_number} has been closed. If you need further assistance, please open a new ticket.",
+            'is_read' => false,
         ]);
 
         return response()->json([

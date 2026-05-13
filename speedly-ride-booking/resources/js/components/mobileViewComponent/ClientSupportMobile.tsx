@@ -25,6 +25,7 @@ const ClientSupportMobile: React.FC = () => {
     const [charCount, setCharCount] = useState<number>(0);
     const [openFaqIndex, setOpenFaqIndex] = useState<number>(0);
     const [notificationCount, setNotificationCount] = useState<number>(0);
+    const [myTickets, setMyTickets] = useState<any[]>([]);
 
     const preloaderLoading = usePreloader(1000);
 
@@ -164,11 +165,29 @@ const ClientSupportMobile: React.FC = () => {
         } catch (error) {
             Swal.fire({
                 icon: 'error',
-                title: 'Connection Error',
-                text: 'Please check your connection.',
+                title: 'Error',
+                text: error instanceof Error ? error.message : 'Please check your connection.',
                 confirmButtonColor: '#ff5e00'
             });
         }
+    };
+
+    const viewTicketReply = (ticket: any) => {
+        let html = `<div style="text-align:left"><p><strong>Your Message:</strong></p><p>${ticket.message}</p>`;
+        if (ticket.admin_reply) {
+            html += `<hr style="margin:12px 0"><p><strong>Admin Reply:</strong></p><p>${ticket.admin_reply}</p>`;
+            if (ticket.replied_at) {
+                html += `<p style="font-size:11px;color:#999">Replied: ${new Date(ticket.replied_at).toLocaleString()}</p>`;
+            }
+        }
+        html += `<hr style="margin:12px 0"><p><strong>Status:</strong> <span style="text-transform:capitalize">${ticket.status}</span></p></div>`;
+
+        Swal.fire({
+            title: `Ticket #${ticket.ticket_number}`,
+            html,
+            icon: 'info',
+            confirmButtonColor: '#ff5e00'
+        });
     };
 
     // Go back
@@ -178,8 +197,20 @@ const ClientSupportMobile: React.FC = () => {
 
     const firstName = userName?.split(' ')[0] || 'Guest';
 
+    const fetchMyTickets = async () => {
+        try {
+            const data = await api.client.supportTickets();
+            if (data.success && data.data) {
+                setMyTickets(data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching tickets:', error);
+        }
+    };
+
     useEffect(() => {
         fetchUserData();
+        fetchMyTickets();
     }, []);
 
     if (loading || preloaderLoading) {
@@ -318,6 +349,39 @@ const ClientSupportMobile: React.FC = () => {
                         </div>
                         <i className="fas fa-chevron-right"></i>
                     </a>
+                </div>
+
+                {/* My Previous Tickets */}
+                <div className="mobile-faq-section" style={{ marginTop: '16px' }}>
+                    <h3>My Previous Tickets</h3>
+                    {myTickets.length === 0 ? (
+                        <p style={{ textAlign: 'center', color: '#999', padding: '16px', fontSize: '13px' }}>No previous tickets found.</p>
+                    ) : (
+                        myTickets.map(ticket => (
+                            <div key={ticket.id} onClick={() => viewTicketReply(ticket)} style={{
+                                background: '#1a1a2e',
+                                borderRadius: '10px',
+                                padding: '12px',
+                                marginBottom: '10px',
+                                cursor: 'pointer',
+                                border: '1px solid #2a2a4a'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <strong style={{ color: '#fff', fontSize: '13px' }}>#{ticket.ticket_number}</strong>
+                                    <span style={{
+                                        padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
+                                        background: ticket.status === 'closed' ? '#1a3a1a' : ticket.status === 'in_progress' ? '#3a3a1a' : '#1a1a3a',
+                                        color: ticket.status === 'closed' ? '#10b981' : ticket.status === 'in_progress' ? '#f59e0b' : '#6366f1'
+                                    }}>{ticket.status}</span>
+                                </div>
+                                <p style={{ color: '#ccc', fontSize: '13px', margin: 0 }}>{ticket.subject}</p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                                    <span style={{ fontSize: '11px', color: '#888', textTransform: 'capitalize' }}>{ticket.category}</span>
+                                    <span style={{ fontSize: '11px', color: '#888' }}>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
 
                 {/* FAQ Section */}

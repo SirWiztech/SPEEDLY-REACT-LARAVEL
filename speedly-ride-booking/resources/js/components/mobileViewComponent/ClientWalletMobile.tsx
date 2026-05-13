@@ -132,10 +132,11 @@ const ClientWalletMobile: React.FC = () => {
             }
         } catch (error) {
             Swal.close();
+            const msg = error instanceof Error ? error.message : 'Unable to connect to payment gateway';
             Swal.fire({
                 icon: 'error',
-                title: 'Connection Error',
-                text: 'Unable to connect to payment gateway',
+                title: 'Payment Failed',
+                text: msg,
                 confirmButtonColor: '#ff5e00'
             });
         }
@@ -256,10 +257,30 @@ const ClientWalletMobile: React.FC = () => {
         });
     };
 
+    // Check payment status for pending transactions
+    const checkPaymentStatus = async (reference: string) => {
+        Swal.fire({ title: 'Checking...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const data = await api.payment.verify(reference);
+            Swal.close();
+            if (data.data?.status === 'success' || data.status === 'success') {
+                Swal.fire({ icon: 'success', title: 'Payment Confirmed!', text: 'Your wallet has been credited.', confirmButtonColor: '#ff5e00' }).then(() => fetchWalletData());
+            } else if (data.data?.status === 'failed') {
+                Swal.fire({ icon: 'error', title: 'Payment Failed', text: 'Please try again.', confirmButtonColor: '#ff5e00' });
+            } else {
+                Swal.fire({ icon: 'info', title: 'Still Processing', text: 'Please check back later.', confirmButtonColor: '#ff5e00' });
+            }
+        } catch (error) {
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Unable to check payment status.', confirmButtonColor: '#ff5e00' });
+        }
+    };
+
     // View transaction details
     const viewTransaction = (transaction: Transaction) => {
         const amountPrefix = transaction.is_credit ? '+' : '-';
         const amountColor = transaction.is_credit ? '#4CAF50' : '#f44336';
+        const isPending = transaction.status === 'pending' || transaction.status === 'processing';
 
         const html = `
             <div style="text-align: left; padding: 10px;">
@@ -278,7 +299,15 @@ const ClientWalletMobile: React.FC = () => {
                         <tr><td style="padding: 8px 0; color: #666;">Type</td><td style="text-align: right; text-transform: capitalize;">${transaction.type_display}</td></tr>
                         <tr><td style="padding: 8px 0; color: #666;">Date</td><td style="text-align: right;">${transaction.date}</td></tr>
                         <tr><td style="padding: 8px 0; color: #666;">Balance After</td><td style="text-align: right; color: #ff5e00;">₦${transaction.balance_after.toLocaleString()}</td></tr>
+                        ${transaction.reference ? `<tr><td style="padding: 8px 0; color: #666;">Reference</td><td style="text-align: right; font-size: 11px;">${transaction.reference}</td></tr>` : ''}
                     </table>
+                    ${isPending && transaction.reference ? `
+                    <div style="margin-top: 12px;">
+                        <button onclick="window.checkPaymentStatusMobile('${transaction.reference}')" style="width: 100%; padding: 10px; background: #ff5e00; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Check Payment Status
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -315,6 +344,8 @@ const ClientWalletMobile: React.FC = () => {
 
     useEffect(() => {
         fetchWalletData();
+        (window as any).checkPaymentStatusMobile = (reference: string) => checkPaymentStatus(reference);
+        return () => { delete (window as any).checkPaymentStatusMobile; };
     }, [fetchWalletData]);
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
@@ -419,6 +450,9 @@ const ClientWalletMobile: React.FC = () => {
                                     <div className="mobile-transaction-details">
                                         <h4>{transaction.type_display}</h4>
                                         <p>{transaction.date}</p>
+                                        {(transaction.status === 'pending' || transaction.status === 'processing') && (
+                                            <p style={{ color: '#FF9800', fontSize: '10px', fontWeight: 600, marginTop: '2px' }}>PENDING</p>
+                                        )}
                                     </div>
                                     <div className={`mobile-transaction-amount ${transaction.is_credit ? 'positive' : 'negative'}`}>
                                         {transaction.is_credit ? '+' : '-'}{transaction.formatted_amount}

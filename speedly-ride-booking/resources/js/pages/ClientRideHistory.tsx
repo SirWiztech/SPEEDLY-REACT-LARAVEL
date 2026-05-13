@@ -132,13 +132,13 @@ const ClientRideHistory: React.FC = () => {
                     confirmButtonColor: '#ff5e00'
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             Swal.close();
             console.error('Error fetching ride details:', error);
             Swal.fire({
                 icon: 'error',
-                title: 'Connection Error',
-                text: 'Failed to load ride details',
+                title: 'Error',
+                text: error?.message || 'Failed to load ride details',
                 confirmButtonColor: '#ff5e00'
             });
         }
@@ -177,8 +177,8 @@ const ClientRideHistory: React.FC = () => {
         const destinationAddress = ride.destination_address || 'N/A';
         const formattedDate = ride.formatted_date || new Date(ride.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const formattedTime = ride.formatted_time || new Date(ride.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const distance = ride.distance_km ? ride.distance_km.toFixed(1) + ' km' : 'N/A';
-        const fare = ride.total_fare ? parseFloat(ride.total_fare).toLocaleString() : '0';
+        const distance = ride.distance_km ? Number(ride.distance_km).toFixed(1) + ' km' : 'N/A';
+        const fare = Number(ride.total_fare || 0).toLocaleString();
         const rideType = ride.ride_type ? ride.ride_type.charAt(0).toUpperCase() + ride.ride_type.slice(1) : 'Economy';
         const driverName = ride.driver_name || null;
         const driverPhone = ride.driver_phone || null;
