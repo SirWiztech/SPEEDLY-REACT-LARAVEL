@@ -122,7 +122,7 @@ export const api = {
       if (params?.page) qs.set('page', String(params.page));
       return apiFetch(`/driver/wallet/transactions?${qs}`);
     },
-    requestWithdrawal: (data: { amount: number; bank_name?: string; account_number?: string; account_name?: string }) =>
+    requestWithdrawal: (data: { amount: number; password: string; bank_name?: string; bank_code?: string; account_number?: string; account_name?: string }) =>
       apiFetch('/driver/wallet/withdraw', { method: 'POST', body: JSON.stringify(data) }),
     profile: () => apiFetch('/driver/profile'),
     updateProfile: (data: Record<string, string>) =>

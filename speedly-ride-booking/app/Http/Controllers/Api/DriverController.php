@@ -35,7 +35,7 @@ class DriverController extends Controller
         $today = Carbon::today();
 
         $totalRides = Ride::where('driver_id', $driverProfile->id)
-            ->whereIn('status', ['accepted', 'completed', 'in_progress'])
+            ->whereIn('status', ['accepted', 'ongoing', 'completed'])
             ->count();
 
         $completedRides = Ride::where('driver_id', $driverProfile->id)
@@ -43,22 +43,20 @@ class DriverController extends Controller
             ->count();
 
         $cancelledRides = Ride::where('driver_id', $driverProfile->id)
-            ->where('status', 'cancelled')
+            ->whereIn('status', ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
             ->count();
 
         $todayRides = Ride::where('driver_id', $driverProfile->id)
             ->where('created_at', '>=', $today)
-            ->whereIn('status', ['accepted', 'completed', 'in_progress'])
+            ->whereIn('status', ['accepted', 'ongoing', 'completed'])
             ->count();
 
         $totalEarnings = WalletTransaction::where('user_id', $user->id)
             ->where('transaction_type', 'credit')
-            ->where('category', 'ride_earning')
             ->sum('amount');
 
         $todayEarnings = WalletTransaction::where('user_id', $user->id)
             ->where('transaction_type', 'credit')
-            ->where('category', 'ride_earning')
             ->where('created_at', '>=', $today)
             ->sum('amount');
 
@@ -113,14 +111,37 @@ class DriverController extends Controller
 
         $rides = Ride::where(function ($query) use ($driverProfile) {
             $query->where('driver_id', $driverProfile->id)
-                ->whereIn('status', ['accepted', 'completed', 'in_progress']);
+                ->whereIn('status', ['accepted', 'ongoing', 'completed']);
         })->orWhere(function ($query) use ($driverProfile) {
             $query->where('status', 'pending')
                 ->where('driver_id', $driverProfile->id);
         })->with('client.user')
             ->orderBy('created_at', 'DESC')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->map(function ($ride) {
+                return [
+                    'id' => $ride->id,
+                    'ride_number' => $ride->ride_number,
+                    'status' => $ride->status,
+                    'pickup_address' => $ride->pickup_address,
+                    'destination_address' => $ride->destination_address,
+                    'pickup_latitude' => $ride->pickup_latitude,
+                    'pickup_longitude' => $ride->pickup_longitude,
+                    'destination_latitude' => $ride->destination_latitude,
+                    'destination_longitude' => $ride->destination_longitude,
+                    'ride_type' => $ride->ride_type,
+                    'distance_km' => $ride->distance_km,
+                    'total_fare' => (float) $ride->total_fare,
+                    'driver_payout' => (float) $ride->driver_payout,
+                    'platform_commission' => (float) $ride->platform_commission,
+                    'created_at' => $ride->created_at,
+                    'client_name' => $ride->client?->user?->full_name ?? 'Unknown',
+                    'client_phone' => $ride->client?->user?->phone_number ?? '',
+                    'client_photo' => $ride->client?->user?->profile_picture_url,
+                    'request_type' => 'public',
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -145,7 +166,7 @@ class DriverController extends Controller
 
         // --- Stats ---
         $totalRides = Ride::where('driver_id', $driverId)
-            ->whereIn('status', ['accepted', 'completed', 'in_progress'])
+            ->whereIn('status', ['accepted', 'ongoing', 'completed'])
             ->count();
 
         $completedRides = Ride::where('driver_id', $driverId)
@@ -154,9 +175,9 @@ class DriverController extends Controller
 
         $cancelledRides = Ride::where('driver_id', $driverId)
             ->where(function ($q) {
-                $q->where('status', 'cancelled')
-                  ->orWhere('status', 'cancelled_by_client')
-                  ->orWhere('status', 'cancelled_by_driver');
+                $q->where('status', 'cancelled_by_client')
+                  ->orWhere('status', 'cancelled_by_driver')
+                  ->orWhere('status', 'cancelled_by_admin');
             })
             ->count();
 
@@ -209,7 +230,6 @@ class DriverController extends Controller
                 'rides.created_at',
                 'ride_declines.created_at as declined_at',
                 'ride_declines.auto_decline',
-                'ride_declines.response_time_seconds',
                 'users.full_name as client_name',
                 'users.profile_picture_url as client_photo'
             )
@@ -229,7 +249,6 @@ class DriverController extends Controller
                     'client_photo' => $ride->client_photo,
                     'declined_at' => $ride->declined_at,
                     'auto_decline' => (bool) $ride->auto_decline,
-                    'response_time_seconds' => (int) $ride->response_time_seconds,
                 ];
             });
 
@@ -287,7 +306,29 @@ class DriverController extends Controller
             })
             ->with('client.user')
             ->orderBy('created_at', 'ASC')
-            ->get();
+            ->get()
+            ->map(function ($ride) {
+                return [
+                    'id' => $ride->id,
+                    'ride_number' => $ride->ride_number,
+                    'status' => $ride->status,
+                    'pickup_address' => $ride->pickup_address,
+                    'destination_address' => $ride->destination_address,
+                    'pickup_latitude' => $ride->pickup_latitude,
+                    'pickup_longitude' => $ride->pickup_longitude,
+                    'destination_latitude' => $ride->destination_latitude,
+                    'destination_longitude' => $ride->destination_longitude,
+                    'ride_type' => $ride->ride_type,
+                    'distance_km' => $ride->distance_km,
+                    'total_fare' => (float) $ride->total_fare,
+                    'created_at' => $ride->created_at,
+                    'client_name' => $ride->client?->user?->full_name ?? 'Unknown',
+                    'client_phone' => $ride->client?->user?->phone_number ?? '',
+                    'client_photo' => $ride->client?->user?->profile_picture_url,
+                    'request_type' => 'public',
+                    'driver_id' => $ride->driver_id,
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -527,17 +568,18 @@ class DriverController extends Controller
 
         $lat = $request->lat;
         $lng = $request->lng;
-        $radiusKm = $request->radius_km ?? 10;
+        $radiusKm = $request->radius_km ?? 50;
 
-        $drivers = DriverProfile::where('driver_status', 'online')
+        $drivers = DriverProfile::whereIn('driver_status', ['online', 'on_ride'])
             ->where('verification_status', 'approved')
             ->whereNotNull('current_latitude')
             ->whereNotNull('current_longitude')
+            ->whereHas('user')
             ->selectRaw("
                 *,
                 (6371 * acos(cos(radians(?)) * cos(radians(current_latitude)) * cos(radians(current_longitude) - radians(?)) + sin(radians(?)) * sin(radians(current_latitude)))) AS distance
             ", [$lat, $lng, $lat])
-            ->having('distance', '<=', $radiusKm)
+            ->orderByRaw("CASE WHEN driver_status = 'online' THEN 0 ELSE 1 END")
             ->orderBy('distance')
             ->with('user')
             ->with('vehicle')
@@ -570,10 +612,17 @@ class DriverController extends Controller
             'vehicle_year' => 'sometimes|string|max:4',
         ]);
 
-        $vehicle = DriverVehicle::updateOrCreate(
-            ['driver_id' => $driverProfile->id],
-            $request->only(['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year'])
-        );
+        $vehicle = DriverVehicle::where('driver_id', $driverProfile->id)->first();
+
+        if ($vehicle) {
+            $vehicle->update($request->only(['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year']));
+        } else {
+            $vehicle = DriverVehicle::create([
+                'id' => (string) Str::uuid(),
+                'driver_id' => $driverProfile->id,
+                ...$request->only(['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year'])
+            ]);
+        }
 
         return response()->json([
             'success' => true,

@@ -110,9 +110,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/kyc', [KYCController::class, 'getDriverKyc']);
         Route::post('/kyc/upload', [KYCController::class, 'uploadDriverKyc']);
 
-        // Nearby drivers (for clients to find nearby drivers)
-        Route::get('/nearby', [DriverController::class, 'getNearbyDrivers']);
-
         // Vehicle
         Route::post('/vehicle/update', [DriverController::class, 'updateVehicle']);
 
@@ -122,6 +119,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bank/{id}/set-default', [DriverBankController::class, 'setDefaultBank']);
         Route::delete('/bank/{id}', [DriverBankController::class, 'removeBankAccount']);
     });
+
+    // Nearby drivers - accessible by all authenticated users (clients find drivers)
+    Route::get('/driver/nearby', [DriverController::class, 'getNearbyDrivers']);
 
     /*
     |--------------------------------------------------------------------------
@@ -186,6 +186,5 @@ Route::middleware('auth:sanctum')->group(function () {
 | Payment Public Routes (no auth required)
 |--------------------------------------------------------------------------
 */
-Route::get('/payment/callback', [PaymentController::class, 'callback']);
 Route::get('/payment/verify', [PaymentController::class, 'verify']);
 Route::post('/payment/webhook/korapay', [PaymentController::class, 'webhook']);

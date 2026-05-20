@@ -13,6 +13,8 @@ use App\Models\Notification;
 use App\Models\Ride;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Carbon;
 
 class WalletController extends Controller
@@ -109,24 +111,20 @@ class WalletController extends Controller
 
         $totalEarnings = WalletTransaction::where('user_id', $user->id)
             ->where('transaction_type', 'credit')
-            ->where('category', 'ride_earning')
             ->sum('amount');
 
         $todayEarnings = WalletTransaction::where('user_id', $user->id)
             ->where('transaction_type', 'credit')
-            ->where('category', 'ride_earning')
             ->where('created_at', '>=', $today)
             ->sum('amount');
 
         $weekEarnings = WalletTransaction::where('user_id', $user->id)
             ->where('transaction_type', 'credit')
-            ->where('category', 'ride_earning')
             ->where('created_at', '>=', $startOfWeek)
             ->sum('amount');
 
         $monthEarnings = WalletTransaction::where('user_id', $user->id)
             ->where('transaction_type', 'credit')
-            ->where('category', 'ride_earning')
             ->where('created_at', '>=', $startOfMonth)
             ->sum('amount');
 
@@ -257,87 +255,229 @@ class WalletController extends Controller
         ]);
     }
 
+    private const BANK_CODES = [
+        'Access Bank' => '044',
+        'Access Bank (Diamond)' => '063',
+        'Access Mobile' => '323',
+        'Carbon' => '565',
+        'Chipper Cash' => '552',
+        'Citibank Nigeria' => '023',
+        'Coronation Merchant Bank' => '559',
+        'Ecobank Nigeria' => '050',
+        'Ekondo Microfinance Bank' => '562',
+        'Enterprise Bank' => '084',
+        'Fidelity Bank' => '070',
+        'Firmus MFB' => '573',
+        'First Bank of Nigeria' => '011',
+        'First City Monument Bank (FCMB)' => '214',
+        'Globus Bank' => '001',
+        'GoMoney' => '602',
+        'Guaranty Trust Bank (GTBank)' => '058',
+        'GTBank' => '058',
+        'Heritage Bank' => '030',
+        'Jaiz Bank' => '301',
+        'Keystone Bank' => '082',
+        'Kuda Bank' => '50211',
+        'Kuda Microfinance Bank' => '50211',
+        'Mint Finex MFB' => '563',
+        'Moniepoint' => '50515',
+        'Moniepoint Microfinance Bank' => '50515',
+        'OPay' => '999992',
+        'Opay' => '999992',
+        'Paga' => '327',
+        'PalmPay' => '999991',
+        'Parallex Bank' => '526',
+        'Polaris Bank' => '076',
+        'Providus Bank' => '101',
+        'Rubies MFB' => '125',
+        'Sparkle Microfinance Bank' => '513',
+        'Stanbic IBTC Bank' => '221',
+        'Standard Chartered Bank' => '068',
+        'Sterling Bank' => '232',
+        'Suntrust Bank' => '100',
+        'TAJ Bank' => '302',
+        'Tanadi MFB' => '090592',
+        'Titan Bank' => '102',
+        'UBA' => '033',
+        'Union Bank of Nigeria' => '032',
+        'United Bank for Africa (UBA)' => '033',
+        'Unity Bank' => '215',
+        'VFD Microfinance Bank' => '566',
+        'Wema Bank' => '035',
+        'Zenith Bank' => '057',
+    ];
+
+    private function getBankCode(string $bankName): string
+    {
+        return self::BANK_CODES[$bankName] ?? self::BANK_CODES['GTBank'];
+    }
+
     public function requestWithdrawal(Request $request)
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:100',
+            'password' => 'required|string',
             'bank_name' => 'sometimes|string|max:100',
+            'bank_code' => 'sometimes|string|max:20',
             'account_number' => 'sometimes|string|max:20',
             'account_name' => 'sometimes|string|max:255',
         ]);
 
         $user = $request->user();
-        $amount = $request->amount;
+        $amount = $validated['amount'];
+
+        if (!Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Incorrect password',
+                'data' => null,
+            ], 401);
+        }
 
         $driverProfile = DriverProfile::where('user_id', $user->id)->first();
         if (!$driverProfile) {
             return response()->json(['success' => false, 'message' => 'Driver profile not found', 'data' => null]);
         }
 
-        $credits = WalletTransaction::where('user_id', $user->id)->where('transaction_type', 'credit')->sum('amount');
-        $debits = WalletTransaction::where('user_id', $user->id)->where('transaction_type', 'debit')->sum('amount');
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
+        $debitTypes = ['withdrawal', 'ride_payment', 'debit'];
+        $credits = WalletTransaction::where('user_id', $user->id)
+            ->whereIn('transaction_type', $creditTypes)
+            ->where('status', 'completed')->sum('amount');
+        $debits = WalletTransaction::where('user_id', $user->id)
+            ->whereIn('transaction_type', $debitTypes)
+            ->where('status', 'completed')->sum('amount');
         $availableBalance = $credits - $debits;
 
         if ($amount > $availableBalance) {
-            return response()->json(['success' => false, 'message' => 'Insufficient balance', 'data' => null]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Insufficient balance. Available: ₦' . number_format($availableBalance, 2),
+                'data' => null,
+            ], 400);
         }
 
         $bankDetail = DriverBankDetail::where('driver_id', $driverProfile->id)->first();
 
-        if (!$bankDetail && $request->bank_name && $request->account_number && $request->account_name) {
-            $bankDetail = DriverBankDetail::create([
-                'driver_id' => $driverProfile->id,
-                'bank_name' => $request->bank_name,
-                'account_number' => $request->account_number,
-                'account_name' => $request->account_name,
-            ]);
+        $bankName = $validated['bank_name'] ?? $bankDetail->bank_name ?? '';
+        $accountNumber = $validated['account_number'] ?? $bankDetail->account_number ?? '';
+        $accountName = $validated['account_name'] ?? $bankDetail->account_name ?? '';
+        $bankCode = $validated['bank_code'] ?? $this->getBankCode($bankName);
+
+        if (empty($accountNumber) || empty($accountName)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide bank account details',
+                'data' => null,
+            ], 400);
         }
 
-        if (!$bankDetail) {
-            return response()->json(['success' => false, 'message' => 'Please add bank details first', 'data' => null]);
+        $secretKey = env('KORAPAY_SECRET_KEY', '');
+        if (empty($secretKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment gateway not configured',
+                'data' => null,
+            ], 502);
+        }
+
+        $reference = 'WTH-' . strtoupper(Str::random(8)) . '-' . now()->format('YmdHis');
+
+        try {
+            $korapayResponse = Http::timeout(30)->withOptions(['verify' => false])->withToken($secretKey)
+                ->post('https://api.korapay.com/merchant/api/v1/transactions/disburse', [
+                    'reference' => $reference,
+                    'destination' => [
+                        'type' => 'bank_account',
+                        'amount' => $amount,
+                        'currency' => 'NGN',
+                        'narration' => 'Driver withdrawal - ' . $user->full_name,
+                        'bank_account' => [
+                            'bank' => $bankCode,
+                            'account' => $accountNumber,
+                        ],
+                    ],
+                    'customer' => [
+                        'name' => $accountName,
+                        'email' => $user->email,
+                    ],
+                ]);
+
+            $korapayData = $korapayResponse->json();
+
+            if (!$korapayResponse->successful() || ($korapayData['status'] ?? false) !== true) {
+                $errorMsg = $korapayData['message'] ?? 'Payout failed';
+                \Illuminate\Support\Facades\Log::error('KoraPay payout failed for driver: ' . $user->email . ' - ' . $errorMsg);
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMsg,
+                    'data' => $korapayData,
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('KoraPay payout exception: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to process payout. Please try again.',
+                'data' => null,
+            ], 502);
         }
 
         DB::beginTransaction();
         try {
+            $balanceBefore = $availableBalance;
+            $balanceAfter = $balanceBefore - $amount;
+
             $withdrawal = DriverWithdrawal::create([
                 'driver_id' => $driverProfile->id,
                 'amount' => $amount,
-                'status' => 'pending',
-                'bank_name' => $bankDetail->bank_name,
-                'account_number' => $bankDetail->account_number,
-                'account_name' => $bankDetail->account_name,
+                'status' => 'completed',
+                'bank_name' => $bankName,
+                'account_number' => $accountNumber,
+                'account_name' => $accountName,
+                'processed_at' => now(),
             ]);
-
-            $lastTransaction = WalletTransaction::where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')->first();
-            $balanceBefore = $lastTransaction ? $lastTransaction->balance_after : 0;
-            $balanceAfter = $balanceBefore - $amount;
 
             WalletTransaction::create([
                 'id' => Str::random(32),
                 'user_id' => $user->id,
-                'transaction_type' => 'debit',
+                'transaction_type' => 'withdrawal',
                 'amount' => $amount,
                 'balance_before' => $balanceBefore,
                 'balance_after' => $balanceAfter,
-                'description' => 'Withdrawal request',
-                'reference' => 'WTH-' . strtoupper(Str::random(8)),
+                'reference' => $reference,
                 'status' => 'completed',
+                'category' => 'withdrawal',
+                'description' => 'Withdrawal to ' . $accountName . ' - ' . $accountNumber,
             ]);
+
+            try {
+                Notification::create([
+                    'id' => Str::random(32),
+                    'user_id' => $user->id,
+                    'type' => 'withdrawal',
+                    'title' => 'Withdrawal Successful',
+                    'message' => 'Your withdrawal of ₦' . number_format($amount, 2) . ' has been processed. New balance: ₦' . number_format($balanceAfter, 2),
+                    'is_read' => false,
+                ]);
+            } catch (\Exception $e) {
+            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Withdrawal requested successfully',
+                'message' => 'Withdrawal processed successfully',
                 'data' => [
                     'withdrawal_id' => $withdrawal->id,
-                    'amount' => $amount
+                    'reference' => $reference,
+                    'amount' => $amount,
                 ]
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Failed to request withdrawal', 'data' => null]);
+            \Illuminate\Support\Facades\Log::error('Withdrawal DB error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to process withdrawal', 'data' => null]);
         }
     }
 }

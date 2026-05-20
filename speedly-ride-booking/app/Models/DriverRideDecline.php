@@ -7,18 +7,18 @@ use Illuminate\Support\Str;
 
 class DriverRideDecline extends Model
 {
+    const UPDATED_AT = null;
     protected $table = 'ride_declines';
     protected $primaryKey = 'id';
     public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'ride_id', 'driver_id', 'auto_decline', 'response_time_seconds',
+        'id', 'ride_id', 'driver_id', 'auto_decline',
     ];
 
     protected $casts = [
         'auto_decline' => 'boolean',
-        'response_time_seconds' => 'integer',
     ];
 
     protected static function boot()

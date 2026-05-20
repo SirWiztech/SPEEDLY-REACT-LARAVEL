@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClientRating extends Model
 {
+    const UPDATED_AT = null;
     protected $primaryKey = 'id';
     public $incrementing = false;
     protected $keyType = 'string';

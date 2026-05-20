@@ -7,6 +7,7 @@ import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import DriverDashboardMobile from '../components/mobileViewComponent/DriverDashboardMobile';
+import ErrorBoundary from '../components/ErrorBoundary';
 import '../../css/DriverDashboard.css';
 
 // Types
@@ -92,7 +93,7 @@ const DriverDashboard: React.FC = () => {
         avg_fare: 0
     });
     const [activeRide, setActiveRide] = useState<Ride | null>(null);
-    const [pendingRide, setPendingRide] = useState<Ride | null>(null);
+    const [pendingRides, setPendingRides] = useState<Ride[]>([]);
     const [recentRides, setRecentRides] = useState<RecentRide[]>([]);
     const [driverStatus, setDriverStatus] = useState<string>('offline');
     const [verificationStatus, setVerificationStatus] = useState<string>('pending');
@@ -100,6 +101,7 @@ const DriverDashboard: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pendingRidesCountRef = useRef<number>(0);
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
@@ -110,11 +112,12 @@ const DriverDashboard: React.FC = () => {
                 api.driver.profile(),
                 api.driver.stats(),
                 api.driver.rides(5),
+                api.driver.pendingRides(),
                 api.driver.wallet(),
                 api.notifications.list()
             ]);
 
-            const [profileResult, statsResult, ridesResult, walletResult, notifResult] = results;
+            const [profileResult, statsResult, ridesResult, pendingResult, walletResult, notifResult] = results;
 
             if (profileResult.status === 'fulfilled') {
                 const profileData = profileResult.value;
@@ -157,9 +160,12 @@ const DriverDashboard: React.FC = () => {
                 const walletData = walletResult.value;
                 if (walletData.success || walletData.data) {
                     const w = walletData.data || walletData;
+                    const stats = w.stats || w;
                     setEarnings(prev => ({
                         ...prev,
-                        available_balance: w.balance || 0,
+                        available_balance: stats.wallet_balance || 0,
+                        total_earnings: stats.total_earnings || prev.total_earnings,
+                        today_earnings: stats.today_earnings || prev.today_earnings,
                     }));
                 }
             }
@@ -179,11 +185,18 @@ const DriverDashboard: React.FC = () => {
                     const rides = ridesData.data || ridesData;
                     const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
 
-                    const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'in_progress');
-                    const pending = ridesArray.find((r: any) => r.status === 'pending');
+                    const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'ongoing');
                     setActiveRide(active || null);
-                    setPendingRide(pending || null);
                     setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
+                }
+            }
+
+            if (pendingResult.status === 'fulfilled') {
+                const pendingData = pendingResult.value;
+                if (pendingData.success && pendingData.data) {
+                    const pendingArray = Array.isArray(pendingData.data) ? pendingData.data : [];
+                    setPendingRides(pendingArray);
+                    pendingRidesCountRef.current = pendingArray.length;
                 }
             }
         } catch (error) {
@@ -267,9 +280,8 @@ const DriverDashboard: React.FC = () => {
                         icon: 'success',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -313,9 +325,8 @@ const DriverDashboard: React.FC = () => {
                         icon: 'info',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -422,9 +433,8 @@ const DriverDashboard: React.FC = () => {
                         icon: 'success',
                         timer: 2000,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -484,9 +494,8 @@ const DriverDashboard: React.FC = () => {
                         icon: 'success',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -511,10 +520,10 @@ const DriverDashboard: React.FC = () => {
     const withdrawFunds = () => {
         const availableBalance = earnings.available_balance;
 
-        if (availableBalance < 1000) {
+        if (availableBalance < 100) {
             Swal.fire({
                 title: 'Insufficient Balance',
-                text: 'Minimum withdrawal amount is ₦1,000',
+                text: 'Minimum withdrawal amount is ₦100',
                 icon: 'warning',
                 confirmButtonColor: '#ff5e00'
             });
@@ -525,7 +534,10 @@ const DriverDashboard: React.FC = () => {
             title: 'Withdraw Funds',
             html: `
                 <p class="mb-4">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
-                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${availableBalance}" step="100">
+                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${availableBalance}" step="100">
+                <div style="margin-top: 12px;">
+                    <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password" style="margin-top: 8px;">
+                </div>
                 <p class="text-sm text-gray-500 mt-2">Withdrawal will be sent to your default bank account on file.</p>
             `,
             showCancelButton: true,
@@ -533,29 +545,34 @@ const DriverDashboard: React.FC = () => {
             confirmButtonColor: '#ff5e00',
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
+                const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
 
-                if (!amount || amount < 1000) {
-                    Swal.showValidationMessage('Minimum withdrawal is ₦1,000');
+                if (!amount || amount < 100) {
+                    Swal.showValidationMessage('Minimum withdrawal is ₦100');
                     return false;
                 }
                 if (amount > availableBalance) {
                     Swal.showValidationMessage('Insufficient balance');
                     return false;
                 }
-                return { amount };
+                if (!password) {
+                    Swal.showValidationMessage('Please enter your password');
+                    return false;
+                }
+                return { amount, password };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 try {
-                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount, password: result.value.password });
                     Swal.close();
                     if (data.success) {
                         Swal.fire({
-                            title: 'Withdrawal Request Submitted',
+                            title: 'Withdrawal Successful',
                             html: `
                                 <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
-                                <p class="mt-4 text-sm text-gray-500">Your withdrawal will be processed within 24-48 hours.</p>
+                                <p class="mt-4 text-sm text-gray-500">Funds sent to your bank account.</p>
                             `,
                             icon: 'success',
                             confirmButtonColor: '#ff5e00'
@@ -677,29 +694,46 @@ const DriverDashboard: React.FC = () => {
     useEffect(() => {
         fetchDashboardData();
 
-        // Set up periodic refresh for ride requests (every 30 seconds)
+        // Periodic refresh every 10 seconds
         const interval = setInterval(() => {
-            if (driverStatus === 'online') {
-                api.driver.pendingRides()
-                    .then(data => {
-                        if (data.has_new_rides) {
+            Promise.allSettled([
+                api.driver.rides(5),
+                api.driver.pendingRides(),
+            ]).then(([ridesResult, pendingResult]) => {
+                if (ridesResult.status === 'fulfilled') {
+                    const ridesData = ridesResult.value;
+                    if (ridesData.success || ridesData.data) {
+                        const rides = ridesData.data || ridesData;
+                        const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
+                        const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'ongoing');
+                        setActiveRide(active || null);
+                        setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
+                    }
+                }
+                if (pendingResult.status === 'fulfilled') {
+                    const pendingData = pendingResult.value;
+                    if (pendingData.success && pendingData.data) {
+                        const pendingArray = Array.isArray(pendingData.data) ? pendingData.data : [];
+                        const hadRideBefore = pendingRidesCountRef.current > 0;
+                        setPendingRides(pendingArray);
+                        pendingRidesCountRef.current = pendingArray.length;
+                        if (driverStatus === 'online' && pendingArray.length > 0 && !hadRideBefore) {
                             Swal.fire({
-                                title: 'New Ride Available',
-                                text: 'A new ride request has arrived',
+                                title: 'New Ride Request!',
+                                text: `${pendingArray.length} ride(s) available`,
                                 icon: 'info',
-                                timer: 3000,
+                                timer: 4000,
                                 showConfirmButton: false
-                            }).then(() => {
-                                fetchDashboardData();
                             });
                         }
-                    })
-                    .catch(err => console.error('Error checking for new rides:', err));
-            }
-        }, 30000);
+                    }
+                }
+            }).catch(err => console.error('Polling error:', err));
+        }, 10000);
 
         return () => clearInterval(interval);
     }, [fetchDashboardData, driverStatus]);
+
 
     const firstName = (driverData?.fullname || driverData?.full_name)?.split(' ')[0] || 'Driver';
     const driverInitial = (driverData?.fullname || driverData?.full_name)?.charAt(0)?.toUpperCase() || 'D';
@@ -872,52 +906,63 @@ const DriverDashboard: React.FC = () => {
                         </div>
                     )}
 
-                    {pendingRide && !activeRide && (
-                        <div className={`driver-card pending-ride-card ${pendingRide.request_type === 'private' ? 'private' : 'public'}`}>
-                            <div className={`ride-header ${pendingRide.request_type === 'private' ? 'private' : 'public'}`}>
-                                <span><i className={`fas fa-${pendingRide.request_type === 'private' ? 'user-tag' : 'clock'}`}></i> {pendingRide.request_type === 'private' ? 'PRIVATE RIDE REQUEST' : 'NEW RIDE REQUEST'}</span>
-                                <span className="action-badge">Action required</span>
+                    {pendingRides.length > 0 && !activeRide && (
+                        <div className="pending-rides-section">
+                            <div className="section-header">
+                                <h3>Available Rides ({pendingRides.length})</h3>
                             </div>
-                            <div className="ride-content">
-                                <div className="ride-icon">
-                                    <i className="fas fa-map-marker-alt"></i>
-                                </div>
-                                <div className="ride-details">
-                                    <h3>
-                                        {pendingRide.pickup_address}
-                                        <span className={`ride-type-badge ${pendingRide.request_type}`}>
-                                            {pendingRide.request_type.toUpperCase()}
-                                        </span>
-                                    </h3>
-                                    <div className="ride-info-grid">
-                                        <div>
-                                            <p className="label">Client</p>
-                                            <p className="value"><i className="fas fa-user"></i> {pendingRide.client_name}</p>
+                            {pendingRides.map((ride) => (
+                                <div key={ride.id} className={`driver-card pending-ride-card ${(ride.request_type || 'public') === 'private' ? 'private' : 'public'}`}>
+                                    <div className={`ride-header ${(ride.request_type || 'public') === 'private' ? 'private' : 'public'}`}>
+                                        <span><i className={`fas fa-${(ride.request_type || 'public') === 'private' ? 'user-tag' : 'clock'}`}></i> {(ride.request_type || 'public') === 'private' ? 'PRIVATE RIDE REQUEST' : 'NEW RIDE REQUEST'}</span>
+                                        <span className="action-badge">Action required</span>
+                                    </div>
+                                    <div className="ride-content">
+                                        <div className="ride-icon">
+                                            <i className="fas fa-map-marker-alt"></i>
                                         </div>
-                                        <div>
-                                            <p className="label">Distance</p>
-                                            <p className="value"><i className="fas fa-road"></i> {pendingRide.distance_km} km</p>
+                                        <div className="ride-details">
+                                            <h3>
+                                                {ride.pickup_address}
+                                                <span className={`ride-type-badge ${ride.request_type || 'public'}`}>
+                                                    {(ride.request_type || 'public').toUpperCase()}
+                                                </span>
+                                            </h3>
+                                            <div className="ride-info-grid">
+                                                <div>
+                                                    <p className="label">Client</p>
+                                                    <p className="value"><i className="fas fa-user"></i> {ride.client_name}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="label">Fare</p>
+                                                    <p className="value"><i className="fas fa-tag"></i> {formatCurrency(ride.total_fare)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="label">Distance</p>
+                                                    <p className="value"><i className="fas fa-road"></i> {ride.distance_km} km</p>
+                                                </div>
+                                                <div>
+                                                    <p className="label">Est. Time</p>
+                                                    <p className="value"><i className="fas fa-clock"></i> {Math.round((ride.distance_km || 0) / 30 * 60)} min</p>
+                                                </div>
+                                            </div>
+                                            <p className="destination"><i className="fas fa-flag-checkered"></i> To: {ride.destination_address}</p>
                                         </div>
                                     </div>
-                                    <p className="destination"><i className="fas fa-flag-checkered"></i> To: {pendingRide.destination_address}</p>
-                                    <div className="ride-meta">
-                                        <span className="fare">{formatCurrency(pendingRide.total_fare)}</span>
-                                        <span>Est. {Math.round((pendingRide.distance_km || 0) / 30 * 60)} min</span>
+                                    <div className="ride-actions">
+                                        <button className="action-accept" onClick={() => acceptRide(ride.id)}>
+                                            <i className="fas fa-check"></i> Accept Ride
+                                        </button>
+                                        <button className="action-decline" onClick={() => declineRide(ride.id)}>
+                                            <i className="fas fa-times"></i> Decline
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="ride-actions">
-                                <button className="action-accept" onClick={() => acceptRide(pendingRide.id)}>
-                                    <i className="fas fa-check"></i> Accept Ride
-                                </button>
-                                <button className="action-decline" onClick={() => declineRide(pendingRide.id)}>
-                                    <i className="fas fa-times"></i> Decline
-                                </button>
-                            </div>
+                            ))}
                         </div>
                     )}
 
-                    {!activeRide && !pendingRide && (
+                    {!activeRide && pendingRides.length === 0 && (
                         <div className="driver-card no-ride-card">
                             <div className="no-ride-content">
                                 <i className="fas fa-clock"></i>
@@ -1012,4 +1057,10 @@ const DriverDashboard: React.FC = () => {
     );
 };
 
-export default DriverDashboard;
+const WrappedDriverDashboard: React.FC = () => (
+    <ErrorBoundary>
+        <DriverDashboard />
+    </ErrorBoundary>
+);
+
+export default WrappedDriverDashboard;

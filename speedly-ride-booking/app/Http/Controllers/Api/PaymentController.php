@@ -159,25 +159,25 @@ class PaymentController extends Controller
         $reference = $request->query('reference');
 
         if (!$reference) {
-            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('No reference provided');
+            $redirectUrl = config('app.url') . '/clientwallet?payment_status=failed&message=' . urlencode('No reference provided');
             return redirect($redirectUrl);
         }
 
         $transaction = PaymentGatewayTransaction::where('transaction_reference', $reference)->first();
 
         if (!$transaction) {
-            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('Transaction not found');
+            $redirectUrl = config('app.url') . '/clientwallet?payment_status=failed&message=' . urlencode('Transaction not found');
             return redirect($redirectUrl);
         }
 
         if ($transaction->status === 'success') {
-            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=completed&reference=' . $reference;
+            $redirectUrl = config('app.url') . '/clientwallet?payment_status=completed&reference=' . $reference;
             return redirect($redirectUrl);
         }
 
         $secretKey = $this->getKorapaySecretKey();
         if (empty($secretKey)) {
-            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('Payment gateway not configured');
+            $redirectUrl = config('app.url') . '/clientwallet?payment_status=failed&message=' . urlencode('Payment gateway not configured');
             return redirect($redirectUrl);
         }
 
@@ -203,9 +203,13 @@ class PaymentController extends Controller
 
             $status = $transaction->fresh()->status;
             $frontendStatus = $status === 'success' ? 'completed' : $status;
-            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=' . $frontendStatus . '&reference=' . $reference;
+            $redirectUrl = config('app.url') . '/clientwallet?payment_status=' . $frontendStatus . '&reference=' . $reference;
         } catch (\Exception $e) {
-            $redirectUrl = config('app.url') . '/clientdashboard?payment_status=failed&message=' . urlencode('Verification failed');
+            \Illuminate\Support\Facades\Log::error('Payment callback verification failed: ' . $e->getMessage(), [
+                'reference' => $reference,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $redirectUrl = config('app.url') . '/clientwallet?payment_status=pending&reference=' . $reference;
         }
 
         return redirect($redirectUrl);
@@ -289,11 +293,20 @@ class PaymentController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Payment verify API call failed: ' . $e->getMessage(), [
+                'reference' => $reference,
+            ]);
+            $balance = $this->getWalletBalance($transaction->user_id);
             return response()->json([
-                'success' => false,
-                'message' => 'Unable to verify payment. Please try again.',
-                'data' => null,
-            ], 502);
+                'success' => true,
+                'message' => 'Could not reach payment gateway, please check back later.',
+                'amount' => (float) $transaction->amount,
+                'new_balance' => $balance,
+                'data' => [
+                    'status' => 'pending',
+                    'transaction' => $transaction,
+                ],
+            ]);
         }
     }
 

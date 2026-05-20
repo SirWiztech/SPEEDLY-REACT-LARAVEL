@@ -117,10 +117,11 @@ const DriverDashboardMobile: React.FC = () => {
                 api.driver.stats(),
                 api.driver.wallet(),
                 api.driver.rides(5),
+                api.driver.pendingRides(),
                 api.notifications.list()
             ]);
 
-            const [profileResult, statsResult, walletResult, ridesResult, notifResult] = results;
+            const [profileResult, statsResult, walletResult, ridesResult, pendingResult, notifResult] = results;
 
             // Process profile
             const profileData = profileResult.status === 'fulfilled' ? profileResult.value : null;
@@ -152,14 +153,14 @@ const DriverDashboardMobile: React.FC = () => {
             // Process wallet
             const walletData = walletResult.status === 'fulfilled' ? walletResult.value : null;
             if (walletData && (walletData.success || walletData.data)) {
-                const w = walletData.data?.wallet || walletData.wallet || walletData.data;
+                const s = walletData.data?.stats || walletData.data || walletData;
                 setEarnings({
-                    total_earnings: w.total_earnings || w.total_earned || 0,
-                    available_balance: w.available_balance || w.balance || 0,
-                    pending_clearance: w.pending_clearance || 0,
-                    today_earnings: w.today_earnings || 0,
-                    week_earnings: w.week_earnings || 0,
-                    month_earnings: w.month_earnings || 0,
+                    total_earnings: s.total_earnings || 0,
+                    available_balance: s.wallet_balance || s.balance || 0,
+                    pending_clearance: s.pending_clearance || 0,
+                    today_earnings: s.today_earnings || 0,
+                    week_earnings: s.week_earnings || 0,
+                    month_earnings: s.month_earnings || 0,
                 });
             }
 
@@ -169,11 +170,16 @@ const DriverDashboardMobile: React.FC = () => {
                 const rides = ridesData.data || ridesData;
                 const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
 
-                const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'in_progress');
-                const pending = ridesArray.find((r: any) => r.status === 'pending');
+                const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'ongoing');
                 setActiveRide(active || null);
-                setPendingRide(pending || null);
                 setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
+            }
+
+            // Process pending rides
+            const pendingData = pendingResult.status === 'fulfilled' ? pendingResult.value : null;
+            if (pendingData && pendingData.success && pendingData.data) {
+                const pendingArray = Array.isArray(pendingData.data) ? pendingData.data : [];
+                setPendingRide(pendingArray.length > 0 ? pendingArray[0] : null);
             }
 
             // Process notifications
@@ -265,9 +271,8 @@ const DriverDashboardMobile: React.FC = () => {
                         icon: 'success',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -311,9 +316,8 @@ const DriverDashboardMobile: React.FC = () => {
                         icon: 'info',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -425,9 +429,8 @@ const DriverDashboardMobile: React.FC = () => {
                         icon: 'success',
                         timer: 2000,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -487,9 +490,8 @@ const DriverDashboardMobile: React.FC = () => {
                         icon: 'success',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        fetchDashboardData();
                     });
+                    fetchDashboardData();
                 } else {
                     Swal.fire({
                         title: 'Error',
@@ -514,10 +516,10 @@ const DriverDashboardMobile: React.FC = () => {
     const withdrawFunds = () => {
         const availableBalance = earnings.available_balance;
 
-        if (availableBalance < 1000) {
+        if (availableBalance < 100) {
             Swal.fire({
                 title: 'Insufficient Balance',
-                text: 'Minimum withdrawal amount is ₦1,000',
+                text: 'Minimum withdrawal amount is ₦100',
                 icon: 'warning',
                 confirmButtonColor: '#ff5e00'
             });
@@ -528,14 +530,15 @@ const DriverDashboardMobile: React.FC = () => {
             title: 'Withdraw Funds',
             html: `
                 <p class="mb-4" style="margin-bottom: 16px;">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
-                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${availableBalance}" step="100" style="margin-bottom: 12px;">
+                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${availableBalance}" step="100" style="margin-bottom: 12px;">
+                <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password" style="margin-bottom: 12px;">
                 <select id="bank-name" class="swal2-input" style="margin-bottom: 12px;">
                     <option value="">Select Bank</option>
-                    <option value="Access Bank">Access Bank</option>
-                    <option value="GTBank">GTBank</option>
-                    <option value="First Bank">First Bank</option>
-                    <option value="UBA">UBA</option>
-                    <option value="Zenith">Zenith Bank</option>
+                    <option value="Access Bank" data-code="044">Access Bank</option>
+                    <option value="GTBank" data-code="058">GTBank</option>
+                    <option value="First Bank of Nigeria" data-code="011">First Bank</option>
+                    <option value="UBA" data-code="033">UBA</option>
+                    <option value="Zenith Bank" data-code="057">Zenith Bank</option>
                 </select>
                 <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" style="margin-bottom: 12px;">
                 <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
@@ -545,16 +548,23 @@ const DriverDashboardMobile: React.FC = () => {
             confirmButtonColor: '#ff5e00',
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
-                const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
+                const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
+                const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
+                const bank = bankSelect?.value;
+                const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || '';
                 const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
                 const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
 
-                if (!amount || amount < 1000) {
-                    Swal.showValidationMessage('Minimum withdrawal is ₦1,000');
+                if (!amount || amount < 100) {
+                    Swal.showValidationMessage('Minimum withdrawal is ₦100');
                     return false;
                 }
                 if (amount > availableBalance) {
                     Swal.showValidationMessage('Insufficient balance');
+                    return false;
+                }
+                if (!password) {
+                    Swal.showValidationMessage('Please enter your password');
                     return false;
                 }
                 if (!bank) {
@@ -569,37 +579,46 @@ const DriverDashboardMobile: React.FC = () => {
                     Swal.showValidationMessage('Please enter account name');
                     return false;
                 }
-                return { amount, bank, account, name };
+                return { amount, password, bank, bankCode, account, name };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
                     title: 'Processing Withdrawal',
-                    html: 'Please wait while we submit your request...',
+                    html: 'Please wait while we process your payout...',
                     allowOutsideClick: false,
                     didOpen: () => Swal.showLoading()
                 });
 
                 try {
-                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount });
+                    const v = result.value;
+                    const data = await api.driver.requestWithdrawal({
+                        amount: v.amount,
+                        password: v.password,
+                        bank_name: v.bank,
+                        bank_code: v.bankCode,
+                        account_number: v.account,
+                        account_name: v.name,
+                    });
 
                     if (data.success) {
                         Swal.fire({
-                            title: 'Withdrawal Request Submitted',
+                            title: 'Withdrawal Successful',
                             html: `
-                                <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
-                                <p>Bank: ${result.value.bank}</p>
-                                <p>Account: ${result.value.account} (${result.value.name})</p>
-                                <p class="mt-4 text-sm" style="margin-top: 16px; font-size: 12px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
+                                <p>Amount: <strong>₦${v.amount.toLocaleString()}</strong></p>
+                                <p>Bank: ${v.bank}</p>
+                                <p>Account: ${v.account} (${v.name})</p>
+                                <p class="mt-4 text-sm" style="margin-top: 16px; font-size: 12px; color: #666;">Funds sent to your bank account.</p>
                             `,
                             icon: 'success',
                             confirmButtonColor: '#ff5e00'
-                        }).then(() => fetchDashboardData());
+                        });
+                        fetchDashboardData();
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'Withdrawal Failed',
-                            text: data.message || 'Failed to submit withdrawal.',
+                            text: data.message || 'Failed to process withdrawal.',
                             confirmButtonColor: '#ff5e00'
                         });
                     }
@@ -740,23 +759,39 @@ const DriverDashboardMobile: React.FC = () => {
         fetchDashboardData();
     }, []);
 
-    // Periodic polling for new ride requests
+    // Periodic polling every 10 seconds
     useEffect(() => {
         const pollInterval = setInterval(async () => {
             try {
-                const data = await api.driver.pendingRides();
-                if (data.success && data.data) {
-                    const pending = (Array.isArray(data.data) ? data.data : [data.data])
-                        .find((r: any) => r.status === 'pending');
-                    if (pending && !activeRide) {
-                        setPendingRide(pending);
-                        setCountdown(30);
+                const [ridesResult, pendingResult] = await Promise.allSettled([
+                    api.driver.rides(5),
+                    api.driver.pendingRides(),
+                ]);
+                if (ridesResult.status === 'fulfilled') {
+                    const ridesData = ridesResult.value;
+                    if (ridesData.success || ridesData.data) {
+                        const rides = ridesData.data || ridesData;
+                        const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
+                        const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'ongoing');
+                        setActiveRide(active || null);
+                        setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
+                    }
+                }
+                if (pendingResult.status === 'fulfilled') {
+                    const data = pendingResult.value;
+                    if (data.success && data.data) {
+                        const pending = (Array.isArray(data.data) ? data.data : [data.data])
+                            .find((r: any) => r.status === 'pending');
+                        setPendingRide(pending || null);
+                        if (pending) {
+                            setCountdown(30);
+                        }
                     }
                 }
             } catch (e) {
                 // silent
             }
-        }, 30000);
+        }, 10000);
         return () => clearInterval(pollInterval);
     }, [activeRide]);
 
@@ -870,16 +905,16 @@ const DriverDashboardMobile: React.FC = () => {
                 )}
 
                 {pendingRide && !activeRide && (
-                    <div className={`mobile-pending-ride-card ${pendingRide.request_type === 'private' ? 'private' : 'public'}`}>
-                        <div className={`ride-header ${pendingRide.request_type === 'private' ? 'private' : 'public'}`}>
-                            <span><i className={`fas fa-${pendingRide.request_type === 'private' ? 'user-tag' : 'clock'}`}></i> {pendingRide.request_type === 'private' ? 'PRIVATE RIDE' : 'NEW RIDE'}</span>
+                    <div className={`mobile-pending-ride-card ${(pendingRide.request_type || 'public') === 'private' ? 'private' : 'public'}`}>
+                        <div className={`ride-header ${(pendingRide.request_type || 'public') === 'private' ? 'private' : 'public'}`}>
+                            <span><i className={`fas fa-${(pendingRide.request_type || 'public') === 'private' ? 'user-tag' : 'clock'}`}></i> {(pendingRide.request_type || 'public') === 'private' ? 'PRIVATE RIDE' : 'NEW RIDE'}</span>
                             <span className="action-badge">Action required</span>
                         </div>
                         <div className="ride-content">
                             <h3>
                                 {pendingRide.pickup_address}
-                                <span className={`ride-type-badge ${pendingRide.request_type}`}>
-                                    {pendingRide.request_type.toUpperCase()}
+                                <span className={`ride-type-badge ${pendingRide.request_type || 'public'}`}>
+                                    {(pendingRide.request_type || 'public').toUpperCase()}
                                 </span>
                             </h3>
                             <div className="ride-info">

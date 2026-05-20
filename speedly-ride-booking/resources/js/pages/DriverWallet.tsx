@@ -106,10 +106,10 @@ const DriverWallet: React.FC = () => {
 
     // Withdraw funds
     const withdrawFunds = () => {
-        if (stats.wallet_balance < 1000) {
+        if (stats.wallet_balance < 100) {
             Swal.fire({
                 title: 'Insufficient Balance',
-                html: `Minimum withdrawal amount is <strong>₦1,000</strong><br>Your current balance is <strong>₦${stats.wallet_balance.toLocaleString()}</strong>`,
+                html: `Minimum withdrawal amount is <strong>₦100</strong><br>Your current balance is <strong>₦${stats.wallet_balance.toLocaleString()}</strong>`,
                 icon: 'warning',
                 confirmButtonColor: '#ff5e00',
                 confirmButtonText: 'Got it'
@@ -128,27 +128,27 @@ const DriverWallet: React.FC = () => {
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #333;">Amount to Withdraw</label>
-                        <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${stats.wallet_balance}" step="500" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #e0e0e0; font-size: 14px;">
+                        <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${stats.wallet_balance}" step="100" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #e0e0e0; font-size: 14px;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #333;">Select Bank</label>
                         <select id="bank-name" class="swal2-input" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #e0e0e0;">
                             <option value="">Choose a bank</option>
-                            <option value="Access Bank">Access Bank</option>
-                            <option value="GTBank">GTBank</option>
-                            <option value="First Bank of Nigeria">First Bank</option>
-                            <option value="United Bank for Africa (UBA)">UBA</option>
-                            <option value="Zenith Bank">Zenith Bank</option>
-                            <option value="Fidelity Bank">Fidelity Bank</option>
-                            <option value="Union Bank of Nigeria">Union Bank</option>
-                            <option value="Sterling Bank">Sterling Bank</option>
-                            <option value="EcoBank">EcoBank</option>
-                            <option value="Polaris Bank">Polaris Bank</option>
-                            <option value="Stanbic IBTC">Stanbic IBTC</option>
-                            <option value="Opay">Opay</option>
-                            <option value="PalmPay">PalmPay</option>
-                            <option value="Moniepoint">Moniepoint</option>
+                            <option value="Access Bank" data-code="044">Access Bank</option>
+                            <option value="GTBank" data-code="058">GTBank</option>
+                            <option value="First Bank of Nigeria" data-code="011">First Bank</option>
+                            <option value="United Bank for Africa (UBA)" data-code="033">UBA</option>
+                            <option value="Zenith Bank" data-code="057">Zenith Bank</option>
+                            <option value="Fidelity Bank" data-code="070">Fidelity Bank</option>
+                            <option value="Union Bank of Nigeria" data-code="032">Union Bank</option>
+                            <option value="Sterling Bank" data-code="232">Sterling Bank</option>
+                            <option value="EcoBank" data-code="050">EcoBank</option>
+                            <option value="Polaris Bank" data-code="076">Polaris Bank</option>
+                            <option value="Stanbic IBTC" data-code="221">Stanbic IBTC</option>
+                            <option value="Opay" data-code="999992">Opay</option>
+                            <option value="PalmPay" data-code="999991">PalmPay</option>
+                            <option value="Moniepoint" data-code="50515">Moniepoint</option>
                         </select>
                     </div>
                     
@@ -162,8 +162,13 @@ const DriverWallet: React.FC = () => {
                         <input type="text" id="account-name" class="swal2-input" placeholder="Account holder name" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #e0e0e0;">
                     </div>
                     
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #333;">Password</label>
+                        <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #e0e0e0;">
+                    </div>
+                    
                     <div style="margin-top: 16px; padding: 12px; background: #fff8e6; border-radius: 12px; font-size: 12px; color: #856404;">
-                        <i class="fas fa-info-circle"></i> Withdrawals are processed within 24-48 hours
+                        <i class="fas fa-info-circle"></i> Funds will be sent to your bank account immediately
                     </div>
                 </div>
             `,
@@ -174,16 +179,23 @@ const DriverWallet: React.FC = () => {
             cancelButtonColor: '#6c757d',
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
-                const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
+                const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
+                const bank = bankSelect?.value;
+                const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || '';
                 const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
                 const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
+                const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
                 
-                if (!amount || isNaN(amount) || amount < 1000) {
-                    Swal.showValidationMessage('Minimum withdrawal amount is ₦1,000');
+                if (!amount || isNaN(amount) || amount < 100) {
+                    Swal.showValidationMessage('Minimum withdrawal amount is ₦100');
                     return false;
                 }
                 if (amount > stats.wallet_balance) {
                     Swal.showValidationMessage(`Insufficient balance. Maximum withdrawal is ₦${stats.wallet_balance.toLocaleString()}`);
+                    return false;
+                }
+                if (!password) {
+                    Swal.showValidationMessage('Please enter your password');
                     return false;
                 }
                 if (!bank) {
@@ -198,41 +210,44 @@ const DriverWallet: React.FC = () => {
                     Swal.showValidationMessage('Please enter the account holder name');
                     return false;
                 }
-                return { amount, bank, account, name: name.trim() };
+                return { amount, bank, bankCode, account, name: name.trim(), password };
             }
         }).then(async (result) => {
             if (result.isConfirmed && result.value) {
                 Swal.fire({
                     title: 'Processing Withdrawal',
-                    html: 'Please wait while we submit your request...',
+                    html: 'Please wait while we process your payout...',
                     allowOutsideClick: false,
                     didOpen: () => Swal.showLoading()
                 });
 
                 try {
+                    const v = result.value;
                     const data = await api.driver.requestWithdrawal({
-                        amount: result.value.amount,
-                        bank_name: result.value.bank,
-                        account_number: result.value.account,
-                        account_name: result.value.name,
+                        amount: v.amount,
+                        password: v.password,
+                        bank_name: v.bank,
+                        bank_code: v.bankCode,
+                        account_number: v.account,
+                        account_name: v.name,
                     });
 
                     if (data.success) {
                         Swal.fire({
-                            title: 'Withdrawal Request Submitted!',
+                            title: 'Withdrawal Successful!',
                             html: `
                                 <div style="text-align: left;">
                                     <div style="background: #d1fae5; padding: 16px; border-radius: 16px; margin-bottom: 16px;">
-                                        <p style="font-size: 12px; color: #065f46; margin-bottom: 4px;">Amount Requested</p>
-                                        <p style="font-size: 24px; font-weight: 700; color: #065f46;">₦${result.value.amount.toLocaleString()}</p>
+                                        <p style="font-size: 12px; color: #065f46; margin-bottom: 4px;">Amount Sent</p>
+                                        <p style="font-size: 24px; font-weight: 700; color: #065f46;">₦${v.amount.toLocaleString()}</p>
                                     </div>
                                     <div style="margin-bottom: 12px;">
-                                        <p style="font-size: 12px; color: #666;">Bank: <strong>${result.value.bank}</strong></p>
-                                        <p style="font-size: 12px; color: #666;">Account: <strong>${result.value.account}</strong></p>
-                                        <p style="font-size: 12px; color: #666;">Name: <strong>${result.value.name}</strong></p>
+                                        <p style="font-size: 12px; color: #666;">Bank: <strong>${v.bank}</strong></p>
+                                        <p style="font-size: 12px; color: #666;">Account: <strong>${v.account}</strong></p>
+                                        <p style="font-size: 12px; color: #666;">Name: <strong>${v.name}</strong></p>
                                     </div>
-                                    <div style="background: #fef3c7; padding: 12px; border-radius: 12px;">
-                                        <p style="font-size: 12px; color: #92400e;"><i class="fas fa-clock"></i> Your withdrawal will be processed within 24-48 hours.</p>
+                                    <div style="background: #d1fae5; padding: 12px; border-radius: 12px;">
+                                        <p style="font-size: 12px; color: #065f46;"><i class="fas fa-check-circle"></i> Funds sent to your bank account</p>
                                     </div>
                                 </div>
                             `,
@@ -246,7 +261,7 @@ const DriverWallet: React.FC = () => {
                         Swal.fire({
                             icon: 'error',
                             title: 'Withdrawal Failed',
-                            text: data.message || 'Failed to submit withdrawal request.',
+                            text: data.message || 'Failed to process withdrawal.',
                             confirmButtonColor: '#ff5e00'
                         });
                     }

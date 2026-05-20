@@ -87,4 +87,11 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
+/*
+|--------------------------------------------------------------------------
+| Payment Public Routes (no auth required - payment gateway redirect)
+|--------------------------------------------------------------------------
+*/
+Route::get('/payment/callback', [\App\Http\Controllers\Api\PaymentController::class, 'callback']);
+
 require __DIR__.'/settings.php';

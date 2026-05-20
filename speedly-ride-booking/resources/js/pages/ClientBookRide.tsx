@@ -237,65 +237,71 @@ const ClientBookRide: React.FC = () => {
         }
     }, [preloaderLoading, initMap]);
 
-    // Handle map click
-    const handleMapClick = async (lat: number, lng: number) => {
-        const geocoder = new google.maps.Geocoder();
-        
-        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === 'OK' && results && results[0]) {
-                const address = results[0].formatted_address;
-                const placeId = results[0].place_id;
-                
-                if (mode === 'pickup') {
-                    updatePickupLocation(lat, lng, address, placeId);
-                } else {
-                    updateDestinationLocation(lat, lng, address, placeId);
-                }
-            } else {
-                const areaName = getLocationAreaName(lat, lng);
-                if (mode === 'pickup') {
-                    updatePickupLocation(lat, lng, areaName, '');
-                } else {
-                    updateDestinationLocation(lat, lng, areaName, '');
-                }
+    // Reverse geocode with Nominatim fallback
+    const reverseGeocode = async (lat: number, lng: number): Promise<{ address: string; placeId: string }> => {
+        try {
+            const result = await new Promise<{ address: string; placeId: string } | null>((resolve) => {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                        resolve({ address: results[0].formatted_address, placeId: results[0].place_id || '' });
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+            if (result) return result;
+        } catch {}
+
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`, {
+                headers: { 'User-Agent': 'SpeedlyApp/1.0' }
+            });
+            const data = await res.json();
+            if (data && data.display_name) {
+                return { address: data.display_name, placeId: '' };
             }
-        });
+        } catch {}
+
+        return { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, placeId: '' };
     };
 
-    // Get location area name
-    const getLocationAreaName = (lat: number, lng: number): string => {
-        if (lat > 6.35 && lat < 6.70 && lng > 3.25 && lng < 3.60) {
-            if (lat > 6.57 && lat < 6.62 && lng > 3.31 && lng < 3.38) return 'Ikeja Area, Lagos';
-            if (lat > 6.42 && lat < 6.48 && lng > 3.40 && lng < 3.48) return 'Victoria Island, Lagos';
-            if (lat > 6.43 && lat < 6.48 && lng > 3.52 && lng < 3.58) return 'Lekki Area, Lagos';
-            return 'Lagos, Nigeria';
+    // Handle map click
+    const handleMapClick = async (lat: number, lng: number) => {
+        const { address, placeId } = await reverseGeocode(lat, lng);
+        if (mode === 'pickup') {
+            updatePickupLocation(lat, lng, address, placeId);
+        } else {
+            updateDestinationLocation(lat, lng, address, placeId);
         }
-        return 'Selected Location';
     };
 
     // Update pickup location
     const updatePickupLocation = (lat: number, lng: number, address: string, placeId: string | null) => {
-        if (pickupMarkerRef.current) {
-            pickupMarkerRef.current.setMap(null);
-        }
+        console.log('updatePickupLocation:', { lat, lng, address });
+        try {
+            if (pickupMarkerRef.current) {
+                pickupMarkerRef.current.setMap(null);
+            }
 
-        if (lat !== 0 && lng !== 0) {
-            pickupMarkerRef.current = new google.maps.Marker({
-                position: { lat, lng },
-                map: mapInstanceRef.current,
-                title: 'Pickup Location',
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 12,
-                    fillColor: '#4CAF50',
-                    fillOpacity: 1,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 3
-                },
-                label: { text: 'P', color: 'white', fontSize: '12px', fontWeight: 'bold' },
-                animation: google.maps.Animation.DROP
-            });
-        }
+            if (lat !== 0 && lng !== 0) {
+                pickupMarkerRef.current = new google.maps.Marker({
+                    position: { lat, lng },
+                    map: mapInstanceRef.current,
+                    title: 'Pickup Location',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#4CAF50',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    },
+                    label: { text: 'P', color: 'white', fontSize: '12px', fontWeight: 'bold' },
+                    animation: google.maps.Animation.DROP
+                });
+            }
+        } catch {}
 
         setBooking(prev => ({
             ...prev,
@@ -304,33 +310,36 @@ const ClientBookRide: React.FC = () => {
 
         if (booking.destination.lat && booking.destination.lng && lat !== 0 && lng !== 0) {
             drawRoute();
-            calculateFare();
+            calculateFare(lat, lng, booking.destination.lat, booking.destination.lng);
         }
     };
 
     // Update destination location
     const updateDestinationLocation = (lat: number, lng: number, address: string, placeId: string | null) => {
-        if (destMarkerRef.current) {
-            destMarkerRef.current.setMap(null);
-        }
+        console.log('updateDestinationLocation:', { lat, lng, address });
+        try {
+            if (destMarkerRef.current) {
+                destMarkerRef.current.setMap(null);
+            }
 
-        if (lat !== 0 && lng !== 0) {
-            destMarkerRef.current = new google.maps.Marker({
-                position: { lat, lng },
-                map: mapInstanceRef.current,
-                title: 'Destination',
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 12,
-                    fillColor: '#F44336',
-                    fillOpacity: 1,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 3
-                },
-                label: { text: 'D', color: 'white', fontSize: '12px', fontWeight: 'bold' },
-                animation: google.maps.Animation.DROP
-            });
-        }
+            if (lat !== 0 && lng !== 0) {
+                destMarkerRef.current = new google.maps.Marker({
+                    position: { lat, lng },
+                    map: mapInstanceRef.current,
+                    title: 'Destination',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#F44336',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    },
+                    label: { text: 'D', color: 'white', fontSize: '12px', fontWeight: 'bold' },
+                    animation: google.maps.Animation.DROP
+                });
+            }
+        } catch {}
 
         setBooking(prev => ({
             ...prev,
@@ -339,7 +348,7 @@ const ClientBookRide: React.FC = () => {
 
         if (booking.pickup.lat && booking.pickup.lng && lat !== 0 && lng !== 0) {
             drawRoute();
-            calculateFare();
+            calculateFare(booking.pickup.lat, booking.pickup.lng, lat, lng);
         }
     };
 
@@ -360,16 +369,20 @@ const ClientBookRide: React.FC = () => {
         });
     };
 
-    // Calculate fare
-    const calculateFare = async () => {
-        if (!booking.pickup.lat || !booking.destination.lat) return;
+    // Calculate fare (accepts coords to avoid stale closure)
+    const calculateFare = async (pickupLat?: number, pickupLng?: number, destLat?: number, destLng?: number) => {
+        const pLat = pickupLat ?? booking.pickup.lat;
+        const pLng = pickupLng ?? booking.pickup.lng;
+        const dLat = destLat ?? booking.destination.lat;
+        const dLng = destLng ?? booking.destination.lng;
+        if (!pLat || !pLng || !dLat || !dLng) return;
 
         try {
             const data = await api.rides.calculateFare({
-                pickup_lat: booking.pickup.lat,
-                pickup_lng: booking.pickup.lng,
-                dropoff_lat: booking.destination.lat,
-                dropoff_lng: booking.destination.lng,
+                pickup_lat: pLat,
+                pickup_lng: pLng,
+                dropoff_lat: dLat,
+                dropoff_lng: dLng,
                 ride_type: booking.plan || 'economy'
             });
 
@@ -380,10 +393,7 @@ const ClientBookRide: React.FC = () => {
                     fare: data.data.estimated_fare || 0
                 }));
                 
-                // Find nearby drivers
-                if (booking.pickup.lat && booking.pickup.lng) {
-                    findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan || 'economy');
-                }
+                findNearbyDrivers(pLat, pLng, booking.plan || 'economy');
             }
         } catch (error) {
             console.error('Error calculating fare:', error);
@@ -393,7 +403,7 @@ const ClientBookRide: React.FC = () => {
     // Find nearby drivers
     const findNearbyDrivers = async (lat: number, lng: number, rideType: string) => {
         try {
-            const data = await api.driver.nearbyDrivers({ lat, lng, radius_km: 5 });
+            const data = await api.driver.nearbyDrivers({ lat, lng, radius_km: 10 });
             
             if (data.success && data.data) {
                 const rawList = Array.isArray(data.data) ? data.data : [];
@@ -467,10 +477,12 @@ const ClientBookRide: React.FC = () => {
         const lng = location.lng;
         const address = location.address;
 
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.setCenter({ lat, lng });
-            mapInstanceRef.current.setZoom(16);
-        }
+        try {
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.setCenter({ lat, lng });
+                mapInstanceRef.current.setZoom(16);
+            }
+        } catch {}
 
         if (type === 'pickup') {
             updatePickupLocation(lat, lng, address, null);
@@ -481,14 +493,17 @@ const ClientBookRide: React.FC = () => {
 
     // Use popular location
     const usePopularLocation = (location: typeof popularLocations[0], type: 'pickup' | 'destination') => {
+        console.log('usePopularLocation:', { location, type });
         const lat = location.lat;
         const lng = location.lng;
         const address = location.address;
 
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.setCenter({ lat, lng });
-            mapInstanceRef.current.setZoom(16);
-        }
+        try {
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.setCenter({ lat, lng });
+                mapInstanceRef.current.setZoom(16);
+            }
+        } catch {}
 
         if (type === 'pickup') {
             updatePickupLocation(lat, lng, address, null);
@@ -499,11 +514,13 @@ const ClientBookRide: React.FC = () => {
 
     // Select plan
     const selectPlan = (plan: string) => {
+        console.log('selectPlan called:', plan, 'pickup:', booking.pickup, 'destination:', booking.destination);
         setSelectedPlan(plan);
         setBooking(prev => ({ ...prev, plan }));
         
-        if (booking.pickup.lat && booking.destination.lat) {
-            calculateFare();
+        if (booking.pickup.lat && booking.pickup.lng && booking.destination.lat && booking.destination.lng) {
+            console.log('selectPlan: triggering calculateFare');
+            calculateFare(booking.pickup.lat, booking.pickup.lng, booking.destination.lat, booking.destination.lng);
         }
     };
 
@@ -563,7 +580,12 @@ const ClientBookRide: React.FC = () => {
         }
         
         if (step < 4) {
-            setStep(step + 1);
+            const next = step + 1;
+            setStep(next);
+            console.log('nextStep: step->', next, 'pickup:', booking.pickup, 'plan:', booking.plan);
+            if (next === 3 && booking.pickup.lat && booking.pickup.lng) {
+                findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan || 'economy');
+            }
         }
     };
 
@@ -647,9 +669,11 @@ const ClientBookRide: React.FC = () => {
             } else {
                 Swal.fire({ icon: 'error', title: 'Booking Failed', text: data.message, confirmButtonColor: '#ff5e00' });
             }
-        } catch (error) {
+        } catch (error: any) {
             Swal.close();
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to book ride', confirmButtonColor: '#ff5e00' });
+            console.error('Book ride error:', error);
+            const message = error?.message || 'Failed to book ride';
+            Swal.fire({ icon: 'error', title: 'Booking Error', text: message, confirmButtonColor: '#ff5e00' });
         }
     };
 
@@ -685,6 +709,14 @@ const ClientBookRide: React.FC = () => {
             startWatchingPosition,
         };
     });
+
+    // Fetch drivers when entering step 3
+    useEffect(() => {
+        console.log('Step 3 useEffect triggered, step:', step, 'pickup:', booking.pickup, 'plan:', booking.plan);
+        if (step === 3 && booking.pickup.lat && booking.pickup.lng) {
+            findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan || 'economy');
+        }
+    }, [step]);
 
     // Initial data fetch
     useEffect(() => {

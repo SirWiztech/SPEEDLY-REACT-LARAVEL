@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentSession extends Model
 {
+    const UPDATED_AT = null;
     protected $keyType = 'string';
 
     protected $fillable = [

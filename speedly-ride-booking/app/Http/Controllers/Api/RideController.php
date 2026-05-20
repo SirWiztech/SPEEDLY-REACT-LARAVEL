@@ -228,13 +228,13 @@ class RideController extends Controller
 
     public function receipt(Request $request, $id)
     {
-        $ride = Ride::with(['client.user', 'driver.user', 'driver.vehicles'])->find($id);
+        $ride = Ride::with(['client.user', 'driver.user', 'driver.vehicle'])->find($id);
 
         if (!$ride) {
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
-        if (in_array($ride->status, ['cancelled', 'pending_cancellation'])) {
+        if (in_array($ride->status, ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])) {
             return response()->json(['success' => false, 'message' => 'Receipt not available for cancelled rides'], 400);
         }
 
@@ -242,6 +242,17 @@ class RideController extends Controller
         $ride->total_fare = (float) $ride->total_fare;
         $ride->platform_commission = (float) ($ride->platform_commission ?? 0);
         $ride->driver_payout = (float) ($ride->driver_payout ?? 0);
+
+        $vehicle = $ride->driver?->vehicle;
+
+        $ride->client_name = $ride->client?->user?->full_name ?? 'Customer';
+        $ride->client_email = $ride->client?->user?->email ?? '';
+        $ride->client_phone = $ride->client?->user?->phone_number ?? '';
+        $ride->driver_name = $ride->driver?->user?->full_name;
+        $ride->driver_phone = $ride->driver?->user?->phone_number ?? '';
+        $ride->vehicle_model = $vehicle?->vehicle_model ?? '';
+        $ride->vehicle_color = $vehicle?->vehicle_color ?? '';
+        $ride->plate_number = $vehicle?->plate_number ?? '';
 
         $fareBreakdown = [
             'base_fare' => $ride->total_fare * 0.6,
@@ -322,7 +333,6 @@ class RideController extends Controller
             'ride_id' => $ride->id,
             'driver_id' => $driverProfile->id,
             'auto_decline' => false,
-            'response_time_seconds' => 0,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Ride declined']);
@@ -349,7 +359,7 @@ class RideController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
 
-            if (!in_array($ride->status, ['accepted', 'in_progress'])) {
+            if (!in_array($ride->status, ['accepted', 'ongoing'])) {
                 return response()->json(['success' => false, 'message' => 'Ride cannot be completed'], 400);
             }
 
@@ -435,13 +445,13 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        if (in_array($ride->status, ['completed', 'cancelled'])) {
+        if (in_array($ride->status, ['completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])) {
             return response()->json(['success' => false, 'message' => 'Ride cannot be cancelled'], 400);
         }
 
         return DB::transaction(function () use ($ride, $request, $user, $isClient, $isDriver) {
             $ride->update([
-                'status' => 'cancelled',
+                'status' => $isClient ? 'cancelled_by_client' : 'cancelled_by_driver',
             ]);
 
             RideCancellation::create([

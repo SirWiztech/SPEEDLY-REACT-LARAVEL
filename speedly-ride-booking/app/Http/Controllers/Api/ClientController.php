@@ -36,10 +36,10 @@ class ClientController extends Controller
         $totalRides = Ride::where('client_id', $clientId)->count();
         $completedRides = Ride::where('client_id', $clientId)->where('status', 'completed')->count();
         $activeRides = Ride::where('client_id', $clientId)
-            ->whereIn('status', ['pending', 'accepted', 'driver_assigned', 'driver_arrived', 'ongoing', 'in_progress'])
+            ->whereIn('status', ['pending', 'accepted', 'driver_assigned', 'driver_arrived', 'ongoing'])
             ->count();
         $cancelledRides = Ride::where('client_id', $clientId)
-            ->whereIn('status', ['cancelled', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
+            ->whereIn('status', ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
             ->count();
         $totalSpent = WalletTransaction::where('user_id', $user->id)->where('transaction_type', 'debit')->sum('amount');
 

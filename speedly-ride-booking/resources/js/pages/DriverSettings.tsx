@@ -685,13 +685,13 @@ const DriverSettings: React.FC = () => {
                                     confirmButtonText: 'Save Vehicle',
                                     confirmButtonColor: '#ff5e00',
                                     preConfirm: () => {
-                                        const model = (document.getElementById('vehicle-model') as HTMLInputElement)?.value;
-                                        const year = (document.getElementById('vehicle-year') as HTMLInputElement)?.value;
-                                        const color = (document.getElementById('vehicle-color') as HTMLInputElement)?.value;
-                                        const plate = (document.getElementById('plate-number') as HTMLInputElement)?.value;
-                                        const type = (document.getElementById('vehicle-type') as HTMLSelectElement)?.value;
-                                        const capacity = parseInt((document.getElementById('passenger-capacity') as HTMLInputElement)?.value);
-                                        return { model, year, color, plate, type, capacity };
+                                        const vehicle_model = (document.getElementById('vehicle-model') as HTMLInputElement)?.value;
+                                        const vehicle_year = (document.getElementById('vehicle-year') as HTMLInputElement)?.value;
+                                        const vehicle_color = (document.getElementById('vehicle-color') as HTMLInputElement)?.value;
+                                        const plate_number = (document.getElementById('plate-number') as HTMLInputElement)?.value;
+                                        const vehicle_type = (document.getElementById('vehicle-type') as HTMLSelectElement)?.value;
+                                        const passenger_capacity = parseInt((document.getElementById('passenger-capacity') as HTMLInputElement)?.value);
+                                        return { vehicle_model, vehicle_year, vehicle_color, plate_number, vehicle_type, passenger_capacity };
                                     }
                                 }).then((result) => {
                                     if (result.isConfirmed) {

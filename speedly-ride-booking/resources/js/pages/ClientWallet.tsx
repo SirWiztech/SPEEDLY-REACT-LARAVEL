@@ -520,7 +520,10 @@ const ClientWallet: React.FC = () => {
 
         // Check for payment status from URL params
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('payment_status') === 'completed') {
+        const paymentStatus = urlParams.get('payment_status');
+        const reference = urlParams.get('reference');
+
+        if (paymentStatus === 'completed' && reference) {
             Swal.fire({
                 icon: 'success',
                 title: 'Deposit Successful!',
@@ -528,6 +531,8 @@ const ClientWallet: React.FC = () => {
                 confirmButtonColor: '#ff5e00'
             });
             fetchWalletData();
+        } else if (paymentStatus === 'pending' && reference) {
+            checkPaymentStatus(reference);
         }
     }, [fetchWalletData]);
 
