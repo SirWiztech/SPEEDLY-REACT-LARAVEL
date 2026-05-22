@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import api, { setToken } from '../services/api';
 import '../../css/VerifyOtp.css';
@@ -97,7 +96,7 @@ export default function VerifyOtp() {
     };
 
     if (loading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     return (

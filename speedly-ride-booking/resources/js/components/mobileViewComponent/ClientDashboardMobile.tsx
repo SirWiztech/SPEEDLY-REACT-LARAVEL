@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientDashboardMobileView.css';
 
 // Types
@@ -69,7 +67,6 @@ const ClientDashboardMobile: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState<number>(0);
 
     const notificationIntervalRef = useRef<number | null>(null);
-    const preloaderLoading = usePreloader(1000);
 
     // Get status display text
     const getStatusDisplay = (status: string): string => {
@@ -350,9 +347,6 @@ const ClientDashboardMobile: React.FC = () => {
 
     const tierColor = userData?.membership_tier ? tierColors[userData.membership_tier] : '#6c757d';
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-dashboard-container">

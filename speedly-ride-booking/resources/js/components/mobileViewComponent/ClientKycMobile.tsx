@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../preloader/MobilePreloader';
 import { api } from '../../services/api';
 import '../../../css/ClientKyc.css';
 
@@ -26,10 +24,6 @@ export default function ClientKycMobile() {
         queryKey: ['client-kyc-mobile'],
         queryFn: () => api.client.kyc().then(res => res.data),
     });
-
-    if (loading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <>

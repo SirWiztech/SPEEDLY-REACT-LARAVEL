@@ -1,7 +1,7 @@
 /* ============================================
    SPEEDLY - CLEAN WHITE LUXURY
    Premium Login/Register Form - React Version
-   MOBILE FIXES: No double container, no scrollbars
+   MOBILE FIXES: Full width container, no double container, no scrollbars
    FIXED: Mobile footer visibility with subtle scroll
    ============================================ */
 
@@ -51,7 +51,7 @@
 }
 
 /* ============================================
-   RESET & BASE
+   RESET & BASE - FULL WIDTH MOBILE FIX
    ============================================ */
 
 * {
@@ -62,6 +62,9 @@
 
 html {
     scroll-behavior: smooth;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 body {
@@ -70,10 +73,14 @@ body {
     background-attachment: fixed;
     color: var(--text-dark);
     min-height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
 }
 
 /* ============================================
@@ -86,6 +93,8 @@ body {
     pointer-events: none;
     overflow: hidden;
     z-index: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .orb {
@@ -140,7 +149,7 @@ body {
 }
 
 /* ============================================
-   MAIN CONTAINER
+   MAIN CONTAINER - FULL WIDTH ON MOBILE
    ============================================ */
 
 .main-container {
@@ -827,24 +836,48 @@ body {
 }
 
 /* ============================================
-   RESPONSIVE DESIGN - FIXED (No double container)
+   RESPONSIVE DESIGN - FULL WIDTH MOBILE FIX
+   NO DOUBLE CONTAINER ISSUE
    ============================================ */
 
-/* Tablet and below */
+/* For all devices - proper box sizing */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Mobile First - Full width on all screens 900px and below */
 @media (max-width: 900px) {
+    /* Ensure html and body take full width without overflow */
+    html, body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        margin: 0;
+        padding: 0;
+    }
+    
     body {
         background: linear-gradient(135deg, var(--white-base) 0%, var(--white-warm) 50%, var(--white-off) 100%);
         align-items: flex-start;
+        display: block;
+        min-height: 100vh;
     }
     
+    /* Make main container full width on mobile */
     .main-container {
-        width: 100%;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
         min-height: 100vh;
         border-radius: 0;
         flex-direction: column;
         overflow: visible;
         box-shadow: none;
         background: transparent;
+        margin: 0;
+        padding: 0;
+        left: 0;
+        right: 0;
     }
     
     /* Remove the gradient overlay that creates double container effect */
@@ -852,7 +885,11 @@ body {
         display: none;
     }
     
+    /* Form panel - full width */
     .form-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
         padding: var(--space-xl);
         background: var(--white-base);
         border-radius: 0;
@@ -863,9 +900,12 @@ body {
         max-height: 100vh;
     }
     
+    /* Brand panel - full width */
     .brand-panel {
         position: relative;
-        width: 100%;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
         min-height: auto;
         border-radius: 0;
         padding: var(--space-xl);
@@ -873,15 +913,17 @@ body {
     }
     
     .main-container.active .brand-panel {
-        width: 100%;
+        width: 100% !important;
         min-height: auto;
         padding: var(--space-xl);
+        overflow: visible;
     }
     
     /* Fix for brand panel content */
     .brand-content,
     .register-brand-content {
         position: relative;
+        width: 100%;
     }
     
     .main-container.active .brand-content {
@@ -900,6 +942,7 @@ body {
         opacity: 1;
         visibility: visible;
         display: block;
+        width: 100%;
     }
     
     /* Adjust brand panel text */
@@ -913,7 +956,10 @@ body {
         max-width: 100%;
     }
     
+    /* Form content - full width */
     .form-content {
+        width: 100%;
+        max-width: 100%;
         padding-top: 0;
         padding-bottom: var(--space-xl);
     }
@@ -926,6 +972,7 @@ body {
         padding: 0;
         max-height: none;
         overflow-y: visible;
+        width: 100%;
     }
     
     .social-buttons {
@@ -950,14 +997,17 @@ body {
     .form-panel {
         padding: var(--space-lg);
         max-height: 100vh;
+        width: 100%;
     }
     
     .brand-panel {
         padding: var(--space-lg);
+        width: 100%;
     }
     
     .main-container.active .brand-panel {
         padding: var(--space-lg);
+        width: 100%;
     }
     
     .brand-panel .brand-logo {
@@ -981,6 +1031,7 @@ body {
     
     .form-wrapper {
         padding: 0;
+        width: 100%;
     }
     
     .toast-container {
@@ -1003,14 +1054,17 @@ body {
         padding: var(--space-md);
         padding-top: var(--space-lg);
         max-height: 100vh;
+        width: 100%;
     }
     
     .brand-panel {
         padding: var(--space-md);
+        width: 100%;
     }
     
     .main-container.active .brand-panel {
         padding: var(--space-md);
+        width: 100%;
     }
     
     .brand-logo {
@@ -1065,6 +1119,7 @@ body {
     /* Extra bottom padding for footer on small screens */
     .form-wrapper {
         padding-bottom: var(--space-md);
+        width: 100%;
     }
     
     .form-footer {
@@ -1078,10 +1133,12 @@ body {
     .form-panel {
         padding: var(--space-sm);
         padding-top: var(--space-md);
+        width: 100%;
     }
     
     .brand-panel {
         padding: var(--space-sm);
+        width: 100%;
     }
     
     .brand-logo {
@@ -1107,15 +1164,16 @@ body {
     .main-container {
         flex-direction: row;
         min-height: 100vh;
+        width: 100%;
     }
     
     .brand-panel {
-        width: 40%;
+        width: 40% !important;
         min-height: 100vh;
     }
     
     .form-panel {
-        width: 60%;
+        width: 60% !important;
         min-height: 100vh;
         max-height: 100vh;
         overflow-y: auto;
@@ -1139,6 +1197,7 @@ body {
     .form-wrapper {
         max-height: 100vh;
         overflow-y: visible;
+        width: 100%;
     }
     
     /* Hide scrollbar for landscape mode too - subtle */
@@ -1191,6 +1250,7 @@ body {
         max-height: 100vh;
         scrollbar-width: thin;
         -ms-overflow-style: auto;
+        width: 100%;
     }
     
     .form-panel::-webkit-scrollbar {
@@ -1215,6 +1275,7 @@ body {
     /* Ensure form content has enough bottom padding to show button */
     .form-content {
         padding-bottom: var(--space-2xl);
+        width: 100%;
     }
     
     /* Make sure the button is fully visible */
@@ -1232,11 +1293,13 @@ body {
 @media (max-width: 480px) {
     .form-panel {
         max-height: 100vh;
-       padding-bottom: calc(var(--space-2xl) * 3);  /* ← Main property */
+        padding-bottom: calc(var(--space-2xl) * 3);
+        width: 100%;
     }
     
     .form-content {
         padding-bottom: var(--space-xl);
+        width: 100%;
     }
     
     .btn-primary {
@@ -1254,10 +1317,12 @@ body {
 @media (max-width: 360px) {
     .form-panel {
         padding-bottom: var(--space-lg);
+        width: 100%;
     }
     
     .form-content {
         padding-bottom: var(--space-lg);
+        width: 100%;
     }
     
     .btn-primary {
@@ -1276,22 +1341,26 @@ body {
     opacity: 0;
     transform: translateX(20px);
     transition: opacity 0.4s var(--ease-smooth), transform 0.4s var(--ease-smooth);
+    width: 100%;
 }
 
 .form-wrapper.active {
     display: block;
     opacity: 1;
     transform: translateX(0);
+    width: 100%;
 }
 
 /* Make sure both forms have proper scroll behavior on mobile */
 @media (max-width: 900px) {
     .form-wrapper {
         overflow-y: visible;
+        width: 100%;
     }
     
     .form-wrapper.active {
         overflow-y: visible;
+        width: 100%;
     }
 }
 
@@ -1300,10 +1369,12 @@ body {
     .form-panel {
         max-height: 100vh;
         overflow-y: auto;
+        width: 60%;
     }
     
     .form-content {
         padding-bottom: var(--space-lg);
+        width: 100%;
     }
     
     .btn-primary {
@@ -1314,27 +1385,30 @@ body {
 @media (max-width: 900px) {
     /* Add bottom padding to the scrollable content */
     .form-content {
-        padding-bottom: 20px;  /* ← This extends scroll distance */
+        padding-bottom: 20px;
+        width: 100%;
     }
     
     /* OR add margin to the last elements */
     .form-footer {
-        margin-bottom: 10px;   /* ← This also extends scroll distance */
+        margin-bottom: 10px;
         padding-bottom: 80px;
     }
     
     /* OR add padding to the form wrapper */
     .form-wrapper.active {
         padding-bottom: 120px;
+        width: 100%;
     }
 }
 
 /* Extend scroll for REGISTER section only */
 @media (max-width: 900px) {
     .register-wrapper.active {
-        padding-bottom: 10px;  /* Adds scroll space at bottom */
+        padding-bottom: 10px;
         position: relative;
         top: 50px;
+        width: 100%;
     }
     
     /* OR add margin to the footer inside register form */
@@ -1346,5 +1420,27 @@ body {
     /* OR add padding to the form content inside register */
     .register-wrapper.active .form-content {
         padding-bottom: 250px;
+        width: 100%;
+    }
+}
+
+/* Additional fix for any remaining width issues */
+@media (max-width: 900px) {
+    /* Force all direct children of main container to be full width */
+    .main-container > * {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+    }
+    
+    /* Ensure no element overflows */
+    .main-container,
+    .form-panel,
+    .brand-panel,
+    .form-content,
+    .form-wrapper,
+    .register-wrapper,
+    .login-wrapper {
+        overflow-x: hidden;
     }
 }

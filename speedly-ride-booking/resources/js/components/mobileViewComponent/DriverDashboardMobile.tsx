@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverDashboardMobile.css';
 
 // Types
@@ -104,7 +102,6 @@ const DriverDashboardMobile: React.FC = () => {
     const [countdown, setCountdown] = useState<number>(30);
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch driver dashboard data
     const fetchDashboardData = useCallback(async () => {
@@ -798,9 +795,6 @@ const DriverDashboardMobile: React.FC = () => {
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
     const firstName = (driverData?.full_name || driverData?.fullname || 'Driver').split(' ')[0];
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-driver-dashboard-container">

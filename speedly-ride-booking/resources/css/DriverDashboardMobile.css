@@ -772,3 +772,43 @@
         padding-bottom: calc(90px + env(safe-area-inset-bottom));
     }
 }
+
+/* Vertical Scroll - Driver Dashboard Mobile */
+.mobile-driver-dashboard-view {
+    display: block;
+    width: 100%;
+    height: 100vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    padding-bottom: 100px;
+    background-color: #f8f9fa;
+}
+
+/* Ensure the container has a fixed height */
+.mobile-driver-dashboard-container {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #f8f9fa;
+}
+
+/* Custom Scrollbar Styling */
+.mobile-driver-dashboard-view::-webkit-scrollbar {
+    width: 4px;
+}
+
+.mobile-driver-dashboard-view::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.mobile-driver-dashboard-view::-webkit-scrollbar-thumb {
+    background: #ff5e00;
+    border-radius: 4px;
+}
+
+/* Firefox Scrollbar Support */
+.mobile-driver-dashboard-view {
+    scrollbar-width: thin;
+    scrollbar-color: #ff5e00 #f1f1f1;
+}

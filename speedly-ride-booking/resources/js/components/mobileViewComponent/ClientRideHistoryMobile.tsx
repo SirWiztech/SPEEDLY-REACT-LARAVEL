@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientRideHistoryMobile.css';
 
 // Types
@@ -58,8 +56,6 @@ const ClientRideHistoryMobile: React.FC = () => {
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedRating, setSelectedRating] = useState<number>(0);
-
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch ride history data
     const fetchRideHistory = useCallback(async () => {
@@ -417,9 +413,6 @@ const ClientRideHistoryMobile: React.FC = () => {
         return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
     };
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-ride-history-container">

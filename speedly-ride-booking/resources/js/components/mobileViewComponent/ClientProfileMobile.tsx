@@ -3,8 +3,6 @@ import { Head } from '@inertiajs/react';
 import ClientNavmobile from '@/components/navbars/ClientNavMobile';
 import { useForm } from '@inertiajs/react';
 import { useQuery } from '@tanstack/react-query';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../preloader/MobilePreloader';
 import { api } from '../../services/api';
 import '../../../css/ClientProfile.css';
 
@@ -33,10 +31,6 @@ export default function ClientProfileMobile() {
         e.preventDefault();
         post('/client/profile/update');
     };
-
-    if (loading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <>

@@ -5,7 +5,6 @@ import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import AdminDashboardMobile from '../components/mobileViewComponent/AdminDashboardMobile';
 import '../../css/AdminDashboard.css';
 
@@ -479,17 +478,11 @@ const AdminDashboard: React.FC = () => {
 
     // SHOW PRELOADER FIRST - This is critical
     if (preloaderLoading) {
-        if (isMobile) {
-            return <MobilePreloader />;
-        }
         return <DesktopPreloader />;
     }
 
     // SHOW LOADING STATE AFTER PRELOADER
     if (loading) {
-        if (isMobile) {
-            return <MobilePreloader />;
-        }
         return <DesktopPreloader />;
     }
 

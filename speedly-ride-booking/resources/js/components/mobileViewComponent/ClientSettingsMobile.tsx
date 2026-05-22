@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api, { setToken } from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientSettingsMobile.css';
 
 // Types
@@ -58,8 +56,6 @@ const ClientSettingsMobile: React.FC = () => {
     const [emergencyContactPhone, setEmergencyContactPhone] = useState<string>('');
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
-
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch settings data
     const fetchSettingsData = async () => {
@@ -400,9 +396,6 @@ const ClientSettingsMobile: React.FC = () => {
     const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'U';
     const firstName = (userData?.fullname || userData?.full_name)?.split(' ')[0] || 'Guest';
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-settings-container">

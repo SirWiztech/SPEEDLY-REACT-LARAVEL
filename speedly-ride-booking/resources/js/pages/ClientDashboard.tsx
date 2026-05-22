@@ -6,7 +6,6 @@ import api from '../services/api';
 import '../../css/ClientDashboard.css';
 import ClientDashboardMobile from '../components/mobileViewComponent/ClientDashboardMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 
@@ -699,11 +698,11 @@ const ClientDashboard: React.FC = () => {
     const preloaderLoading = usePreloader(1000);
 
     if (preloaderLoading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     if (loading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     // Render mobile view on mobile devices ONLY

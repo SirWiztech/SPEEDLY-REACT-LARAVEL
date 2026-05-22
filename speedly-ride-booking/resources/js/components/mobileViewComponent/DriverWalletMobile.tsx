@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverWalletMobile.css';
 
 // Types
@@ -51,8 +49,6 @@ const DriverWalletMobile: React.FC = () => {
     const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
-
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
@@ -215,10 +211,6 @@ const DriverWalletMobile: React.FC = () => {
     useEffect(() => {
         fetchWalletData();
     }, [fetchWalletData]);
-
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-driver-wallet-container">

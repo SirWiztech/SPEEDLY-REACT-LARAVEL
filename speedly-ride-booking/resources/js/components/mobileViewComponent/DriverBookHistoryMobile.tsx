@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverBookHistoryMobile.css';
 
 // Types
@@ -71,8 +69,6 @@ const DriverBookHistoryMobile: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [activeTab, setActiveTab] = useState<'accepted' | 'declined'>('accepted');
 
-    const preloaderLoading = usePreloader(1000);
-
     const fetchBookHistory = useCallback(async () => {
         setLoading(true);
         try {
@@ -135,9 +131,6 @@ const DriverBookHistoryMobile: React.FC = () => {
         fetchBookHistory();
     }, [fetchBookHistory]);
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-book-history-root">

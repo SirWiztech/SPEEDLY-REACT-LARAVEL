@@ -9,7 +9,7 @@
 
 .mobile-settings-container {
     width: 100%;
-    min-height: 100vh;
+    max-width: 100%;
     background-color: #fff;
     overflow-x: hidden;
 }
@@ -97,7 +97,7 @@
 
 /* Settings Content */
 .mobile-settings-content {
-    padding: 20px;
+   padding: 60px;
 }
 
 /* Profile Section */
@@ -464,6 +464,13 @@
     .mobile-item-details h3,
     .toggle-label span {
         font-size: 14px;
+    }
+}
+
+@media (max-width: 789px) {
+    .mobile-settings-container {
+        width: 100%;
+        max-width: 100%;
     }
 }
 

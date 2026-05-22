@@ -180,7 +180,7 @@ const DriverBookHistory: React.FC = () => {
     }, [fetchBookHistory]);
 
     if (loading || preloaderLoading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     // IMPORTANT: Render mobile view for mobile devices FIRST

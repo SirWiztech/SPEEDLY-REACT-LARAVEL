@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverKycMobile.css';
 
 // Types
@@ -52,8 +50,6 @@ const DriverKycMobile: React.FC = () => {
     const [selfieName, setSelfieName] = useState<string>('');
     const [insuranceName, setInsuranceName] = useState<string>('');
     const [vehicleRegistrationName, setVehicleRegistrationName] = useState<string>('');
-
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch KYC data
     const fetchKycData = useCallback(async () => {
@@ -208,9 +204,6 @@ const DriverKycMobile: React.FC = () => {
         fetchKycData();
     }, [fetchKycData]);
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-driver-kyc-container">

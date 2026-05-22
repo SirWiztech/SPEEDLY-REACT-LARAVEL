@@ -2227,3 +2227,144 @@ html { scroll-behavior: smooth; }
         will-change: auto !important;
     }
 }
+
+
+/* FIX FOR MOBILE NAVBAR OVERFLOW - ADD AT THE END OF home.css */
+
+/* Mobile Navbar Fix */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 8px 12px !important;
+        width: 100% !important;
+        overflow: visible !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .nav-logo {
+        flex-shrink: 1 !important;
+        min-width: 0 !important;
+    }
+    
+    .nav-logo img {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .logo-text {
+        font-size: 0.9rem !important;
+        white-space: nowrap !important;
+    }
+    
+    .auth-btn {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+    }
+    
+    .mobile-menu-btn {
+        display: flex !important;
+        padding: 4px 8px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .nav-actions {
+        display: flex !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+/* Mobile Menu Fix - No Overflow */
+.mobile-menu {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: white !important;
+    z-index: 2000 !important;
+    padding: 20px 16px !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.3s ease !important;
+}
+
+.mobile-menu.active {
+    transform: translateX(0) !important;
+}
+
+.mobile-menu-links {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 32px !important;
+    width: 100% !important;
+}
+
+.mobile-menu-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+}
+
+/* Simple Scroll Reveal - No Lag */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    will-change: opacity, transform;
+}
+
+.reveal-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Faster initial visible for hero */
+.reveal-on-scroll.visible:first-child {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Remove all complex animations */
+.scroll-reveal,
+.scroll-reveal.revealed {
+    transition: none !important;
+}
+
+/* Optimize hover effects - GPU accelerated */
+.service-card,
+.feature-card,
+.btn-hero,
+.auth-btn {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Reduce motion if user prefers */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .reveal-on-scroll {
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}

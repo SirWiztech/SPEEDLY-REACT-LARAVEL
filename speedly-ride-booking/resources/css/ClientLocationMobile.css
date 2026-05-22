@@ -1,4 +1,4 @@
-/* Client Location Mobile Styles */
+/* Client Location Mobile Styles - FULLY RESPONSIVE */
 /* ALL SELECTORS HAVE "mobile-" PREFIX */
 
 * {
@@ -7,22 +7,34 @@
     box-sizing: border-box;
 }
 
+/* Full width container - spans entire page width */
 .mobile-location-container {
     width: 100%;
+    min-width: 100%;
+    max-width: 100%;
     min-height: 100vh;
     background-color: #fff;
     overflow-x: hidden;
+    position: relative;
+    margin: 0;
+    padding: 0;
 }
 
+/* Full width viewport with vertical scroll */
 .mobile-location-view {
-    display: block;
+    display: flex;
+    flex-direction: column;
     width: 100%;
+    min-width: 100%;
+    max-width: 100%;
     min-height: 100vh;
-    max-height: 100vh;
+    height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: 80px;
     scroll-behavior: smooth;
+    position: relative;
+    margin: 0;
+    padding: 0;
 }
 
 /* Custom Scrollbar */
@@ -47,6 +59,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
+    width: 100%;
 }
 
 .mobile-location-user-info h1 {
@@ -59,6 +72,42 @@
 .mobile-location-user-info p {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.9);
+}
+
+/* Enable Location Button */
+.mobile-enable-location-btn-container {
+    padding: 20px;
+    text-align: center;
+    width: 100%;
+}
+
+.mobile-enable-location-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff5e00, #ff8c3a);
+    border: none;
+    padding: 18px 20px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(255, 94, 0, 0.3);
+}
+
+.mobile-enable-location-btn:active {
+    transform: scale(0.98);
+}
+
+.mobile-enable-location-hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 12px;
+    text-align: center;
 }
 
 /* Permission Prompt */
@@ -162,6 +211,39 @@
     display: flex;
     align-items: center;
     gap: 6px;
+}
+
+/* GPS Control Buttons */
+.mobile-gps-control {
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.mobile-stop-gps-btn,
+.mobile-start-gps-btn {
+    background: rgba(255, 94, 0, 0.1);
+    border: 1px solid #ff5e00;
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mobile-stop-gps-btn {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.mobile-start-gps-btn {
+    color: #4caf50;
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.1);
 }
 
 /* Street Address */
@@ -287,13 +369,12 @@
 /* Map Container */
 .mobile-map-container {
     position: relative;
-    margin: 16px;
-    border-radius: 24px;
+    margin: 0 0 16px 0;
     overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    border: 3px solid rgba(255, 94, 0, 0.2);
+    border: none;
     height: 45vh;
     min-height: 300px;
+    width: 100%;
 }
 
 .mobile-map {
@@ -325,6 +406,7 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     color: #ff5e00;
     font-size: 16px;
+    transition: all 0.2s;
 }
 
 .mobile-map-btn:active {
@@ -440,7 +522,11 @@
     color: #888;
 }
 
-/* Responsive */
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Small phones */
 @media (max-width: 380px) {
     .mobile-location-card {
         padding: 16px;
@@ -458,11 +544,56 @@
     .mobile-stat-badge .stat-value {
         font-size: 14px;
     }
+    
+    .mobile-coordinate-row {
+        gap: 8px;
+    }
+    
+    .mobile-movement-stats {
+        gap: 8px;
+    }
+}
+
+/* Landscape mode */
+@media (orientation: landscape) and (max-height: 500px) {
+    .mobile-map-container {
+        height: 35vh;
+        min-height: 200px;
+    }
+    
+    .mobile-location-card {
+        margin: 8px 12px;
+        padding: 12px;
+    }
+    
+    .mobile-coordinate-row {
+        gap: 8px;
+    }
+    
+    .mobile-movement-stats {
+        gap: 8px;
+    }
 }
 
 /* Safe Area Support */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .mobile-location-view {
         padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Ensure no horizontal scroll */
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    margin: 0;
+    padding: 0;
+}
+
+/* Fix for iOS Safari viewport */
+@supports (-webkit-touch-callout: none) {
+    .mobile-location-view {
+        height: -webkit-fill-available;
     }
 }

@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/DriverProfile.css';
 
@@ -454,7 +453,7 @@ const DriverProfile: React.FC = () => {
     }, []);
 
     if (loading || preloaderLoading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     const getKycStatusBadge = () => {

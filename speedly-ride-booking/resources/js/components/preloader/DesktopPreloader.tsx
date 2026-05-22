@@ -88,8 +88,6 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
         },
         animationContainer: {
             position: 'relative' as const,
-            width: '320px',
-            height: '320px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -97,8 +95,6 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
         },
         logo3dContainer: {
             position: 'relative' as const,
-            width: '130px',
-            height: '130px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -121,12 +117,9 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
             animation: 'shadowRotate 4s linear infinite',
         },
         logoMain: {
-            width: '100px',
-            height: '100px',
             objectFit: 'contain' as const,
             borderRadius: '50%',
             background: 'white',
-            padding: '10px',
             animation: 'logoFloat 3s ease-in-out infinite',
             position: 'relative' as const,
             zIndex: 2,
@@ -190,7 +183,6 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
             animation: 'dotBounce 1.4s ease-in-out infinite',
         },
         progressContainer: {
-            width: '280px',
             margin: '0 auto 20px',
         },
         progressBarBg: {
@@ -477,16 +469,66 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
             .brand-letter:nth-child(6) { animation-delay: 0.4s; }
             .brand-letter:nth-child(7) { animation-delay: 0.48s; }
             
+            /* Base sizes for responsive elements */
+            .preloader-animation-container {
+                width: 320px;
+                height: 320px;
+            }
+            .preloader-logo-3d-container {
+                width: 130px;
+                height: 130px;
+            }
+            .preloader-logo-main {
+                width: 100px;
+                height: 100px;
+                padding: 10px;
+            }
+            .progress-container {
+                width: 280px;
+            }
+            
             /* Responsive adjustments */
             @media (max-width: 768px) {
                 .brand-letter { font-size: 1.8rem !important; }
-                .preloader-animation-container { transform: scale(0.85); }
+                .preloader-animation-container { width: 240px; height: 240px; }
+                .preloader-logo-3d-container { width: 110px; height: 110px; }
+                .preloader-logo-main { width: 80px; height: 80px; padding: 8px; }
                 .progress-container { width: 240px; }
+                .orbital-system { width: 210px; height: 210px; }
+                .ring-1 { width: 200px; height: 200px; }
+                .ring-2 { width: 230px; height: 230px; }
+                .ring-3 { width: 260px; height: 260px; }
+                .ring-4 { width: 290px; height: 290px; }
+                .orbit-primary { width: 150px; height: 150px; margin-left: -75px; margin-top: -75px; }
+                .orbit-secondary { width: 180px; height: 180px; margin-left: -90px; margin-top: -90px; }
+                .orbit-tertiary { width: 210px; height: 210px; margin-left: -105px; margin-top: -105px; }
+                .orbit-quaternary { width: 240px; height: 240px; margin-left: -120px; margin-top: -120px; }
+                .orbit-dot { width: 8px; height: 8px; top: -4px; }
+                .primary-dot { width: 7px; height: 7px; top: -3.5px; }
+                .secondary-dot { width: 6px; height: 6px; top: -3px; }
+                .tertiary-dot { width: 5px; height: 5px; top: -2.5px; }
+                .quaternary-dot { width: 4px; height: 4px; top: -2px; }
             }
             @media (max-width: 480px) {
                 .brand-letter { font-size: 1.5rem !important; gap: 6px; }
+                .preloader-animation-container { width: 200px; height: 200px; }
+                .preloader-logo-3d-container { width: 90px; height: 90px; }
+                .preloader-logo-main { width: 70px; height: 70px; padding: 8px; }
                 .progress-container { width: 200px; }
-                .preloader-animation-container { transform: scale(0.75); }
+                .orbital-system { width: 180px; height: 180px; }
+                .ring-1 { width: 180px; height: 180px; }
+                .ring-2 { width: 200px; height: 200px; }
+                .ring-3 { width: 220px; height: 220px; }
+                .ring-4 { width: 240px; height: 240px; }
+                .orbit-primary { width: 130px; height: 130px; margin-left: -65px; margin-top: -65px; }
+                .orbit-secondary { width: 155px; height: 155px; margin-left: -77.5px; margin-top: -77.5px; }
+                .orbit-tertiary { width: 180px; height: 180px; margin-left: -90px; margin-top: -90px; }
+                .orbit-quaternary { width: 200px; height: 200px; margin-left: -100px; margin-top: -100px; }
+                .orbit-dot { width: 6px; height: 6px; top: -3px; }
+                .primary-dot { width: 5px; height: 5px; top: -2.5px; }
+                .secondary-dot { width: 4px; height: 4px; top: -2px; }
+                .tertiary-dot { width: 3px; height: 3px; top: -1.5px; }
+                .quaternary-dot { width: 2px; height: 2px; top: -1px; }
             }
         `;
         document.head.appendChild(styleSheet);
@@ -517,7 +559,7 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
             {/* Main Content Container */}
             <div style={styles.mainContainer}>
                 {/* Logo & Animations Container */}
-                <div style={styles.animationContainer}>
+                <div className="preloader-animation-container" style={styles.animationContainer}>
                     {/* Outer Pulse Rings - White/Gold */}
                     <div className="pulse-ring ring-1"></div>
                     <div className="pulse-ring ring-2"></div>
@@ -545,12 +587,13 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
                     </div>
 
                     {/* Logo with 3D Effect */}
-                    <div style={styles.logo3dContainer}>
+                    <div className="preloader-logo-3d-container" style={styles.logo3dContainer}>
                         <div style={styles.logoGlowEffect}></div>
                         <div style={styles.logoInnerShadow}></div>
                         <img 
                             src="/main-assets/logo-no-background.png" 
                             alt="Speedly" 
+                            className="preloader-logo-main"
                             style={styles.logoMain}
                         />
                         <div style={styles.logoReflection}></div>
@@ -581,7 +624,7 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
                     </div>
 
                     {/* Modern Progress Bar */}
-                    <div style={styles.progressContainer}>
+                    <div className="progress-container" style={styles.progressContainer}>
                         <div style={styles.progressBarBg}>
                             <div style={styles.progressBarFill}>
                                 <div style={styles.progressGlow}></div>

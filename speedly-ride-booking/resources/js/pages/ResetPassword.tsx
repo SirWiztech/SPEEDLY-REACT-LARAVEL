@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/ResetPassword.css';
 
@@ -91,7 +90,7 @@ export default function ResetPassword() {
     };
 
     if (loading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     return (

@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientSupportMobile.css';
 
 // Types
@@ -26,8 +24,6 @@ const ClientSupportMobile: React.FC = () => {
     const [openFaqIndex, setOpenFaqIndex] = useState<number>(0);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [myTickets, setMyTickets] = useState<any[]>([]);
-
-    const preloaderLoading = usePreloader(1000);
 
     // FAQ Data
     const faqs: FaqItem[] = [
@@ -213,9 +209,6 @@ const ClientSupportMobile: React.FC = () => {
         fetchMyTickets();
     }, []);
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     const getCharColor = () => {
         if (charCount > 1800) return '#ef4444';
@@ -228,9 +221,9 @@ const ClientSupportMobile: React.FC = () => {
             <div className="mobile-support-view">
                 {/* Header */}
                 <div className="mobile-support-header">
-                    <button className="mobile-back-btn" onClick={goBack}>
+                    {/* <button className="mobile-back-btn" onClick={goBack}>
                         <i className="fas fa-arrow-left"></i>
-                    </button>
+                    </button> */}
                     <h1>Support Center</h1>
                     <button className="mobile-notification-btn" onClick={() => router.visit('/notifications')}>
                         <i className="fas fa-bell"></i>

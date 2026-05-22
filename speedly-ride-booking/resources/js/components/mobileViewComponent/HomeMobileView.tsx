@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
-import MobilePreloader from '../preloader/MobilePreloader';
 import '../../../css/home.css';
 
 export default function HomeMobileView() {
@@ -10,10 +9,6 @@ export default function HomeMobileView() {
         const timer = setTimeout(() => setLoading(false), 1500);
         return () => clearTimeout(timer);
     }, []);
-
-    if (loading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="home-page">

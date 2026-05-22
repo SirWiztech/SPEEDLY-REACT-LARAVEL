@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientAIAssistantMobile.css';
 
 // Types
@@ -308,10 +306,6 @@ const ClientAIAssistantMobile: React.FC = () => {
     };
 
     const firstName = userData?.fullname?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Guest';
-
-    if (loading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-ai-container">

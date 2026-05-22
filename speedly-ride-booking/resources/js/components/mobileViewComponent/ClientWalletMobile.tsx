@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/ClientWalletMobile.css';
 
 // Types
@@ -42,8 +40,6 @@ const ClientWalletMobile: React.FC = () => {
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
-
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
@@ -350,9 +346,6 @@ const ClientWalletMobile: React.FC = () => {
 
     const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     return (
         <div className="mobile-wallet-container">

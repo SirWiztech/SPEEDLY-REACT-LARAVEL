@@ -3,7 +3,6 @@ import { router } from '@inertiajs/react';
 import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import '../../css/PaymentProcessing.css';
 
@@ -72,7 +71,7 @@ const PaymentProcessing: React.FC = () => {
     }, []);
 
     if (preloaderLoading) {
-        return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+        return <DesktopPreloader />;
     }
 
     return (

@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
-import MobilePreloader from '../components/preloader/MobilePreloader';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import ErrorBoundary from '../components/ErrorBoundary';
 import '../../css/GenerateReceipt.css';
@@ -131,7 +130,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
             hour: '2-digit', minute: '2-digit'
         });
 
-    if (preloaderLoading) return isMobile ? <MobilePreloader /> : <DesktopPreloader />;
+    if (preloaderLoading) return <DesktopPreloader />;
 
     if (loading) {
         return (

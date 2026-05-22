@@ -56,7 +56,7 @@ h1, h2, h3, h4, h5, h6 {
     min-height: 100vh;
     background-color: #fff;
     overflow-x: hidden;
-    margin-right: 680px;
+
 }
 
 /* Mobile View */
@@ -937,3 +937,23 @@ tr:hover {
 .hover\:shadow-lg:hover {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
+
+#root, #app, .app {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

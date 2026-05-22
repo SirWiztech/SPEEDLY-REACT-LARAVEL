@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api, { setToken } from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverSettingsMobile.css';
 
 // Types
@@ -51,8 +49,6 @@ const DriverSettingsMobile: React.FC = () => {
         promotions: false
     });
     const [loading, setLoading] = useState<boolean>(true);
-
-    const preloaderLoading = usePreloader(1000);
 
     // Fetch settings data
     const fetchSettingsData = useCallback(async () => {
@@ -237,7 +233,6 @@ const DriverSettingsMobile: React.FC = () => {
                     <option value="GTBank">GTBank</option>
                     <option value="First Bank">First Bank</option>
                     <option value="UBA">UBA</option>
-                                        <option value="UBA">UBA</option>
                     <option value="Zenith">Zenith Bank</option>
                     <option value="Fidelity">Fidelity Bank</option>
                     <option value="Union Bank">Union Bank</option>
@@ -457,319 +452,384 @@ const DriverSettingsMobile: React.FC = () => {
         fetchSettingsData();
     }, [fetchSettingsData]);
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
-
     return (
-        <div className="mobile-driver-settings-container">
-            <div className="mobile-driver-settings-view">
-                {/* Header */}
-                <div className="mobile-driver-settings-header">
-                    <div className="mobile-driver-settings-user-info">
-                        <h1>Settings</h1>
-                        <p>Manage your driver account</p>
+        <>
+            {/* Force full width inline styles */}
+            <style>{`
+                /* Force full width - no white space */
+                .mobile-driver-settings-container,
+                .mobile-driver-settings-view {
+                    width: 100vw !important;
+                    max-width: 100vw !important;
+                    min-width: 100vw !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    background: white !important;
+                    overflow-x: hidden !important;
+                }
+                
+                .mobile-driver-settings-view {
+                    overflow-y: auto !important;
+                    padding-bottom: 80px !important;
+                }
+                
+                /* Remove all side margins and paddings from all child elements */
+                .mobile-driver-settings-container * {
+                    max-width: 100vw !important;
+                }
+                
+                /* Ensure body and html have no margins */
+                html, body, #app, .app-container, main {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    overflow-x: hidden !important;
+                    background: white !important;
+                }
+                
+                /* Remove any border radius and side margins from profile summary */
+                .mobile-profile-summary {
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                    border-radius: 0 !important;
+                    width: 100% !important;
+                    padding-left: 16px !important;
+                    padding-right: 16px !important;
+                }
+                
+                /* Full width for all settings items */
+                .settings-item,
+                .settings-toggle-item,
+                .bank-item {
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                    border-radius: 0 !important;
+                    width: 100% !important;
+                }
+                
+                /* Remove any max-width constraints */
+                .mobile-settings-sections,
+                .settings-section {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                }
+            `}</style>
+            
+            <div className="mobile-driver-settings-container">
+                <div className="mobile-driver-settings-view">
+                    {/* Header */}
+                    <div className="mobile-driver-settings-header">
+                        <div className="mobile-driver-settings-user-info">
+                            <h1>Settings</h1>
+                            <p>Manage your driver account</p>
+                        </div>
+                        <button className="mobile-driver-settings-notification-btn" onClick={checkNotifications}>
+                            <i className="fas fa-bell"></i>
+                            {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        </button>
                     </div>
-                    <button className="mobile-driver-settings-notification-btn" onClick={checkNotifications}>
-                        <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
-                    </button>
-                </div>
 
-                {/* Quick Stats */}
-                <div className="mobile-quick-stats">
-                    <div className="quick-stat-card">
-                        <div className="stat-value">{formatCurrency(todayEarnings)}</div>
-                        <div className="stat-label">Today</div>
-                    </div>
-                    <div className="quick-stat-card">
-                        <div className="stat-value">{formatCurrency(totalEarnings)}</div>
-                        <div className="stat-label">Total</div>
-                    </div>
-                    <div className="quick-stat-card">
-                        <div className="stat-value">{driverStatus === 'online' ? '🟢' : '⚫'}</div>
-                        <div className="stat-label">{driverStatus === 'online' ? 'Online' : 'Offline'}</div>
-                    </div>
-                </div>
-
-                {/* Profile Summary */}
-                <div className="mobile-profile-summary">
-                    <div className="profile-avatar">
-                        {userInitial}
-                    </div>
-                    <div className="profile-info">
-                        <h2>{driverData?.full_name}</h2>
-                        <p>{driverData?.email}</p>
-                        <div className="profile-badges">
-                            <span className={`badge ${verificationStatus === 'approved' ? 'verified' : 'pending'}`}>
-                                {verificationStatus === 'approved' ? '✓ Verified' : '⏳ Pending'}
-                            </span>
-                            <span className={`badge ${driverStatus === 'online' ? 'online' : 'offline'}`}>
-                                {driverStatus === 'online' ? '🟢 Online' : '⚫ Offline'}
-                            </span>
+                    {/* Quick Stats */}
+                    <div className="mobile-quick-stats">
+                        <div className="quick-stat-card">
+                            <div className="stat-value">{formatCurrency(todayEarnings)}</div>
+                            <div className="stat-label">Today</div>
+                        </div>
+                        <div className="quick-stat-card">
+                            <div className="stat-value">{formatCurrency(totalEarnings)}</div>
+                            <div className="stat-label">Total</div>
+                        </div>
+                        <div className="quick-stat-card">
+                            <div className="stat-value">{driverStatus === 'online' ? '🟢' : '⚫'}</div>
+                            <div className="stat-label">{driverStatus === 'online' ? 'Online' : 'Offline'}</div>
                         </div>
                     </div>
-                    <button className="edit-profile-btn" onClick={saveDriverProfile}>
-                        <i className="fas fa-edit"></i>
-                    </button>
-                </div>
 
-                {/* Settings Sections */}
-                <div className="mobile-settings-sections">
-                    {/* Driver Account Section */}
-                    <div className="settings-section">
-                        <div className="section-header">
-                            <i className="fas fa-id-card"></i>
-                            <h2>Driver Account</h2>
+                    {/* Profile Summary */}
+                    <div className="mobile-profile-summary">
+                        <div className="profile-avatar">
+                            {userInitial}
                         </div>
-                        
-                        <div className="settings-item" onClick={saveDriverProfile}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-user"></i></div>
-                                <div className="item-details">
-                                    <h3>Driver Profile</h3>
-                                    <p>Name, email, phone, photo</p>
-                                </div>
+                        <div className="profile-info">
+                            <h2>{driverData?.full_name}</h2>
+                            <p>{driverData?.email}</p>
+                            <div className="profile-badges">
+                                <span className={`badge ${verificationStatus === 'approved' ? 'verified' : 'pending'}`}>
+                                    {verificationStatus === 'approved' ? '✓ Verified' : '⏳ Pending'}
+                                </span>
+                                <span className={`badge ${driverStatus === 'online' ? 'online' : 'offline'}`}>
+                                    {driverStatus === 'online' ? '🟢 Online' : '⚫ Offline'}
+                                </span>
                             </div>
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                         </div>
+                        <button className="edit-profile-btn" onClick={saveDriverProfile}>
+                            <i className="fas fa-edit"></i>
+                        </button>
+                    </div>
 
-                        <div className="settings-item" onClick={saveLicense}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-id-card"></i></div>
-                                <div className="item-details">
-                                    <h3>License Information</h3>
-                                    <p>{licenseNumber ? `License #${licenseNumber.slice(-4)}` : 'Not added'}</p>
-                                </div>
+                    {/* Settings Sections */}
+                    <div className="mobile-settings-sections">
+                        {/* Driver Account Section */}
+                        <div className="settings-section">
+                            <div className="section-header">
+                                <i className="fas fa-id-card"></i>
+                                <h2>Driver Account</h2>
                             </div>
-                            {licenseExpiry && <div className="item-value">{new Date(licenseExpiry).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>}
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
-
-                        <div className="settings-item" onClick={addBankAccount}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-university"></i></div>
-                                <div className="item-details">
-                                    <h3>Bank Details</h3>
-                                    <p>{bankAccounts.length > 0 ? bankAccounts[0].bank_name : 'Add bank for withdrawals'}</p>
+                            
+                            <div className="settings-item" onClick={saveDriverProfile}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-user"></i></div>
+                                    <div className="item-details">
+                                        <h3>Driver Profile</h3>
+                                        <p>Name, email, phone, photo</p>
+                                    </div>
                                 </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
-                            {bankAccounts.length > 0 && (
-                                <div className="item-value">••••{bankAccounts[0].account_number.slice(-4)}</div>
-                            )}
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
 
-                        {/* Bank Accounts List */}
-                        {bankAccounts.length > 1 && (
-                            <div className="bank-accounts-list">
-                                {bankAccounts.slice(1).map((bank) => (
-                                    <div key={bank.id} className="bank-item">
-                                        <div className="bank-info">
-                                            <i className="fas fa-university"></i>
-                                            <div>
-                                                <div className="bank-name">{bank.bank_name}</div>
-                                                <div className="bank-number">****{bank.account_number.slice(-4)}</div>
+                            <div className="settings-item" onClick={saveLicense}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-id-card"></i></div>
+                                    <div className="item-details">
+                                        <h3>License Information</h3>
+                                        <p>{licenseNumber ? `License #${licenseNumber.slice(-4)}` : 'Not added'}</p>
+                                    </div>
+                                </div>
+                                {licenseExpiry && <div className="item-value">{new Date(licenseExpiry).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>}
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="settings-item" onClick={addBankAccount}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-university"></i></div>
+                                    <div className="item-details">
+                                        <h3>Bank Details</h3>
+                                        <p>{bankAccounts.length > 0 ? bankAccounts[0].bank_name : 'Add bank for withdrawals'}</p>
+                                    </div>
+                                </div>
+                                {bankAccounts.length > 0 && (
+                                    <div className="item-value">••••{bankAccounts[0].account_number.slice(-4)}</div>
+                                )}
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            {/* Bank Accounts List */}
+                            {bankAccounts.length > 1 && (
+                                <div className="bank-accounts-list">
+                                    {bankAccounts.slice(1).map((bank) => (
+                                        <div key={bank.id} className="bank-item">
+                                            <div className="bank-info">
+                                                <i className="fas fa-university"></i>
+                                                <div>
+                                                    <div className="bank-name">{bank.bank_name}</div>
+                                                    <div className="bank-number">****{bank.account_number.slice(-4)}</div>
+                                                </div>
+                                            </div>
+                                            <div className="bank-actions">
+                                                {!bank.is_default && (
+                                                    <button className="bank-action-btn default" onClick={() => setDefaultBank(bank.id)}>
+                                                        <i className="fas fa-check-circle"></i>
+                                                    </button>
+                                                )}
+                                                <button className="bank-action-btn remove" onClick={() => removeBankAccount(bank.id)}>
+                                                    <i className="fas fa-trash-alt"></i>
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="bank-actions">
-                                            {!bank.is_default && (
-                                                <button className="bank-action-btn default" onClick={() => setDefaultBank(bank.id)}>
-                                                    <i className="fas fa-check-circle"></i>
-                                                </button>
-                                            )}
-                                            <button className="bank-action-btn remove" onClick={() => removeBankAccount(bank.id)}>
-                                                <i className="fas fa-trash-alt"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Vehicle Section */}
-                    <div className="settings-section">
-                        <div className="section-header">
-                            <i className="fas fa-car"></i>
-                            <h2>Vehicle Information</h2>
-                        </div>
-                        
-                        <div className="settings-item" onClick={saveVehicle}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-truck"></i></div>
-                                <div className="item-details">
-                                    <h3>Vehicle Details</h3>
-                                    <p>{vehicleModel ? `${vehicleModel} • ${plateNumber}` : 'Add your vehicle information'}</p>
+                                    ))}
                                 </div>
-                            </div>
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            )}
                         </div>
-                    </div>
 
-                    {/* Driving Preferences */}
-                    <div className="settings-section">
-                        <div className="section-header">
-                            <i className="fas fa-sliders-h"></i>
-                            <h2>Driving Preferences</h2>
-                        </div>
-                        
-                        <div className="settings-item" onClick={() => {
-                            Swal.fire({
-                                title: 'Work Schedule',
-                                html: `<p class="text-center text-gray-500">Coming soon</p>`,
-                                confirmButtonColor: '#ff5e00'
-                            });
-                        }}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-clock"></i></div>
-                                <div className="item-details">
-                                    <h3>Work Schedule</h3>
-                                    <p>Set your available hours</p>
-                                </div>
-                            </div>
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
-                    </div>
-
-                    {/* Notifications */}
-                    <div className="settings-section">
-                        <div className="section-header">
-                            <i className="fas fa-bell"></i>
-                            <h2>Driver Notifications</h2>
-                        </div>
-                        
-                        <div className="settings-toggle-item">
-                            <div className="toggle-info">
+                        {/* Vehicle Section */}
+                        <div className="settings-section">
+                            <div className="section-header">
                                 <i className="fas fa-car"></i>
-                                <div>
-                                    <h3>New Ride Requests</h3>
-                                    <p>Get notified of new rides</p>
-                                </div>
+                                <h2>Vehicle Information</h2>
                             </div>
-                            <label className="toggle-switch">
-                                <input 
-                                    type="checkbox" 
-                                    checked={notificationSettings.ride_requests} 
-                                    onChange={(e) => toggleSetting('ride_requests', e.target.checked)}
-                                />
-                                <span className="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div className="settings-toggle-item">
-                            <div className="toggle-info">
-                                <i className="fas fa-money-bill"></i>
-                                <div>
-                                    <h3>Earnings Updates</h3>
-                                    <p>Payment notifications</p>
-                                </div>
-                            </div>
-                            <label className="toggle-switch">
-                                <input 
-                                    type="checkbox" 
-                                    checked={notificationSettings.earnings_notif} 
-                                    onChange={(e) => toggleSetting('earnings_notif', e.target.checked)}
-                                />
-                                <span className="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div className="settings-toggle-item">
-                            <div className="toggle-info">
-                                <i className="fas fa-volume-up"></i>
-                                <div>
-                                    <h3>Sound Alerts</h3>
-                                    <p>Play sound for new rides</p>
-                                </div>
-                            </div>
-                            <label className="toggle-switch">
-                                <input 
-                                    type="checkbox" 
-                                    checked={notificationSettings.sound_alerts} 
-                                    onChange={(e) => toggleSetting('sound_alerts', e.target.checked)}
-                                />
-                                <span className="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Support */}
-                    <div className="settings-section">
-                        <div className="section-header">
-                            <i className="fas fa-question-circle"></i>
-                            <h2>Driver Support</h2>
-                        </div>
-                        
-                        <div className="settings-item" onClick={() => {
-                            Swal.fire({
-                                title: 'Driver Help Center',
-                                html: `
-                                    <div class="mobile-help-links">
-                                        <div class="help-link" onclick="window.open('https://speedly.com/driver-guide', '_blank')">📚 Driver Guide</div>
-                                        <div class="help-link" onclick="window.open('https://speedly.com/earnings-faq', '_blank')">💰 Earnings FAQ</div>
-                                        <div class="help-link" onclick="window.open('https://speedly.com/vehicle-requirements', '_blank')">🛠️ Vehicle Requirements</div>
-                                        <div class="help-link" onclick="window.location.href='support.php'">📞 Contact Driver Support</div>
+                            
+                            <div className="settings-item" onClick={saveVehicle}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-truck"></i></div>
+                                    <div className="item-details">
+                                        <h3>Vehicle Details</h3>
+                                        <p>{vehicleModel ? `${vehicleModel} • ${plateNumber}` : 'Add your vehicle information'}</p>
                                     </div>
-                                `,
-                                confirmButtonColor: '#ff5e00',
-                                didOpen: () => {
-                                    document.querySelectorAll('.help-link').forEach(link => {
-                                        link.addEventListener('click', () => Swal.close());
-                                    });
-                                }
-                            });
-                        }}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-headset"></i></div>
-                                <div className="item-details">
-                                    <h3>Driver Help Center</h3>
-                                    <p>FAQs, tutorials, driver support</p>
                                 </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                         </div>
 
-                        <div className="settings-item" onClick={() => {
-                            Swal.fire({
-                                title: 'About Speedly Driver',
-                                html: `
-                                    <div style="text-align: center;">
-                                        <img src="/main-assets/logo-no-background.png" alt="Speedly" style="max-width: 120px; margin-bottom: 20px;">
-                                        <h3 style="font-size: 20px; font-weight: bold;">Speedly Driver</h3>
-                                        <p>Version 2.5.1</p>
-                                        <p class="text-gray-500 mt-2">© 2026 Speedly. All rights reserved.</p>
+                        {/* Driving Preferences */}
+                        <div className="settings-section">
+                            <div className="section-header">
+                                <i className="fas fa-sliders-h"></i>
+                                <h2>Driving Preferences</h2>
+                            </div>
+                            
+                            <div className="settings-item" onClick={() => {
+                                Swal.fire({
+                                    title: 'Work Schedule',
+                                    html: `<p class="text-center text-gray-500">Coming soon</p>`,
+                                    confirmButtonColor: '#ff5e00'
+                                });
+                            }}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-clock"></i></div>
+                                    <div className="item-details">
+                                        <h3>Work Schedule</h3>
+                                        <p>Set your available hours</p>
                                     </div>
-                                `,
-                                confirmButtonColor: '#ff5e00'
-                            });
-                        }}>
-                            <div className="item-info">
-                                <div className="item-icon"><i className="fas fa-info-circle"></i></div>
-                                <div className="item-details">
-                                    <h3>About Speedly Driver</h3>
-                                    <p>Version 2.5.1 • Driver app</p>
                                 </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
-                            <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                        </div>
+
+                        {/* Notifications */}
+                        <div className="settings-section">
+                            <div className="section-header">
+                                <i className="fas fa-bell"></i>
+                                <h2>Driver Notifications</h2>
+                            </div>
+                            
+                            <div className="settings-toggle-item">
+                                <div className="toggle-info">
+                                    <i className="fas fa-car"></i>
+                                    <div>
+                                        <h3>New Ride Requests</h3>
+                                        <p>Get notified of new rides</p>
+                                    </div>
+                                </div>
+                                <label className="toggle-switch">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={notificationSettings.ride_requests} 
+                                        onChange={(e) => toggleSetting('ride_requests', e.target.checked)}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div className="settings-toggle-item">
+                                <div className="toggle-info">
+                                    <i className="fas fa-money-bill"></i>
+                                    <div>
+                                        <h3>Earnings Updates</h3>
+                                        <p>Payment notifications</p>
+                                    </div>
+                                </div>
+                                <label className="toggle-switch">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={notificationSettings.earnings_notif} 
+                                        onChange={(e) => toggleSetting('earnings_notif', e.target.checked)}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div className="settings-toggle-item">
+                                <div className="toggle-info">
+                                    <i className="fas fa-volume-up"></i>
+                                    <div>
+                                        <h3>Sound Alerts</h3>
+                                        <p>Play sound for new rides</p>
+                                    </div>
+                                </div>
+                                <label className="toggle-switch">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={notificationSettings.sound_alerts} 
+                                        onChange={(e) => toggleSetting('sound_alerts', e.target.checked)}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Support */}
+                        <div className="settings-section">
+                            <div className="section-header">
+                                <i className="fas fa-question-circle"></i>
+                                <h2>Driver Support</h2>
+                            </div>
+                            
+                            <div className="settings-item" onClick={() => {
+                                Swal.fire({
+                                    title: 'Driver Help Center',
+                                    html: `
+                                        <div class="mobile-help-links">
+                                            <div class="help-link" onclick="window.open('https://speedly.com/driver-guide', '_blank')">📚 Driver Guide</div>
+                                            <div class="help-link" onclick="window.open('https://speedly.com/earnings-faq', '_blank')">💰 Earnings FAQ</div>
+                                            <div class="help-link" onclick="window.open('https://speedly.com/vehicle-requirements', '_blank')">🛠️ Vehicle Requirements</div>
+                                            <div class="help-link" onclick="window.location.href='support.php'">📞 Contact Driver Support</div>
+                                        </div>
+                                    `,
+                                    confirmButtonColor: '#ff5e00',
+                                    didOpen: () => {
+                                        document.querySelectorAll('.help-link').forEach(link => {
+                                            link.addEventListener('click', () => Swal.close());
+                                        });
+                                    }
+                                });
+                            }}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-headset"></i></div>
+                                    <div className="item-details">
+                                        <h3>Driver Help Center</h3>
+                                        <p>FAQs, tutorials, driver support</p>
+                                    </div>
+                                </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="settings-item" onClick={() => {
+                                Swal.fire({
+                                    title: 'About Speedly Driver',
+                                    html: `
+                                        <div style="text-align: center;">
+                                            <img src="/main-assets/logo-no-background.png" alt="Speedly" style="max-width: 120px; margin-bottom: 20px;">
+                                            <h3 style="font-size: 20px; font-weight: bold;">Speedly Driver</h3>
+                                            <p>Version 2.5.1</p>
+                                            <p class="text-gray-500 mt-2">© 2026 Speedly. All rights reserved.</p>
+                                        </div>
+                                    `,
+                                    confirmButtonColor: '#ff5e00'
+                                });
+                            }}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-info-circle"></i></div>
+                                    <div className="item-details">
+                                        <h3>About Speedly Driver</h3>
+                                        <p>Version 2.5.1 • Driver app</p>
+                                    </div>
+                                </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="mobile-action-buttons">
+                            <button className="mobile-logout-btn" onClick={logout}>
+                                <i className="fas fa-sign-out-alt"></i> Log Out
+                            </button>
+                            <button className="mobile-delete-account-btn" onClick={deleteAccount}>
+                                <i className="fas fa-trash-alt"></i> Delete Account
+                            </button>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="mobile-action-buttons">
-                        <button className="mobile-logout-btn" onClick={logout}>
-                            <i className="fas fa-sign-out-alt"></i> Log Out
-                        </button>
-                        <button className="mobile-delete-account-btn" onClick={deleteAccount}>
-                            <i className="fas fa-trash-alt"></i> Delete Account
-                        </button>
-                    </div>
+                    {/* Bottom Navigation */}
+                    <DriverNavMobile />
                 </div>
-
-                {/* Bottom Navigation */}
-                <DriverNavMobile />
             </div>
-        </div>
+        </>
     );
 };
 

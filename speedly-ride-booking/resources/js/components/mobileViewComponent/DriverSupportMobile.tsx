@@ -3,8 +3,6 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
-import { usePreloader } from '../../hooks/usePreloader';
-import MobilePreloader from '../../components/preloader/MobilePreloader';
 import '../../../css/DriverSupportMobile.css';
 
 // Types
@@ -26,8 +24,6 @@ const DriverSupportMobile: React.FC = () => {
     const [openFaqIndex, setOpenFaqIndex] = useState<number>(0);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [myTickets, setMyTickets] = useState<any[]>([]);
-
-    const preloaderLoading = usePreloader(1000);
 
     // FAQ Data
     const faqs: FaqItem[] = [
@@ -213,9 +209,6 @@ const DriverSupportMobile: React.FC = () => {
         fetchMyTickets();
     }, []);
 
-    if (loading || preloaderLoading) {
-        return <MobilePreloader />;
-    }
 
     const getCharColor = () => {
         if (charCount > 1800) return '#ef4444';
