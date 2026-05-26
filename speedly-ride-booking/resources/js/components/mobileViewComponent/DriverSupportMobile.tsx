@@ -227,7 +227,7 @@ const DriverSupportMobile: React.FC = () => {
                     <h1>Support Center</h1>
                     <button className="mobile-notification-btn" onClick={() => router.visit('/notifications')}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -294,7 +294,7 @@ const DriverSupportMobile: React.FC = () => {
                             placeholder="Describe your issue in detail…"
                         />
                         <div className="char-count" style={{ color: getCharColor() }}>
-                            {charCount} / 2000
+                            <span className="font-roboto-number">{charCount}</span> / 2000
                         </div>
                     </div>
 

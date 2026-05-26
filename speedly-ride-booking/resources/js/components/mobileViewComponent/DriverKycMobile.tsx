@@ -216,7 +216,7 @@ const DriverKycMobile: React.FC = () => {
                     </div>
                     <button className="mobile-driver-kyc-notification-btn" onClick={() => router.visit('/notifications')}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 

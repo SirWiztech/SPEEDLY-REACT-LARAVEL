@@ -531,18 +531,18 @@ const DriverSettingsMobile: React.FC = () => {
                         </div>
                         <button className="mobile-driver-settings-notification-btn" onClick={checkNotifications}>
                             <i className="fas fa-bell"></i>
-                            {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                            {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                         </button>
                     </div>
 
                     {/* Quick Stats */}
                     <div className="mobile-quick-stats">
                         <div className="quick-stat-card">
-                            <div className="stat-value">{formatCurrency(todayEarnings)}</div>
+                            <div className="stat-value font-roboto-number">{formatCurrency(todayEarnings)}</div>
                             <div className="stat-label">Today</div>
                         </div>
                         <div className="quick-stat-card">
-                            <div className="stat-value">{formatCurrency(totalEarnings)}</div>
+                            <div className="stat-value font-roboto-number">{formatCurrency(totalEarnings)}</div>
                             <div className="stat-label">Total</div>
                         </div>
                         <div className="quick-stat-card">

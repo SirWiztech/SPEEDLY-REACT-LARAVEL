@@ -48,15 +48,15 @@ export default function DriverProfileMobile() {
 
                     <div className="profile-stats">
                         <div className="stat-item">
-                            <div className="stat-value">{profile?.rating?.toFixed(1) || '0.0'} ⭐</div>
+                            <div className="stat-value font-roboto-number">{profile?.rating?.toFixed(1) || '0.0'} ⭐</div>
                             <div className="stat-label">Rating</div>
                         </div>
                         <div className="stat-item">
-                            <div className="stat-value">{profile?.total_rides || 0}</div>
+                            <div className="stat-value font-roboto-number">{profile?.total_rides || 0}</div>
                             <div className="stat-label">Total Rides</div>
                         </div>
                         <div className="stat-item">
-                            <div className="stat-value">{profile?.completion_rate || 0}%</div>
+                            <div className="stat-value font-roboto-number">{profile?.completion_rate || 0}%</div>
                             <div className="stat-label">Completion</div>
                         </div>
                     </div>

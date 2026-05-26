@@ -319,6 +319,7 @@ const DriverDashboard: React.FC = () => {
                 const data = await api.rides.decline(rideId);
 
                 if (data.success) {
+                    setPendingRides(prev => prev.filter(r => r.id !== rideId));
                     Swal.fire({
                         title: 'Declined',
                         text: data.message || 'Ride declined',
@@ -356,7 +357,7 @@ const DriverDashboard: React.FC = () => {
             title: 'Complete Ride?',
             html: `
                 <p>Have you completed this ride?</p>
-                <p class="mt-2 font-bold text-green-600">You will earn: ₦${payout.toLocaleString()}</p>
+                <p class="mt-2 font-bold text-green-600">You will earn: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${payout.toLocaleString()}</span></p>
                 <div class="mt-4">
                     <label class="block text-sm text-gray-600 mb-2">Rate the client (optional)</label>
                     <div class="flex justify-center gap-2 text-2xl rating-stars">
@@ -428,7 +429,7 @@ const DriverDashboard: React.FC = () => {
                         title: 'Ride Completed!',
                         html: `
                             <p>Ride completed successfully</p>
-                            <p class="mt-2 font-bold text-green-600">Earned: ₦${(data.earnings || payout).toLocaleString()}</p>
+                            <p class="mt-2 font-bold text-green-600">Earned: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${(data.earnings || payout).toLocaleString()}</span></p>
                         `,
                         icon: 'success',
                         timer: 2000,
@@ -488,6 +489,7 @@ const DriverDashboard: React.FC = () => {
                 const data = await api.rides.cancel(rideId, { reason: result.value });
 
                 if (data.success) {
+                    setActiveRide(null);
                     Swal.fire({
                         title: 'Cancelled',
                         text: 'Ride cancelled successfully',
@@ -533,12 +535,28 @@ const DriverDashboard: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p class="mb-4">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
+                <p class="mb-4">Available balance: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${availableBalance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${availableBalance}" step="100">
                 <div style="margin-top: 12px;">
                     <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password" style="margin-top: 8px;">
                 </div>
-                <p class="text-sm text-gray-500 mt-2">Withdrawal will be sent to your default bank account on file.</p>
+                <select id="bank-name" class="swal2-input" style="margin-top: 8px;">
+                    <option value="">Select Bank</option>
+                    <option value="Access Bank" data-code="044">Access Bank</option>
+                    <option value="GTBank" data-code="058">GTBank</option>
+                    <option value="First Bank of Nigeria" data-code="011">First Bank</option>
+                    <option value="UBA" data-code="033">UBA</option>
+                    <option value="Zenith Bank" data-code="057">Zenith Bank</option>
+                    <option value="Fidelity Bank" data-code="070">Fidelity Bank</option>
+                    <option value="Union Bank" data-code="032">Union Bank</option>
+                    <option value="Sterling Bank" data-code="232">Sterling Bank</option>
+                    <option value="Polaris Bank" data-code="076">Polaris Bank</option>
+                    <option value="Stanbic IBTC" data-code="221">Stanbic IBTC</option>
+                    <option value="Opay" data-code="999992">Opay</option>
+                    <option value="PalmPay" data-code="999991">PalmPay</option>
+                </select>
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number (10 digits)" maxlength="10" style="margin-top: 8px;">
+                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name" style="margin-top: 8px;">
             `,
             showCancelButton: true,
             confirmButtonText: 'Withdraw',
@@ -546,6 +564,11 @@ const DriverDashboard: React.FC = () => {
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
                 const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
+                const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
+                const bank = bankSelect?.value;
+                const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || '';
+                const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
+                const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
 
                 if (!amount || amount < 100) {
                     Swal.showValidationMessage('Minimum withdrawal is ₦100');
@@ -559,19 +582,26 @@ const DriverDashboard: React.FC = () => {
                     Swal.showValidationMessage('Please enter your password');
                     return false;
                 }
-                return { amount, password };
+                return { amount, password, bank, bankCode, account, name };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 try {
-                    const data = await api.driver.requestWithdrawal({ amount: result.value.amount, password: result.value.password });
+                    const data = await api.driver.requestWithdrawal({ 
+                        amount: result.value.amount, 
+                        password: result.value.password,
+                        bank_name: result.value.bank,
+                        bank_code: result.value.bankCode,
+                        account_number: result.value.account,
+                        account_name: result.value.name,
+                    });
                     Swal.close();
                     if (data.success) {
                         Swal.fire({
                             title: 'Withdrawal Successful',
                             html: `
-                                <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
+                                <p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${result.value.amount.toLocaleString()}</strong></p>
                                 <p class="mt-4 text-sm text-gray-500">Funds sent to your bank account.</p>
                             `,
                             icon: 'success',
@@ -583,7 +613,7 @@ const DriverDashboard: React.FC = () => {
                     }
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to process withdrawal', confirmButtonColor: '#ff5e00' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: (error instanceof Error ? error.message : '') || 'Failed to process withdrawal', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -623,14 +653,14 @@ const DriverDashboard: React.FC = () => {
             title: 'Detailed Statistics',
             html: `
                 <div class="stats-grid">
-                    <div class="stat-item"><div class="stat-label">Total Rides</div><div class="stat-value">${stats.total_rides}</div></div>
-                    <div class="stat-item"><div class="stat-label">Completed</div><div class="stat-value text-green-600">${stats.completed_rides}</div></div>
-                    <div class="stat-item"><div class="stat-label">Cancelled</div><div class="stat-value text-red-600">${stats.cancelled_rides}</div></div>
-                    <div class="stat-item"><div class="stat-label">Acceptance Rate</div><div class="stat-value">${stats.acceptance_rate}%</div></div>
-                    <div class="stat-item"><div class="stat-label">Total Fare</div><div class="stat-value">₦${stats.total_fare_amount.toLocaleString()}</div></div>
-                    <div class="stat-item"><div class="stat-label">Platform Commission</div><div class="stat-value text-red-600">-₦${stats.total_commission.toLocaleString()}</div></div>
-                    <div class="stat-item col-span-2"><div class="stat-label">Net Earnings</div><div class="stat-value text-green-600">₦${(stats.total_fare_amount - stats.total_commission).toLocaleString()}</div></div>
-                    <div class="stat-item col-span-2"><div class="stat-label">Average Rating</div><div class="stat-value flex items-center justify-center gap-2">${driverData?.avg_rating || 0} ${'★'.repeat(Math.floor(driverData?.avg_rating || 0))}${'☆'.repeat(5 - Math.floor(driverData?.avg_rating || 0))}</div></div>
+                    <div class="stat-item"><div class="stat-label">Total Rides</div><div class="stat-value" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.total_rides}</div></div>
+                    <div class="stat-item"><div class="stat-label">Completed</div><div class="stat-value text-green-600" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.completed_rides}</div></div>
+                    <div class="stat-item"><div class="stat-label">Cancelled</div><div class="stat-value text-red-600" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.cancelled_rides}</div></div>
+                    <div class="stat-item"><div class="stat-label">Acceptance Rate</div><div class="stat-value" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.acceptance_rate}%</div></div>
+                    <div class="stat-item"><div class="stat-label">Total Fare</div><div class="stat-value" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${stats.total_fare_amount.toLocaleString()}</div></div>
+                    <div class="stat-item"><div class="stat-label">Platform Commission</div><div class="stat-value text-red-600" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">-₦${stats.total_commission.toLocaleString()}</div></div>
+                    <div class="stat-item col-span-2"><div class="stat-label">Net Earnings</div><div class="stat-value text-green-600" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${(stats.total_fare_amount - stats.total_commission).toLocaleString()}</div></div>
+                    <div class="stat-item col-span-2"><div class="stat-label">Average Rating</div><div class="stat-value flex items-center justify-center gap-2" style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${driverData?.avg_rating || 0} ${'★'.repeat(Math.floor(driverData?.avg_rating || 0))}${'☆'.repeat(5 - Math.floor(driverData?.avg_rating || 0))}</div></div>
                 </div>
             `,
             confirmButtonColor: '#ff5e00',
@@ -774,17 +804,17 @@ const DriverDashboard: React.FC = () => {
                                     <span className="status-text offline">Offline</span>
                                 </>
                             )}
-                            • {stats.today_rides} rides today
+                            • <span className="font-roboto-number">{stats.today_rides}</span> rides today
                         </div>
                     </div>
                     <div className="driver-desktop-actions">
                         <button className="driver-notification-btn" onClick={checkNotifications}>
                             <i className="fas fa-bell"></i>
-                            {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                            {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                         </button>
                         <div className="online-badge">
                             <span className="pulse"></span>
-                            <span>{stats.today_rides} rides today</span>
+                            <span><span className="font-roboto-number">{stats.today_rides}</span> rides today</span>
                         </div>
                     </div>
                 </div>
@@ -796,14 +826,14 @@ const DriverDashboard: React.FC = () => {
                         <div className="earnings-header">
                             <div>
                                 <h2>Available Balance</h2>
-                                <div className="balance-amount">{formatCurrency(earnings.available_balance)}</div>
-                                <p className="total-earnings">Total Earnings: {formatCurrency(earnings.total_earnings)}</p>
+                                <div className="balance-amount font-roboto-number">{formatCurrency(earnings.available_balance)}</div>
+                                <p className="total-earnings">Total Earnings: <span className="font-roboto-number">{formatCurrency(earnings.total_earnings)}</span></p>
                             </div>
                             <i className="fas fa-wallet"></i>
                         </div>
                         <div className="today-earnings">
                             <i className="fas fa-arrow-up"></i>
-                            <span>+{formatCurrency(earnings.today_earnings)} (today)</span>
+                            <span>+<span className="font-roboto-number">{formatCurrency(earnings.today_earnings)}</span> (today)</span>
                         </div>
                         <button className="withdraw-btn-desktop" onClick={withdrawFunds}>
                             <i className="fas fa-hand-holding-usd"></i> Withdraw funds
@@ -839,17 +869,17 @@ const DriverDashboard: React.FC = () => {
                     <div className="driver-card completed-card">
                         <div className="completed-header">
                             <h2>Completed rides</h2>
-                            <span className="today-badge">+{stats.today_rides} today</span>
+                            <span className="today-badge">+<span className="font-roboto-number">{stats.today_rides}</span> today</span>
                         </div>
-                        <div className="completed-count">{stats.completed_rides}</div>
+                        <div className="completed-count font-roboto-number">{stats.completed_rides}</div>
                         <div className="rating-display">
                             <div className="stars">
                                 {[...Array(5)].map((_, i) => (
                                     <i key={i} className={`fas fa-star ${i < Math.floor(driverData?.avg_rating || 0) ? 'text-yellow-400' : i < Math.ceil(driverData?.avg_rating || 0) && (driverData?.avg_rating || 0) % 1 >= 0.5 ? 'fas fa-star-half-alt text-yellow-400' : 'far fa-star text-yellow-400'}`}></i>
                                 ))}
                             </div>
-                            <span className="rating-value">{driverData?.avg_rating || 0}</span>
-                            <span className="rating-count">({driverData?.total_reviews || 0} reviews)</span>
+                            <span className="rating-value font-roboto-number">{driverData?.avg_rating || 0}</span>
+                            <span className="rating-count">(<span className="font-roboto-number">{driverData?.total_reviews || 0}</span> reviews)</span>
                         </div>
                         <button className="stats-btn" onClick={showDetailedStats}>
                             <i className="fas fa-chart-pie"></i> View detailed stats
@@ -881,7 +911,7 @@ const DriverDashboard: React.FC = () => {
                                     </div>
                                     <p className="destination"><i className="fas fa-flag-checkered"></i> To: {activeRide.destination_address}</p>
                                     <div className="ride-meta">
-                                        <span><i className="fas fa-money-bill-wave"></i> Fare: {formatCurrency(activeRide.total_fare)}</span>
+                                        <span><i className="fas fa-money-bill-wave"></i> Fare: <span className="font-roboto-number">{formatCurrency(activeRide.total_fare)}</span></span>
                                         <span><i className="fas fa-clock"></i> Started: {formatTime(activeRide.created_at)}</span>
                                     </div>
                                 </div>
@@ -935,15 +965,15 @@ const DriverDashboard: React.FC = () => {
                                                 </div>
                                                 <div>
                                                     <p className="label">Fare</p>
-                                                    <p className="value"><i className="fas fa-tag"></i> {formatCurrency(ride.total_fare)}</p>
+                                                    <p className="value"><i className="fas fa-tag"></i> <span className="font-roboto-number">{formatCurrency(ride.total_fare)}</span></p>
                                                 </div>
                                                 <div>
                                                     <p className="label">Distance</p>
-                                                    <p className="value"><i className="fas fa-road"></i> {ride.distance_km} km</p>
+                                                    <p className="value"><i className="fas fa-road"></i> <span className="font-roboto-number">{ride.distance_km}</span> km</p>
                                                 </div>
                                                 <div>
                                                     <p className="label">Est. Time</p>
-                                                    <p className="value"><i className="fas fa-clock"></i> {Math.round((ride.distance_km || 0) / 30 * 60)} min</p>
+                                                    <p className="value"><i className="fas fa-clock"></i> <span className="font-roboto-number">{Math.round((ride.distance_km || 0) / 30 * 60)}</span> min</p>
                                                 </div>
                                             </div>
                                             <p className="destination"><i className="fas fa-flag-checkered"></i> To: {ride.destination_address}</p>
@@ -1023,9 +1053,9 @@ const DriverDashboard: React.FC = () => {
                                         <div className="trip-details">
                                             <h4>{ride.pickup_address?.substring(0, 30)} → {ride.destination_address?.substring(0, 25)}</h4>
                                             <p>{ride.formatted_time} • {ride.client_name}</p>
-                                            <p className="commission">Commission: {formatCurrency(ride.platform_commission)}</p>
+                                            <p className="commission">Commission: <span className="font-roboto-number">{formatCurrency(ride.platform_commission)}</span></p>
                                         </div>
-                                        <div className="trip-amount positive">+{formatCurrency(ride.driver_payout)}</div>
+                                        <div className="trip-amount positive font-roboto-number">+{formatCurrency(ride.driver_payout)}</div>
                                     </div>
                                 ))
                             ) : (
@@ -1044,8 +1074,8 @@ const DriverDashboard: React.FC = () => {
                         <h2>Drive more, earn more 🚀</h2>
                         <p>Complete 10 rides this weekend → ₦8,000 bonus. {stats.today_rides} rides done.</p>
                         <div className="banner-stats">
-                            <div><span className="stat-value">₦{stats.today_rides > 0 ? Math.round(earnings.today_earnings / stats.today_rides) : 0}</span><span className="stat-label">avg/ride</span></div>
-                            <div><span className="stat-value">{stats.acceptance_rate}%</span><span className="stat-label">acceptance</span></div>
+                            <div><span className="stat-value font-roboto-number">₦{stats.today_rides > 0 ? Math.round(earnings.today_earnings / stats.today_rides) : 0}</span><span className="stat-label">avg/ride</span></div>
+                            <div><span className="stat-value font-roboto-number">{stats.acceptance_rate}%</span><span className="stat-label">acceptance</span></div>
                         </div>
                     </div>
                     <button className="banner-action-btn" onClick={toggleDriverStatus} disabled={verificationStatus !== 'approved'}>

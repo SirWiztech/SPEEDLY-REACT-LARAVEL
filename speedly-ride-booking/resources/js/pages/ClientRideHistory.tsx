@@ -214,7 +214,7 @@ const ClientRideHistory: React.FC = () => {
                     </div>
                     <div style="background: #f8f9fa; padding: 12px; border-radius: 10px;">
                         <p style="color: #666; font-size: 11px; margin-bottom: 4px;">Total Fare</p>
-                        <p style="font-weight: 700; font-size: 16px; color: #ff5e00;">₦${fare}</p>
+                        <p style="font-weight: 700; font-size: 16px; color: #ff5e00; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${fare}</p>
                     </div>
                 </div>
         `;
@@ -488,7 +488,7 @@ const ClientRideHistory: React.FC = () => {
                     <div className="ride-history-desktop-actions">
                         <button className="ride-history-notification-btn" onClick={checkNotifications}>
                             <i className="fas fa-bell"></i>
-                            {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                            {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                         </button>
                         <button className="ride-history-book-btn" onClick={() => router.visit('/clientbookride')}>
                             <i className="fas fa-car"></i> Book Ride
@@ -509,10 +509,10 @@ const ClientRideHistory: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="stats-main-value">{stats.total_rides}</div>
+                        <div className="stats-main-value font-roboto-number">{stats.total_rides}</div>
                         <div className="stats-rating">
                             <i className="fas fa-star" style={{ color: '#FFC107' }}></i>
-                            <span>Average Rating: {stats.avg_rating_given.toFixed(1)}</span>
+                            <span>Average Rating: <span className="font-roboto-number">{stats.avg_rating_given.toFixed(1)}</span></span>
                         </div>
                     </div>
 
@@ -548,19 +548,19 @@ const ClientRideHistory: React.FC = () => {
                         <h2>Ride Statistics</h2>
                         <div className="ride-stats-items">
                             <div className="ride-stat-item">
-                                <div className="ride-stat-value">{stats.total_rides}</div>
+                                <div className="ride-stat-value font-roboto-number">{stats.total_rides}</div>
                                 <div className="ride-stat-label">Total Rides</div>
                             </div>
                             <div className="ride-stat-item">
-                                <div className="ride-stat-value">{stats.completed_rides}</div>
+                                <div className="ride-stat-value font-roboto-number">{stats.completed_rides}</div>
                                 <div className="ride-stat-label">Completed</div>
                             </div>
                             <div className="ride-stat-item">
-                                <div className="ride-stat-value">{stats.upcoming_rides}</div>
+                                <div className="ride-stat-value font-roboto-number">{stats.upcoming_rides}</div>
                                 <div className="ride-stat-label">Upcoming</div>
                             </div>
                             <div className="ride-stat-item">
-                                <div className="ride-stat-value">{formatCurrency(stats.total_spent)}</div>
+                                <div className="ride-stat-value font-roboto-number">{formatCurrency(stats.total_spent)}</div>
                                 <div className="ride-stat-label">{userRole === 'client' ? 'Total Spent' : 'Total Earned'}</div>
                             </div>
                         </div>
@@ -597,7 +597,7 @@ const ClientRideHistory: React.FC = () => {
                                             <td className="ride-location-cell">{ride.pickup_address?.substring(0, 35)}...</td>
                                             <td className="ride-location-cell">{ride.destination_address?.substring(0, 35)}...</td>
                                             <td>{ride.driver_name || '—'}</td>
-                                            <td className="ride-fare">{formatCurrency(ride.total_fare)}</td>
+                                            <td className="ride-fare font-roboto-number">{formatCurrency(ride.total_fare)}</td>
                                             <td>
                                                 <span className="ride-status-badge" style={{ background: getStatusColor(ride.status) }}>
                                                     {getStatusDisplay(ride.status)}
@@ -633,15 +633,15 @@ const ClientRideHistory: React.FC = () => {
                         <p>Book a ride instantly and enjoy our premium service with safety measures and comfortable vehicles.</p>
                         <div className="banner-stats">
                             <div className="banner-stat">
-                                <div className="banner-stat-value">{stats.total_rides}</div>
+                                <div className="banner-stat-value font-roboto-number">{stats.total_rides}</div>
                                 <div className="banner-stat-label">{userRole === 'client' ? 'Rides Taken' : 'Trips Done'}</div>
                             </div>
                             <div className="banner-stat">
-                                <div className="banner-stat-value">{stats.avg_rating_given.toFixed(1)}</div>
+                                <div className="banner-stat-value font-roboto-number">{stats.avg_rating_given.toFixed(1)}</div>
                                 <div className="banner-stat-label">Avg. Rating</div>
                             </div>
                             <div className="banner-stat">
-                                <div className="banner-stat-value">{formatCurrency(stats.total_spent)}</div>
+                                <div className="banner-stat-value font-roboto-number">{formatCurrency(stats.total_spent)}</div>
                                 <div className="banner-stat-label">{userRole === 'client' ? 'Spent' : 'Earned'}</div>
                             </div>
                         </div>

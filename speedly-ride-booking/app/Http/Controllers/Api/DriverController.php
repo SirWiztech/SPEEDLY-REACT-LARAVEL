@@ -304,6 +304,12 @@ class DriverController extends Controller
                 $query->whereNull('driver_id')
                     ->orWhere('driver_id', $driverProfile->id);
             })
+            ->whereNotExists(function ($query) use ($driverProfile) {
+                $query->select(DB::raw(1))
+                    ->from('ride_declines')
+                    ->whereColumn('ride_declines.ride_id', 'rides.id')
+                    ->where('ride_declines.driver_id', $driverProfile->id);
+            })
             ->with('client.user')
             ->orderBy('created_at', 'ASC')
             ->get()

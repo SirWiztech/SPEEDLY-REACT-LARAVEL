@@ -167,7 +167,7 @@ const ClientWallet: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p style="margin-bottom: 15px;">Available balance: <strong>₦${walletBalance.toLocaleString()}</strong></p>
+                <p style="margin-bottom: 15px;">Available balance: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${walletBalance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${walletBalance}" step="100">
                 <select id="bank-name" class="swal2-input">
                     <option value="">Select Bank</option>
@@ -220,7 +220,7 @@ const ClientWallet: React.FC = () => {
                     icon: 'success',
                     title: 'Withdrawal Request Submitted',
                     html: `
-                        <p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p>
+                        <p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${result.value.amount.toLocaleString()}</strong></p>
                         <p>Bank: ${result.value.bank}</p>
                         <p>Account: ${result.value.account} (${result.value.name})</p>
                         <p style="margin-top: 15px; font-size: 13px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
@@ -319,7 +319,7 @@ const ClientWallet: React.FC = () => {
                     </div>
                     
                     <div style="margin-bottom: 20px; text-align: center;">
-                        <span style="font-size: 32px; font-weight: bold; color: ${amountColor};">
+                        <span style="font-size: 32px; font-weight: bold; color: ${amountColor}; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">
                             ${amountPrefix}${transaction.formatted_amount}
                         </span>
                     </div>
@@ -351,11 +351,11 @@ const ClientWallet: React.FC = () => {
                         ` : ''}
                         <tr style="border-bottom: 1px solid #eee;">
                             <td style="padding: 10px 0; color: #666;">Balance Before</td>
-                            <td style="padding: 10px 0; text-align: right; font-weight: 500;">₦${transaction.balance_before.toLocaleString()}</td>
+                            <td style="padding: 10px 0; text-align: right; font-weight: 500; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${transaction.balance_before.toLocaleString()}</td>
                         </tr>
                         <tr>
                             <td style="padding: 10px 0; color: #666;">Balance After</td>
-                            <td style="padding: 10px 0; text-align: right; font-weight: 500; color: #ff5e00;">₦${transaction.balance_after.toLocaleString()}</td>
+                            <td style="padding: 10px 0; text-align: right; font-weight: 500; color: #ff5e00; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${transaction.balance_after.toLocaleString()}</td>
                         </tr>
                     </table>
                     ${isPending && transaction.reference ? `
@@ -564,7 +564,7 @@ const ClientWallet: React.FC = () => {
                     <div className="wallet-desktop-actions">
                         <button className="wallet-notification-btn" onClick={checkNotifications}>
                             <i className="fas fa-bell"></i>
-                            {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                            {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                         </button>
                         <button className="wallet-add-money-btn" onClick={addFunds}>Add Money</button>
                     </div>
@@ -583,7 +583,7 @@ const ClientWallet: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="balance-amount">{formatCurrency(walletBalance)}</div>
+                        <div className="balance-amount font-roboto-number">{formatCurrency(walletBalance)}</div>
                         <div className="balance-change">
                             <i className="fas fa-arrow-up"></i>
                             <span>Current balance</span>
@@ -707,7 +707,7 @@ const ClientWallet: React.FC = () => {
                                                         PENDING
                                                     </span>
                                                 )}
-                                                <div className={`transaction-amount ${transaction.is_credit ? 'positive' : 'negative'}`}>
+                                                <div className={`transaction-amount font-roboto-number ${transaction.is_credit ? 'positive' : 'negative'}`}>
                                                     {transaction.is_credit ? '+' : '-'}{transaction.formatted_amount}
                                                 </div>
                                             </div>
@@ -728,7 +728,7 @@ const ClientWallet: React.FC = () => {
                         <p>Book a ride instantly and enjoy our premium service with safety measures and comfortable vehicles.</p>
                         <div className="banner-stats">
                             <div className="banner-stat">
-                                <div className="banner-stat-value">{rideCount}</div>
+                                <div className="banner-stat-value font-roboto-number">{rideCount}</div>
                                 <div className="banner-stat-label">Rides Taken</div>
                             </div>
                             <div className="banner-stat">
@@ -736,7 +736,7 @@ const ClientWallet: React.FC = () => {
                                 <div className="banner-stat-label">Avg. Rating</div>
                             </div>
                             <div className="banner-stat">
-                                <div className="banner-stat-value">{formatCurrency(walletBalance)}</div>
+                                <div className="banner-stat-value font-roboto-number">{formatCurrency(walletBalance)}</div>
                                 <div className="banner-stat-label">Balance</div>
                             </div>
                         </div>

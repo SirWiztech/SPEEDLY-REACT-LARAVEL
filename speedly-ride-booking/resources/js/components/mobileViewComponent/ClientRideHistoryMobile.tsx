@@ -182,7 +182,7 @@ const ClientRideHistoryMobile: React.FC = () => {
                     </div>
                     <div style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
                         <p style="color: #666; font-size: 10px;">Total Fare</p>
-                        <p style="font-weight: 700; font-size: 14px; color: #ff5e00;">₦${fare}</p>
+                        <p style="font-weight: 700; font-size: 14px; color: #ff5e00; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${fare}</p>
                     </div>
                 </div>
         `;
@@ -425,17 +425,17 @@ const ClientRideHistoryMobile: React.FC = () => {
                     </div>
                     <button className="mobile-ride-history-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
                 {/* Stats Card */}
                 <div className="mobile-ride-history-stats-card">
-                    <div className="mobile-stats-value">{stats.total_rides}</div>
+                    <div className="mobile-stats-value font-roboto-number">{stats.total_rides}</div>
                     <div className="mobile-stats-label">Total Rides</div>
                     <div className="mobile-stats-rating">
                         <i className="fas fa-star"></i>
-                        <span>Avg. Rating: {stats.avg_rating_given.toFixed(1)}</span>
+                        <span>Avg. Rating: <span className="font-roboto-number">{stats.avg_rating_given.toFixed(1)}</span></span>
                     </div>
                 </div>
 
@@ -471,7 +471,7 @@ const ClientRideHistoryMobile: React.FC = () => {
                                                 <p className="mobile-driver-name">Driver: {ride.driver_name}</p>
                                             )}
                                         </div>
-                                        <div className="mobile-ride-amount">
+                                        <div className="mobile-ride-amount font-roboto-number">
                                             {formatCurrency(ride.total_fare)}
                                         </div>
                                     </div>

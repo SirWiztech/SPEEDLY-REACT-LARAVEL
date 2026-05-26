@@ -514,7 +514,7 @@ const DriverSettings: React.FC = () => {
                     </div>
                     <button className="driver-settings-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 

@@ -607,7 +607,7 @@ const ClientBookRide: React.FC = () => {
             Swal.fire({
                 icon: 'error',
                 title: 'Insufficient Balance',
-                html: `Your wallet balance (₦${walletBalance.toLocaleString()}) is insufficient.<br>Required: ₦${booking.fare.toLocaleString()}`,
+                html: `Your wallet balance (<span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${walletBalance.toLocaleString()}</span>) is insufficient.<br>Required: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${booking.fare.toLocaleString()}</span>`,
                 showCancelButton: true,
                 confirmButtonText: 'Add Funds',
                 confirmButtonColor: '#ff5e00'
@@ -658,7 +658,7 @@ const ClientBookRide: React.FC = () => {
                 Swal.fire({
                     icon: 'success',
                     title: 'Ride Booked Successfully!',
-                    html: `<div><p><strong>Ride Number:</strong> #${rideData?.ride_number || ''}</p><p><strong>Amount Paid:</strong> ₦${booking.fare.toLocaleString()}</p><p><strong>Wallet Balance:</strong> ₦${walletBalance.toLocaleString()}</p></div>`,
+                    html: `<div><p><strong>Ride Number:</strong> #${rideData?.ride_number || ''}</p><p><strong>Amount Paid:</strong> <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${booking.fare.toLocaleString()}</span></p><p><strong>Wallet Balance:</strong> <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${walletBalance.toLocaleString()}</span></p></div>`,
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'View Receipt'
                 }).then(() => {
@@ -755,11 +755,11 @@ const ClientBookRide: React.FC = () => {
                 <div className="book-ride-desktop-header">
                     <div className="book-ride-desktop-title">
                         <h1>Book a Ride</h1>
-                        <p className="wallet-balance">Wallet: {formatCurrency(walletBalance)}</p>
+                        <p className="wallet-balance">Wallet: <span className="font-roboto-number">{formatCurrency(walletBalance)}</span></p>
                     </div>
                     <button className="book-ride-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -874,7 +874,7 @@ const ClientBookRide: React.FC = () => {
                                     <li><i className="fas fa-check"></i> 4 Seater cars</li>
                                     <li><i className="fas fa-check"></i> Standard comfort</li>
                                 </ul>
-                                <div className="plan-price">₦1,000 <span>/km</span></div>
+                                <div className="plan-price font-roboto-number">₦1,000 <span>/km</span></div>
                             </div>
                             <div className={`plan-card ${selectedPlan === 'comfort' ? 'selected' : ''}`} onClick={() => selectPlan('comfort')}>
                                 <div className="plan-icon"><i className="fas fa-car-side"></i></div>
@@ -884,7 +884,7 @@ const ClientBookRide: React.FC = () => {
                                     <li><i className="fas fa-check"></i> Professional drivers</li>
                                     <li><i className="fas fa-check"></i> Premium vehicles</li>
                                 </ul>
-                                <div className="plan-price">₦1,500 <span>/km</span></div>
+                                <div className="plan-price font-roboto-number">₦1,500 <span>/km</span></div>
                             </div>
                         </div>
                         
@@ -899,7 +899,7 @@ const ClientBookRide: React.FC = () => {
                 {step === 3 && (
                     <div className="book-ride-driver-step">
                         <h2>Available Drivers</h2>
-                        <p className="driver-status">{drivers.length} drivers available nearby</p>
+                        <p className="driver-status"><span className="font-roboto-number">{drivers.length}</span> drivers available nearby</p>
                         
                         <div className="driver-selection-info">
                             <i className="fas fa-info-circle"></i>
@@ -917,14 +917,14 @@ const ClientBookRide: React.FC = () => {
                                         <div className="driver-avatar">{driver.name.charAt(0)}</div>
                                         <div className="driver-details">
                                             <h4>{driver.name}</h4>
-                                            <div className="driver-rating">★★★★★ <span>{driver.rating}</span></div>
+                                            <div className="driver-rating">★★★★★ <span className="font-roboto-number">{driver.rating}</span></div>
                                             <div className="driver-car"><i className="fas fa-car"></i> {driver.vehicle}</div>
                                         </div>
                                     </div>
                                     <div className="driver-stats">
-                                        <div><span className="stat-value">{driver.distance}</span><span className="stat-label">km away</span></div>
-                                        <div><span className="stat-value">{driver.rating}</span><span className="stat-label">rating</span></div>
-                                        <div><span className="stat-value">{driver.rides}+</span><span className="stat-label">rides</span></div>
+                                        <div><span className="stat-value font-roboto-number">{driver.distance}</span><span className="stat-label">km away</span></div>
+                                        <div><span className="stat-value font-roboto-number">{driver.rating}</span><span className="stat-label">rating</span></div>
+                                        <div><span className="stat-value font-roboto-number">{driver.rides}+</span><span className="stat-label">rides</span></div>
                                     </div>
                                 </div>
                             ))}
@@ -949,7 +949,7 @@ const ClientBookRide: React.FC = () => {
                             <div className={`payment-card ${selectedPayment === 'wallet' ? 'selected' : ''}`} onClick={() => selectPayment('wallet')}>
                                 <i className="fas fa-wallet"></i>
                                 <h4>Speedly Wallet</h4>
-                                <p>Balance: {formatCurrency(walletBalance)}</p>
+                                <p>Balance: <span className="font-roboto-number">{formatCurrency(walletBalance)}</span></p>
                             </div>
                             <div className={`payment-card ${selectedPayment === 'card' ? 'selected' : ''}`} onClick={() => selectPayment('card')}>
                                 <i className="fas fa-credit-card"></i>
@@ -961,10 +961,10 @@ const ClientBookRide: React.FC = () => {
                         {booking.distance > 0 && (
                             <div className="fare-summary">
                                 <h3>Fare Summary</h3>
-                                <div className="fare-item"><span>Distance</span><span>{booking.distance.toFixed(1)} km</span></div>
-                                <div className="fare-item"><span>Rate per km</span><span>₦{booking.plan === 'economy' ? '1,000' : '1,500'}</span></div>
-                                <div className="fare-item"><span>Base fare</span><span>₦500</span></div>
-                                <div className="fare-item total"><span>Total Amount</span><span>₦{booking.fare.toLocaleString()}</span></div>
+                                <div className="fare-item"><span>Distance</span><span className="font-roboto-number">{booking.distance.toFixed(1)} km</span></div>
+                                <div className="fare-item"><span>Rate per km</span><span className="font-roboto-number">₦{booking.plan === 'economy' ? '1,000' : '1,500'}</span></div>
+                                <div className="fare-item"><span>Base fare</span><span className="font-roboto-number">₦500</span></div>
+                                <div className="fare-item total"><span>Total Amount</span><span className="font-roboto-number">₦{booking.fare.toLocaleString()}</span></div>
                                 {booking.payment === 'wallet' && booking.fare > walletBalance && (
                                     <div className="insufficient-warning">⚠️ Insufficient balance. Please add funds.</div>
                                 )}

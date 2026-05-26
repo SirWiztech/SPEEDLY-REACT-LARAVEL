@@ -606,17 +606,17 @@ const ClientLocationMobile: React.FC = () => {
                             <div className="mobile-coord-item">
                                 <i className="fas fa-globe-africa"></i>
                                 <div className="coord-label">Latitude</div>
-                                <div className="coord-value">{locationStats.latitude}</div>
+                                <div className="coord-value font-roboto-number">{locationStats.latitude}</div>
                             </div>
                             <div className="mobile-coord-item">
                                 <i className="fas fa-globe-americas"></i>
                                 <div className="coord-label">Longitude</div>
-                                <div className="coord-value">{locationStats.longitude}</div>
+                                <div className="coord-value font-roboto-number">{locationStats.longitude}</div>
                             </div>
                             <div className="mobile-coord-item">
                                 <i className="fas fa-bullseye"></i>
                                 <div className="coord-label">Accuracy</div>
-                                <div className="coord-value">{locationStats.accuracy}m</div>
+                                <div className="coord-value font-roboto-number">{locationStats.accuracy}m</div>
                             </div>
                         </div>
 
@@ -624,19 +624,19 @@ const ClientLocationMobile: React.FC = () => {
                             <div className="mobile-stat-badge">
                                 <i className="fas fa-tachometer-alt"></i>
                                 <span className="stat-label">Speed</span>
-                                <span className="stat-value">{locationStats.speed}</span>
+                                <span className="stat-value font-roboto-number">{locationStats.speed}</span>
                                 <span className="stat-unit">km/h</span>
                             </div>
                             <div className="mobile-stat-badge">
                                 <i className="fas fa-compass"></i>
                                 <span className="stat-label">Heading</span>
-                                <span className="stat-value">{locationStats.heading}</span>
+                                <span className="stat-value font-roboto-number">{locationStats.heading}</span>
                                 <span className="stat-unit">°</span>
                             </div>
                             <div className="mobile-stat-badge">
                                 <i className="fas fa-mountain"></i>
                                 <span className="stat-label">Altitude</span>
-                                <span className="stat-value">{locationStats.altitude}</span>
+                                <span className="stat-value font-roboto-number">{locationStats.altitude}</span>
                                 <span className="stat-unit">m</span>
                             </div>
                         </div>

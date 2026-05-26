@@ -213,8 +213,8 @@ const ClientDashboard: React.FC = () => {
                         html: `
                 <div style="text-align: center;">
                   <p style="font-size: 18px; margin-bottom: 10px;">Your wallet has been credited with</p>
-                  <p style="font-size: 28px; font-weight: bold; color: #ff5e00;">${formatCurrency(data.amount)}</p>
-                  <p style="margin-top: 10px;">New balance: <strong>${formatCurrency(data.new_balance)}</strong></p>
+                  <p style="font-size: 28px; font-weight: bold; color: #ff5e00; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(data.amount)}</p>
+                  <p style="margin-top: 10px;">New balance: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(data.new_balance)}</strong></p>
                 </div>
               `,
                         confirmButtonColor: '#ff5e00',
@@ -357,7 +357,7 @@ const ClientDashboard: React.FC = () => {
           <p><strong>From:</strong> ${ride.pickup_address || 'N/A'}</p>
           <p><strong>To:</strong> ${ride.destination_address || 'N/A'}</p>
           <p><strong>Distance:</strong> ${distanceKm}</p>
-          <p><strong>Fare:</strong> <span style="color: #4CAF50; font-weight: bold;">${formatCurrency(ride.total_fare)}</span></p>
+          <p><strong>Fare:</strong> <span style="color: #4CAF50; font-weight: bold; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(ride.total_fare)}</span></p>
     `;
 
         if (ride.platform_commission) {
@@ -731,12 +731,12 @@ const ClientDashboard: React.FC = () => {
                         <div className="flex items-center gap-4">
                             <div className="wallet-info bg-gray-100 px-4 py-2 rounded-xl">
                                 <span className="text-sm text-gray-600">Wallet Balance</span>
-                                <span className="text-xl font-bold text-[#ff5e00] ml-2">{formatCurrency(walletBalance)}</span>
+                                <span className="text-xl font-bold text-[#ff5e00] ml-2 font-roboto-number">{formatCurrency(walletBalance)}</span>
                             </div>
                             <button className="notification-btn bg-gray-100 p-3 rounded-xl relative hover:bg-gray-200 transition" onClick={checkNotifications}>
                                 <i className="fas fa-bell text-gray-700 text-xl"></i>
                                 {notificationCount > 0 && (
-                                    <span className="notification-badge notification-pulse">{notificationCount}</span>
+                                    <span className="notification-badge notification-pulse font-roboto-number">{notificationCount}</span>
                                 )}
                             </button>
                         </div>
@@ -746,15 +746,15 @@ const ClientDashboard: React.FC = () => {
                     <div className="grid grid-cols-3 gap-6 mt-6">
                         <div className="desktop-card bg-gradient-to-br from-[#ff5e00] to-[#ff8c3a] text-white">
                             <h3 className="text-lg font-medium opacity-100" style={{color: 'white'}}>Active Rides</h3>
-                            <div className="text-4xl font-bold mt-2">{rideStats.active_count}</div>
+                            <div className="text-4xl font-bold mt-2 font-roboto-number">{rideStats.active_count}</div>
                             <div className="mt-4 text-sm opacity-75">
-                                <i className="fas fa-arrow-up"></i> +{Math.abs(rideStats.monthly_change)} from last month
+                                <i className="fas fa-arrow-up"></i> +<span className="font-roboto-number">{Math.abs(rideStats.monthly_change)}</span> from last month
                             </div>
                         </div>
 
                         <div className="desktop-card">
                             <h3 className="text-lg font-medium text-gray-600">Completed Rides</h3>
-                            <div className="text-4xl font-bold mt-2">{rideStats.completed_count}</div>
+                            <div className="text-4xl font-bold mt-2 font-roboto-number">{rideStats.completed_count}</div>
                             <div className="mt-4 text-sm text-gray-500">
                                 Member since {userData?.created_at ? formatDate(userData.created_at) : new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                             </div>
@@ -842,7 +842,7 @@ const ClientDashboard: React.FC = () => {
                                                     <td className="px-6 py-4 text-sm">{ride.pickup_address?.substring(0, 30) || 'N/A'}</td>
                                                     <td className="px-6 py-4 text-sm">{ride.destination_address?.substring(0, 30) || 'N/A'}</td>
                                                     <td className="px-6 py-4 text-sm">{ride.driver_name || 'Pending'}</td>
-                                                    <td className="px-6 py-4 text-sm font-medium">{formatCurrency(ride.total_fare)}</td>
+                                                    <td className="px-6 py-4 text-sm font-medium font-roboto-number">{formatCurrency(ride.total_fare)}</td>
                                                     <td className="px-6 py-4">
                                                         <span className="px-2 py-1 text-xs rounded-full" style={{
                                                             background: ride.status === 'completed' ? '#E8F5E9' : '#FFF3E0',

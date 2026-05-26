@@ -208,7 +208,7 @@ const DriverBookHistory: React.FC = () => {
                     </div>
                     <button className="driver-book-history-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -223,23 +223,23 @@ const DriverBookHistory: React.FC = () => {
                 <div className="driver-book-history-stats-grid">
                     <div className="stat-card">
                         <div className="stat-label">Completed</div>
-                        <div className="stat-value" style={{ color: '#10b981' }}>{stats.completed_rides}</div>
+                        <div className="stat-value font-roboto-number" style={{ color: '#10b981' }}>{stats.completed_rides}</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">Cancelled</div>
-                        <div className="stat-value" style={{ color: '#ef4444' }}>{stats.cancelled_rides}</div>
+                        <div className="stat-value font-roboto-number" style={{ color: '#ef4444' }}>{stats.cancelled_rides}</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">Declined</div>
-                        <div className="stat-value" style={{ color: '#6b7280' }}>{stats.declined_count}</div>
+                        <div className="stat-value font-roboto-number" style={{ color: '#6b7280' }}>{stats.declined_count}</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">Total Fares</div>
-                        <div className="stat-value">{formatCurrency(stats.total_fare_amount)}</div>
+                        <div className="stat-value font-roboto-number">{formatCurrency(stats.total_fare_amount)}</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">You Earned</div>
-                        <div className="stat-value" style={{ color: '#ff5e00' }}>{formatCurrency(stats.total_earnings)}</div>
+                        <div className="stat-value font-roboto-number" style={{ color: '#ff5e00' }}>{formatCurrency(stats.total_earnings)}</div>
                         <div className="stat-subtext">After 20% commission</div>
                     </div>
                 </div>
@@ -258,15 +258,15 @@ const DriverBookHistory: React.FC = () => {
                     <div className="commission-stats">
                         <div className="commission-stat">
                             <div className="stat-label">Total Fares</div>
-                            <div className="stat-value">{formatCurrency(stats.total_fare_amount)}</div>
+                            <div className="stat-value font-roboto-number">{formatCurrency(stats.total_fare_amount)}</div>
                         </div>
                         <div className="commission-stat">
                             <div className="stat-label">Commission</div>
-                            <div className="stat-value" style={{ color: '#fbbf24' }}>-{formatCurrency(stats.total_commission)}</div>
+                            <div className="stat-value font-roboto-number" style={{ color: '#fbbf24' }}>-{formatCurrency(stats.total_commission)}</div>
                         </div>
                         <div className="commission-stat">
                             <div className="stat-label">Your Earnings</div>
-                            <div className="stat-value">{formatCurrency(stats.total_earnings)}</div>
+                            <div className="stat-value font-roboto-number">{formatCurrency(stats.total_earnings)}</div>
                         </div>
                     </div>
                 </div>
@@ -277,13 +277,13 @@ const DriverBookHistory: React.FC = () => {
                         className={`tab-btn ${activeTab === 'accepted' ? 'active' : ''}`}
                         onClick={() => setActiveTab('accepted')}
                     >
-                        Accepted Rides ({acceptedRides.length})
+                        Accepted Rides (<span className="font-roboto-number">{acceptedRides.length}</span>)
                     </button>
                     <button 
                         className={`tab-btn ${activeTab === 'declined' ? 'active' : ''}`}
                         onClick={() => setActiveTab('declined')}
                     >
-                        Declined Rides ({declinedRides.length})
+                        Declined Rides (<span className="font-roboto-number">{declinedRides.length}</span>)
                     </button>
                 </div>
 
@@ -330,15 +330,15 @@ const DriverBookHistory: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="fare-cell">{formatCurrency(ride.total_fare)}</td>
-                                                <td className="commission-cell">-{formatCurrency(ride.platform_commission)}</td>
+                                                <td className="fare-cell font-roboto-number">{formatCurrency(ride.total_fare)}</td>
+                                                <td className="commission-cell font-roboto-number">-{formatCurrency(ride.platform_commission)}</td>
                                                 <td className="earnings-cell">
                                                     {ride.status === 'completed' ? (
-                                                        <span style={{ color: '#10b981', fontWeight: '600' }}>+{formatCurrency(ride.driver_payout)}</span>
+                                                        <span style={{ color: '#10b981', fontWeight: '600' }} className="font-roboto-number">+{formatCurrency(ride.driver_payout)}</span>
                                                     ) : ride.status === 'pending' || ride.status === 'accepted' ? (
-                                                        <span style={{ color: '#f59e0b' }}>{formatCurrency(ride.driver_payout)} (pending)</span>
+                                                        <span style={{ color: '#f59e0b' }} className="font-roboto-number">{formatCurrency(ride.driver_payout)} (pending)</span>
                                                     ) : (
-                                                        <span style={{ color: '#6b7280' }}>{formatCurrency(ride.driver_payout)}</span>
+                                                        <span style={{ color: '#6b7280' }} className="font-roboto-number">{formatCurrency(ride.driver_payout)}</span>
                                                     )}
                                                 </td>
                                                 <td>
@@ -412,11 +412,11 @@ const DriverBookHistory: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="fare-cell">{formatCurrency(ride.total_fare)}</td>
+                                                <td className="fare-cell font-roboto-number">{formatCurrency(ride.total_fare)}</td>
                                                 <td>
                                                     <div className="declined-time">{new Date(ride.declined_at).toLocaleTimeString()}</div>
                                                     {ride.response_time_seconds > 0 && (
-                                                        <div className="response-time">{ride.response_time_seconds}s response</div>
+                                                        <div className="response-time font-roboto-number">{ride.response_time_seconds}s response</div>
                                                     )}
                                                 </td>
                                                 <td>

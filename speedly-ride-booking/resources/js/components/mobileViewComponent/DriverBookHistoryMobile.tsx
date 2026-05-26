@@ -144,7 +144,7 @@ const DriverBookHistoryMobile: React.FC = () => {
                         </div>
                         <button className="notification-btn" onClick={checkNotifications}>
                             <i className="fas fa-bell"></i>
-                            {notificationCount > 0 && <span className="notif-badge">{notificationCount}</span>}
+                            {notificationCount > 0 && <span className="notif-badge font-roboto-number">{notificationCount}</span>}
                         </button>
                     </div>
 
@@ -152,19 +152,19 @@ const DriverBookHistoryMobile: React.FC = () => {
                     <div className="stats-row">
                         <div className="stat-item">
                             <span className="stat-label">Completed</span>
-                            <span className="stat-value green">{stats.completed_rides}</span>
+                            <span className="stat-value green font-roboto-number">{stats.completed_rides}</span>
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">Cancelled</span>
-                            <span className="stat-value red">{stats.cancelled_rides}</span>
+                            <span className="stat-value red font-roboto-number">{stats.cancelled_rides}</span>
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">Declined</span>
-                            <span className="stat-value gray">{stats.declined_count}</span>
+                            <span className="stat-value gray font-roboto-number">{stats.declined_count}</span>
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">You Earned</span>
-                            <span className="stat-value orange">{formatCurrency(stats.total_earnings)}</span>
+                            <span className="stat-value orange font-roboto-number">{formatCurrency(stats.total_earnings)}</span>
                         </div>
                     </div>
 
@@ -172,12 +172,12 @@ const DriverBookHistoryMobile: React.FC = () => {
                     <div className="commission-card">
                         <div className="commission-item">
                             <span className="commission-label">Total Fares</span>
-                            <span className="commission-value">{formatCurrency(stats.total_fare_amount)}</span>
+                            <span className="commission-value font-roboto-number">{formatCurrency(stats.total_fare_amount)}</span>
                         </div>
                         <div className="commission-divider"></div>
                         <div className="commission-item">
                             <span className="commission-label">Platform Commission (20%)</span>
-                            <span className="commission-value orange">-{formatCurrency(stats.total_commission)}</span>
+                            <span className="commission-value orange font-roboto-number">-{formatCurrency(stats.total_commission)}</span>
                         </div>
                     </div>
 
@@ -187,13 +187,13 @@ const DriverBookHistoryMobile: React.FC = () => {
                             className={`tab-btn ${activeTab === 'accepted' ? 'active' : ''}`}
                             onClick={() => setActiveTab('accepted')}
                         >
-                            Accepted ({acceptedRides.length})
+                            Accepted (<span className="font-roboto-number">{acceptedRides.length}</span>)
                         </button>
                         <button 
                             className={`tab-btn ${activeTab === 'declined' ? 'active' : ''}`}
                             onClick={() => setActiveTab('declined')}
                         >
-                            Declined ({declinedRides.length})
+                            Declined (<span className="font-roboto-number">{declinedRides.length}</span>)
                         </button>
                     </div>
 
@@ -232,8 +232,8 @@ const DriverBookHistoryMobile: React.FC = () => {
                                                 <span className="client-name">{ride.client_name}</span>
                                             </div>
                                             <div className="fare-info">
-                                                <span className="fare">Fare: {formatCurrency(ride.total_fare)}</span>
-                                                <span className="earnings green">+{formatCurrency(ride.driver_payout)}</span>
+                                                <span className="fare font-roboto-number">Fare: {formatCurrency(ride.total_fare)}</span>
+                                                <span className="earnings green font-roboto-number">+{formatCurrency(ride.driver_payout)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -280,7 +280,7 @@ const DriverBookHistoryMobile: React.FC = () => {
                                                 <span className="client-name">{ride.client_name}</span>
                                             </div>
                                             <div className="fare-info">
-                                                <span className="fare">Fare: {formatCurrency(ride.total_fare)}</span>
+                                                <span className="fare font-roboto-number">Fare: {formatCurrency(ride.total_fare)}</span>
                                                 <span className="earnings gray">Declined</span>
                                             </div>
                                         </div>

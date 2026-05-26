@@ -172,8 +172,8 @@ const ClientDashboardMobile: React.FC = () => {
                             html: `
                                 <div style="text-align: center;">
                                     <p style="font-size: 18px; margin-bottom: 10px;">Your wallet has been credited with</p>
-                                    <p style="font-size: 28px; font-weight: bold; color: #ff5e00;">${formatCurrency(data.amount)}</p>
-                                    <p style="margin-top: 10px;">New balance: <strong>${formatCurrency(data.new_balance)}</strong></p>
+                                    <p style="font-size: 28px; font-weight: bold; color: #ff5e00; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(data.amount)}</p>
+                                    <p style="margin-top: 10px;">New balance: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(data.new_balance)}</strong></p>
                                 </div>
                             `,
                             confirmButtonColor: '#ff5e00',
@@ -257,7 +257,7 @@ const ClientDashboardMobile: React.FC = () => {
                             <p><strong>Ride #:</strong> ${rideData.ride_number || rideData.id}</p>
                             <p><strong>From:</strong> ${rideData.pickup_address || 'N/A'}</p>
                             <p><strong>To:</strong> ${rideData.destination_address || 'N/A'}</p>
-                            <p><strong>Fare:</strong> ${formatCurrency(rideData.total_fare)}</p>
+                            <p><strong>Fare:</strong> <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(rideData.total_fare)}</span></p>
                             <p><strong>Status:</strong> ${getStatusDisplay(rideData.status)}</p>
                             ${driverName ? `<p><strong>Driver:</strong> ${driverName}</p>` : ''}
                         </div>
@@ -359,13 +359,13 @@ const ClientDashboardMobile: React.FC = () => {
                             <span className="mobile-tier-badge" style={{ backgroundColor: tierColor }}>
                                 {userData?.membership_tier ? userData.membership_tier.charAt(0).toUpperCase() + userData.membership_tier.slice(1) : 'Basic'} Member
                             </span>
-                            <p className="mobile-text-gray-200">Wallet: {formatCurrency(walletBalance)}</p>
+                            <p className="mobile-text-gray-200">Wallet: <span className="font-roboto-number">{formatCurrency(walletBalance)}</span></p>
                         </div>
                     </div>
                     <button className="mobile-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
                         {notificationCount > 0 && (
-                            <span className="mobile-notification-badge mobile-notification-pulse">{notificationCount}</span>
+                            <span className="mobile-notification-badge mobile-notification-pulse font-roboto-number">{notificationCount}</span>
                         )}
                     </button>
                 </div>
@@ -374,16 +374,16 @@ const ClientDashboardMobile: React.FC = () => {
                 <div className="mobile-grid mobile-grid-cols-2 mobile-gap-4 mobile-mx-4 mobile-mt-4">
                     <div className="mobile-balance-section">
                         <h2>Active Rides</h2>
-                        <div className="mobile-text-3xl mobile-font-extrabold mobile-mt-2">{rideStats.active_count}</div>
+                        <div className="mobile-text-3xl mobile-font-extrabold mobile-mt-2 font-roboto-number">{rideStats.active_count}</div>
                         <div className="mobile-balance-change">
                             <i className="fas fa-arrow-up"></i>
-                            <span className="mobile-font-medium">+{Math.abs(rideStats.monthly_change)} this month</span>
+                            <span className="mobile-font-medium">+<span className="font-roboto-number">{Math.abs(rideStats.monthly_change)}</span> this month</span>
                         </div>
                     </div>
 
                     <div className="mobile-balance-section mobile-bg-gray-200">
                         <h2>Completed</h2>
-                        <div className="mobile-text-3xl mobile-font-extrabold mobile-mt-2">{rideStats.completed_count}</div>
+                        <div className="mobile-text-3xl mobile-font-extrabold mobile-mt-2 font-roboto-number">{rideStats.completed_count}</div>
                         <div className="mobile-text-sm mobile-text-gray-600 mobile-mt-2">
                             Member since {userData?.created_at ? formatDate(userData.created_at) : new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                         </div>
@@ -452,7 +452,7 @@ const ClientDashboardMobile: React.FC = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <div className={`mobile-transaction-amount ${ride.status === 'completed' ? 'mobile-positive' : ''}`}>
+                                        <div className={`mobile-transaction-amount font-roboto-number ${ride.status === 'completed' ? 'mobile-positive' : ''}`}>
                                             {formatCurrency(ride.total_fare)}
                                         </div>
                                     </div>

@@ -153,7 +153,7 @@ const ClientWalletMobile: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p style="margin-bottom: 15px;">Available: <strong>₦${walletBalance.toLocaleString()}</strong></p>
+                <p style="margin-bottom: 15px;">Available: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${walletBalance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Amount" min="1000" max="${walletBalance}">
                 <select id="bank-name" class="swal2-input">
                     <option value="">Select Bank</option>
@@ -205,7 +205,7 @@ const ClientWalletMobile: React.FC = () => {
                 Swal.fire({
                     icon: 'success',
                     title: 'Withdrawal Request Submitted',
-                    html: `<p>Amount: <strong>₦${result.value.amount.toLocaleString()}</strong></p><p>Bank: ${result.value.bank}</p><p>Account: ${result.value.account}</p>`,
+                    html: `<p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${result.value.amount.toLocaleString()}</strong></p><p>Bank: ${result.value.bank}</p><p>Account: ${result.value.account}</p>`,
                     confirmButtonColor: '#ff5e00'
                 });
             }
@@ -288,13 +288,13 @@ const ClientWalletMobile: React.FC = () => {
                         </span>
                     </div>
                     <div style="text-align: center; margin-bottom: 15px;">
-                        <span style="font-size: 28px; font-weight: bold; color: ${amountColor};">${amountPrefix}${transaction.formatted_amount}</span>
+                        <span style="font-size: 28px; font-weight: bold; color: ${amountColor}; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${amountPrefix}${transaction.formatted_amount}</span>
                     </div>
                     <table style="width: 100%; font-size: 13px;">
                         <tr><td style="padding: 8px 0; color: #666;">ID</td><td style="text-align: right;">${transaction.display_id}</td></tr>
                         <tr><td style="padding: 8px 0; color: #666;">Type</td><td style="text-align: right; text-transform: capitalize;">${transaction.type_display}</td></tr>
                         <tr><td style="padding: 8px 0; color: #666;">Date</td><td style="text-align: right;">${transaction.date}</td></tr>
-                        <tr><td style="padding: 8px 0; color: #666;">Balance After</td><td style="text-align: right; color: #ff5e00;">₦${transaction.balance_after.toLocaleString()}</td></tr>
+                        <tr><td style="padding: 8px 0; color: #666;">Balance After</td><td style="text-align: right; color: #ff5e00; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${transaction.balance_after.toLocaleString()}</td></tr>
                         ${transaction.reference ? `<tr><td style="padding: 8px 0; color: #666;">Reference</td><td style="text-align: right; font-size: 11px;">${transaction.reference}</td></tr>` : ''}
                     </table>
                     ${isPending && transaction.reference ? `
@@ -358,7 +358,7 @@ const ClientWalletMobile: React.FC = () => {
                     </div>
                     <button className="mobile-wallet-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -372,7 +372,7 @@ const ClientWalletMobile: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <div className="mobile-balance-amount">{formatCurrency(walletBalance)}</div>
+                    <div className="mobile-balance-amount font-roboto-number">{formatCurrency(walletBalance)}</div>
                     <div className="mobile-balance-change">
                         <i className="fas fa-arrow-up"></i>
                         <span>Current balance</span>
@@ -447,7 +447,7 @@ const ClientWalletMobile: React.FC = () => {
                                             <p style={{ color: '#FF9800', fontSize: '10px', fontWeight: 600, marginTop: '2px' }}>PENDING</p>
                                         )}
                                     </div>
-                                    <div className={`mobile-transaction-amount ${transaction.is_credit ? 'positive' : 'negative'}`}>
+                                    <div className={`mobile-transaction-amount font-roboto-number ${transaction.is_credit ? 'positive' : 'negative'}`}>
                                         {transaction.is_credit ? '+' : '-'}{transaction.formatted_amount}
                                     </div>
                                 </div>

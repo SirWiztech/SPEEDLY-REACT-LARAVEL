@@ -389,12 +389,13 @@ class WalletController extends Controller
                     'reference' => $reference,
                     'destination' => [
                         'type' => 'bank_account',
-                        'amount' => $amount,
+                        'amount' => (string) $amount,
                         'currency' => 'NGN',
                         'narration' => 'Driver withdrawal - ' . $user->full_name,
                         'bank_account' => [
                             'bank' => $bankCode,
                             'account' => $accountNumber,
+                            'account_name' => $accountName,
                         ],
                     ],
                     'customer' => [
@@ -407,7 +408,60 @@ class WalletController extends Controller
 
             if (!$korapayResponse->successful() || ($korapayData['status'] ?? false) !== true) {
                 $errorMsg = $korapayData['message'] ?? 'Payout failed';
+                $httpStatus = $korapayResponse->status();
                 \Illuminate\Support\Facades\Log::error('KoraPay payout failed for driver: ' . $user->email . ' - ' . $errorMsg);
+
+                // For 403/401 (auth/permission issues) or 400 validation, save as pending so admin can handle
+                if (in_array($httpStatus, [400, 401, 403])) {
+                    DB::beginTransaction();
+                    try {
+                        $balanceBefore = $availableBalance;
+                        $balanceAfter = $balanceBefore - $amount;
+
+                        DriverWithdrawal::create([
+                            'driver_id' => $driverProfile->id,
+                            'amount' => $amount,
+                            'status' => 'pending',
+                            'bank_name' => $bankName,
+                            'account_number' => $accountNumber,
+                            'account_name' => $accountName,
+                        ]);
+
+                        WalletTransaction::create([
+                            'id' => Str::random(32),
+                            'user_id' => $user->id,
+                            'transaction_type' => 'withdrawal',
+                            'amount' => $amount,
+                            'balance_before' => $balanceBefore,
+                            'balance_after' => $balanceAfter,
+                            'reference' => $reference,
+                            'status' => 'pending',
+                            'category' => 'withdrawal',
+                            'description' => 'Pending withdrawal to ' . $accountName . ' - ' . $accountNumber,
+                        ]);
+
+                        Notification::create([
+                            'id' => Str::random(32),
+                            'user_id' => $user->id,
+                            'type' => 'withdrawal',
+                            'title' => 'Withdrawal Pending',
+                            'message' => 'Your withdrawal of ₦' . number_format($amount, 2) . ' has been submitted and is pending processing.',
+                            'is_read' => false,
+                        ]);
+
+                        DB::commit();
+
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Withdrawal submitted for processing. It will be reviewed shortly.',
+                            'data' => ['reference' => $reference, 'amount' => $amount],
+                        ]);
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        \Illuminate\Support\Facades\Log::error('Pending withdrawal save failed: ' . $e->getMessage());
+                    }
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => $errorMsg,

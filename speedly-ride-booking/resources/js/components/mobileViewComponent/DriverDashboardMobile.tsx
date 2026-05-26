@@ -307,6 +307,7 @@ const DriverDashboardMobile: React.FC = () => {
                 const data = await api.rides.decline(rideId);
 
                 if (data.success) {
+                    setPendingRide(null);
                     Swal.fire({
                         title: 'Declined',
                         text: data.message || 'Ride declined',
@@ -344,7 +345,7 @@ const DriverDashboardMobile: React.FC = () => {
             title: 'Complete Ride?',
             html: `
                 <p>Have you completed this ride?</p>
-                <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">You will earn: ₦${payout.toLocaleString()}</p>
+                <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">You will earn: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${payout.toLocaleString()}</span></p>
                 <div class="mt-4" style="margin-top: 16px;">
                     <label class="block text-sm text-gray-600 mb-2" style="display: block; font-size: 13px; color: #666; margin-bottom: 8px;">Rate the client (optional)</label>
                     <div class="flex justify-center gap-2 text-2xl rating-stars" style="display: flex; justify-content: center; gap: 8px; font-size: 24px;">
@@ -421,7 +422,7 @@ const DriverDashboardMobile: React.FC = () => {
                         title: 'Ride Completed!',
                         html: `
                             <p>Ride completed successfully</p>
-                            <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">Earned: ₦${(data.earnings || payout).toLocaleString()}</p>
+                            <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">Earned: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${(data.earnings || payout).toLocaleString()}</span></p>
                         `,
                         icon: 'success',
                         timer: 2000,
@@ -481,6 +482,7 @@ const DriverDashboardMobile: React.FC = () => {
                 const data = await api.rides.cancel(rideId, { reason: result.value });
 
                 if (data.success) {
+                    setActiveRide(null);
                     Swal.fire({
                         title: 'Cancelled',
                         text: 'Ride cancelled successfully',
@@ -526,7 +528,7 @@ const DriverDashboardMobile: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p class="mb-4" style="margin-bottom: 16px;">Available balance: <strong>₦${availableBalance.toLocaleString()}</strong></p>
+                <p class="mb-4" style="margin-bottom: 16px;">Available balance: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${availableBalance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${availableBalance}" step="100" style="margin-bottom: 12px;">
                 <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password" style="margin-bottom: 12px;">
                 <select id="bank-name" class="swal2-input" style="margin-bottom: 12px;">
@@ -602,7 +604,7 @@ const DriverDashboardMobile: React.FC = () => {
                         Swal.fire({
                             title: 'Withdrawal Successful',
                             html: `
-                                <p>Amount: <strong>₦${v.amount.toLocaleString()}</strong></p>
+                                <p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${v.amount.toLocaleString()}</strong></p>
                                 <p>Bank: ${v.bank}</p>
                                 <p>Account: ${v.account} (${v.name})</p>
                                 <p class="mt-4 text-sm" style="margin-top: 16px; font-size: 12px; color: #666;">Funds sent to your bank account.</p>
@@ -623,7 +625,7 @@ const DriverDashboardMobile: React.FC = () => {
                     Swal.fire({
                         icon: 'error',
                         title: 'Connection Error',
-                        text: 'Network error. Please try again.',
+                        text: (error instanceof Error ? error.message : '') || 'Network error. Please try again.',
                         confirmButtonColor: '#ff5e00'
                     });
                 }
@@ -665,12 +667,12 @@ const DriverDashboardMobile: React.FC = () => {
             title: 'Detailed Statistics',
             html: `
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Total Rides</div><div style="font-size: 16px; font-weight: 700;">${stats.total_rides}</div></div>
-                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Completed</div><div style="font-size: 16px; font-weight: 700; color: #10b981;">${stats.completed_rides}</div></div>
-                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Cancelled</div><div style="font-size: 16px; font-weight: 700; color: #ef4444;">${stats.cancelled_rides}</div></div>
-                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Acceptance Rate</div><div style="font-size: 16px; font-weight: 700;">${stats.acceptance_rate}%</div></div>
-                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Total Fare</div><div style="font-size: 16px; font-weight: 700;">₦${earnings.total_earnings.toLocaleString()}</div></div>
-                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Avg. Rating</div><div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px;">${driverData?.avg_rating || 0} <i class="fas fa-star" style="color: #fbbf24;"></i></div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Total Rides</div><div style="font-size: 16px; font-weight: 700; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.total_rides}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Completed</div><div style="font-size: 16px; font-weight: 700; color: #10b981; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.completed_rides}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Cancelled</div><div style="font-size: 16px; font-weight: 700; color: #ef4444; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.cancelled_rides}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Acceptance Rate</div><div style="font-size: 16px; font-weight: 700; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${stats.acceptance_rate}%</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Total Fare</div><div style="font-size: 16px; font-weight: 700; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${earnings.total_earnings.toLocaleString()}</div></div>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 12px; text-align: center;"><div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Avg. Rating</div><div style="font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${driverData?.avg_rating || 0} <i class="fas fa-star" style="color: #fbbf24;"></i></div></div>
                 </div>
             `,
             confirmButtonColor: '#ff5e00',
@@ -807,12 +809,12 @@ const DriverDashboardMobile: React.FC = () => {
                             <span className={`status-text-mobile ${driverStatus === 'online' ? 'online' : 'offline'}`}>
                                 {driverStatus === 'online' ? '● Online' : '○ Offline'}
                             </span>
-                            <span>• {stats.today_rides} rides today</span>
+                            <span>• <span className="font-roboto-number">{stats.today_rides}</span> rides today</span>
                         </div>
                     </div>
                     <button className="mobile-driver-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -829,14 +831,14 @@ const DriverDashboardMobile: React.FC = () => {
                     <div className="balance-header">
                         <div>
                             <h2>Available Balance</h2>
-                            <div className="balance-amount">{formatCurrency(earnings.available_balance)}</div>
-                            <p className="total-earnings">Total Earnings: {formatCurrency(earnings.total_earnings)}</p>
+                            <div className="balance-amount font-roboto-number">{formatCurrency(earnings.available_balance)}</div>
+                            <p className="total-earnings">Total Earnings: <span className="font-roboto-number">{formatCurrency(earnings.total_earnings)}</span></p>
                         </div>
                         <i className="fas fa-wallet"></i>
                     </div>
                     <div className="today-earnings">
                         <i className="fas fa-arrow-up"></i>
-                        <span>+{formatCurrency(earnings.today_earnings)} today</span>
+                        <span>+<span className="font-roboto-number">{formatCurrency(earnings.today_earnings)}</span> today</span>
                     </div>
                 </div>
 
@@ -856,7 +858,7 @@ const DriverDashboardMobile: React.FC = () => {
                 {/* Withdraw Button */}
                 <button className="mobile-withdraw-btn" onClick={withdrawFunds}>
                     <i className="fas fa-hand-holding-usd"></i>
-                    <span>Withdraw Earnings ({formatCurrency(earnings.available_balance)})</span>
+                    <span>Withdraw Earnings (<span className="font-roboto-number">{formatCurrency(earnings.available_balance)}</span>)</span>
                 </button>
 
                 {/* Active Ride or Pending Ride */}
@@ -874,7 +876,7 @@ const DriverDashboardMobile: React.FC = () => {
                             </div>
                             <p className="destination"><i className="fas fa-flag-checkered"></i> To: {activeRide.destination_address}</p>
                             <div className="ride-meta">
-                                <span>Fare: {formatCurrency(activeRide.total_fare)}</span>
+                                <span>Fare: <span className="font-roboto-number">{formatCurrency(activeRide.total_fare)}</span></span>
                                 <span>Started: {activeRide.formatted_time}</span>
                             </div>
                         </div>
@@ -913,16 +915,16 @@ const DriverDashboardMobile: React.FC = () => {
                             </h3>
                             <div className="ride-info">
                                 <p><i className="fas fa-user"></i> {pendingRide.client_name}</p>
-                                <p><i className="fas fa-road"></i> {pendingRide.distance_km} km</p>
+                                <p><i className="fas fa-road"></i> <span className="font-roboto-number">{pendingRide.distance_km}</span> km</p>
                             </div>
                             <p className="destination"><i className="fas fa-flag-checkered"></i> To: {pendingRide.destination_address}</p>
                             <div className="ride-meta">
-                                <span className="fare">{formatCurrency(pendingRide.total_fare)}</span>
-                                <span>Est. {Math.round((pendingRide.distance_km || 0) / 30 * 60)} min</span>
+                                <span className="fare font-roboto-number">{formatCurrency(pendingRide.total_fare)}</span>
+                                <span>Est. <span className="font-roboto-number">{Math.round((pendingRide.distance_km || 0) / 30 * 60)}</span> min</span>
                             </div>
                         </div>
                         <div className="countdown-timer">
-                            <i className="fas fa-hourglass-half"></i> Accept within: <span className="timer-value">{countdown}s</span>
+                            <i className="fas fa-hourglass-half"></i> Accept within: <span className="timer-value font-roboto-number">{countdown}s</span>
                         </div>
                         <div className="ride-actions">
                             <button className="action-accept" onClick={() => acceptRide(pendingRide.id)}>
@@ -955,17 +957,17 @@ const DriverDashboardMobile: React.FC = () => {
                 <div className="mobile-completed-card">
                     <div className="completed-header">
                         <h2>Completed Rides</h2>
-                        <span className="today-badge">+{stats.today_rides} today</span>
+                        <span className="today-badge">+<span className="font-roboto-number">{stats.today_rides}</span> today</span>
                     </div>
-                    <div className="completed-count">{stats.completed_rides}</div>
+                    <div className="completed-count font-roboto-number">{stats.completed_rides}</div>
                     <div className="rating-display">
                         <div className="stars">
                             {[...Array(5)].map((_, i) => (
                                 <i key={i} className={`fas fa-star ${i < Math.floor(driverData?.avg_rating || 0) ? 'text-yellow-400' : 'far fa-star text-yellow-400'}`} style={{ color: '#fbbf24' }}></i>
                             ))}
                         </div>
-                        <span className="rating-value">{driverData?.avg_rating || 0}</span>
-                        <span className="rating-count">({driverData?.total_reviews || 0} reviews)</span>
+                        <span className="rating-value font-roboto-number">{driverData?.avg_rating || 0}</span>
+                        <span className="rating-count">(<span className="font-roboto-number">{driverData?.total_reviews || 0}</span> reviews)</span>
                     </div>
                     <button className="stats-btn" onClick={showDetailedStats}>
                         <i className="fas fa-chart-line"></i> View Stats
@@ -1012,9 +1014,9 @@ const DriverDashboardMobile: React.FC = () => {
                                     <div className="ride-details">
                                         <h4>{ride.pickup_address?.substring(0, 25)} → {ride.destination_address?.substring(0, 20)}</h4>
                                         <p>{ride.formatted_time} • {ride.client_name}</p>
-                                        <p className="commission">Commission: {formatCurrency(ride.platform_commission)}</p>
+                                        <p className="commission">Commission: <span className="font-roboto-number">{formatCurrency(ride.platform_commission)}</span></p>
                                     </div>
-                                    <div className="ride-amount positive">+{formatCurrency(ride.driver_payout)}</div>
+                                    <div className="ride-amount positive font-roboto-number">+{formatCurrency(ride.driver_payout)}</div>
                                 </div>
                             ))
                         ) : (

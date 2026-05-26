@@ -86,7 +86,7 @@ const DriverWalletMobile: React.FC = () => {
         if (stats.wallet_balance < 100) {
             Swal.fire({
                 title: 'Insufficient Balance',
-                text: `Minimum withdrawal is ₦100. Balance: ₦${stats.wallet_balance.toLocaleString()}`,
+                html: `Minimum withdrawal is ₦100. Balance: <b style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${stats.wallet_balance.toLocaleString()}</b>`,
                 icon: 'warning',
                 confirmButtonColor: '#ff5e00'
             });
@@ -96,7 +96,7 @@ const DriverWalletMobile: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p class="mb-4">Available: <strong>₦${stats.wallet_balance.toLocaleString()}</strong></p>
+                <p class="mb-4">Available: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${stats.wallet_balance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Amount" min="100" max="${stats.wallet_balance}">
                 <input type="password" id="withdraw-password" class="swal2-input" placeholder="Your password" style="margin-top: 8px;">
                 <select id="bank-name" class="swal2-input" style="margin-top: 8px;">
@@ -166,7 +166,7 @@ const DriverWalletMobile: React.FC = () => {
                     if (data.success) {
                         Swal.fire({
                             title: 'Success!',
-                            html: `<p>Withdrawal sent!</p><p>Amount: <strong>₦${v.amount.toLocaleString()}</strong></p><p class="mt-2 text-sm">Funds sent to your bank account.</p>`,
+                            html: `<p>Withdrawal sent!</p><p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${v.amount.toLocaleString()}</strong></p><p class="mt-2 text-sm">Funds sent to your bank account.</p>`,
                             icon: 'success',
                             confirmButtonColor: '#ff5e00'
                         }).then(() => fetchWalletData());
@@ -174,7 +174,7 @@ const DriverWalletMobile: React.FC = () => {
                         Swal.fire({ title: 'Error', text: data.message || 'Failed to process withdrawal', icon: 'error', confirmButtonColor: '#ff5e00' });
                     }
                 } catch (error) {
-                    Swal.fire({ title: 'Error', text: 'Network error', icon: 'error', confirmButtonColor: '#ff5e00' });
+                    Swal.fire({ title: 'Error', text: (error instanceof Error ? error.message : '') || 'Network error', icon: 'error', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -223,7 +223,7 @@ const DriverWalletMobile: React.FC = () => {
                     </div>
                     <button className="mobile-driver-wallet-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -232,8 +232,8 @@ const DriverWalletMobile: React.FC = () => {
                     <div className="balance-card-content">
                         <div>
                             <p className="balance-label">Available Balance</p>
-                            <p className="balance-amount">{formatCurrency(stats.wallet_balance)}</p>
-                            <p className="total-earnings">Lifetime: {formatCurrency(stats.total_earnings)}</p>
+                            <p className="balance-amount font-roboto-number">{formatCurrency(stats.wallet_balance)}</p>
+                            <p className="total-earnings">Lifetime: <span className="font-roboto-number">{formatCurrency(stats.total_earnings)}</span></p>
                         </div>
                         <i className="fas fa-wallet balance-icon"></i>
                     </div>
@@ -251,19 +251,19 @@ const DriverWalletMobile: React.FC = () => {
                 <div className="mobile-stats-grid">
                     <div className="mobile-stat-card">
                         <div className="stat-label">Today</div>
-                        <div className="stat-value">{formatCurrency(stats.today_earnings)}</div>
+                        <div className="stat-value font-roboto-number">{formatCurrency(stats.today_earnings)}</div>
                         <div className={`stat-status ${stats.today_earnings > 0 ? 'active' : 'inactive'}`}>
                             {stats.today_earnings > 0 ? 'Active' : 'No rides'}
                         </div>
                     </div>
                     <div className="mobile-stat-card">
                         <div className="stat-label">This Week</div>
-                        <div className="stat-value">{formatCurrency(stats.week_earnings)}</div>
+                        <div className="stat-value font-roboto-number">{formatCurrency(stats.week_earnings)}</div>
                         <div className="stat-status">Weekly</div>
                     </div>
                     <div className="mobile-stat-card">
                         <div className="stat-label">Total</div>
-                        <div className="stat-value">{formatCurrency(stats.total_earnings)}</div>
+                        <div className="stat-value font-roboto-number">{formatCurrency(stats.total_earnings)}</div>
                         <div className="stat-status">Lifetime</div>
                     </div>
                 </div>
@@ -282,8 +282,8 @@ const DriverWalletMobile: React.FC = () => {
                                         {ride.client_name && <div className="earning-client">Client: {ride.client_name}</div>}
                                     </div>
                                     <div className="earning-amount">
-                                        <div className="amount-positive">+{formatCurrency(ride.driver_payout)}</div>
-                                        <div className="amount-subtext">Fare: {formatCurrency(ride.total_fare)}</div>
+                                        <div className="amount-positive font-roboto-number">+{formatCurrency(ride.driver_payout)}</div>
+                                        <div className="amount-subtext">Fare: <span className="font-roboto-number">{formatCurrency(ride.total_fare)}</span></div>
                                     </div>
                                 </div>
                             ))

@@ -345,7 +345,7 @@ const DriverProfile: React.FC = () => {
             Swal.fire({
                 icon: 'error',
                 title: 'Insufficient Balance',
-                text: `Your wallet balance is ${formatCurrency(stats.wallet_balance)}`,
+                html: `Your wallet balance is <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(stats.wallet_balance)}</span>`,
                 confirmButtonColor: '#ff5e00'
             });
             return;
@@ -480,7 +480,7 @@ const DriverProfile: React.FC = () => {
                 </button>
                 <button className="notification-btn" onClick={showNotifications}>
                     <i className="fas fa-bell"></i>
-                    {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+                    {unreadCount > 0 && <span className="notification-badge font-roboto-number">{unreadCount}</span>}
                 </button>
             </div>
 
@@ -520,8 +520,8 @@ const DriverProfile: React.FC = () => {
                     {/* Rating Badge */}
                     <div className="rating-badge">
                         <i className="fas fa-star"></i>
-                        <span>{stats.avg_rating.toFixed(1)}</span>
-                        <span className="rating-count">({stats.total_rides} rides)</span>
+                        <span className="font-roboto-number">{stats.avg_rating.toFixed(1)}</span>
+                        <span className="rating-count">(<span className="font-roboto-number">{stats.total_rides}</span> rides)</span>
                     </div>
                     
                     {/* Stats Grid */}
@@ -532,7 +532,7 @@ const DriverProfile: React.FC = () => {
                             </div>
                             <div className="stat-details">
                                 <div className="stat-label">Total Earnings</div>
-                                <div className="stat-value">{formatCurrency(stats.total_earnings)}</div>
+                                <div className="stat-value font-roboto-number">{formatCurrency(stats.total_earnings)}</div>
                             </div>
                         </div>
                         <div className="stat-card">
@@ -541,7 +541,7 @@ const DriverProfile: React.FC = () => {
                             </div>
                             <div className="stat-details">
                                 <div className="stat-label">Total Rides</div>
-                                <div className="stat-value">{stats.total_rides}</div>
+                                <div className="stat-value font-roboto-number">{stats.total_rides}</div>
                             </div>
                         </div>
                         <div className="stat-card">
@@ -550,7 +550,7 @@ const DriverProfile: React.FC = () => {
                             </div>
                             <div className="stat-details">
                                 <div className="stat-label">Wallet Balance</div>
-                                <div className="stat-value">{formatCurrency(stats.wallet_balance)}</div>
+                                <div className="stat-value font-roboto-number">{formatCurrency(stats.wallet_balance)}</div>
                             </div>
                         </div>
                     </div>
@@ -1047,7 +1047,7 @@ const DriverProfile: React.FC = () => {
                         <div className="modal-body">
                             <div className="balance-info">
                                 <p>Available Balance</p>
-                                <h2>{formatCurrency(stats.wallet_balance)}</h2>
+                                <h2 className="font-roboto-number">{formatCurrency(stats.wallet_balance)}</h2>
                             </div>
                             <div className="form-group">
                                 <label>Withdrawal Amount</label>
@@ -1092,7 +1092,7 @@ const DriverProfile: React.FC = () => {
                         {withdrawalHistory.map((item, index) => (
                             <div key={index} className="withdrawal-item">
                                 <div className="withdrawal-info">
-                                    <h4>{formatCurrency(item.amount)}</h4>
+                                    <h4 className="font-roboto-number">{formatCurrency(item.amount)}</h4>
                                     <p>{new Date(item.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <span className={`withdrawal-status ${item.status}`}>

@@ -304,7 +304,7 @@ const DriverSupport: React.FC = () => {
                     </div>
                     <button className="support-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -375,7 +375,7 @@ const DriverSupport: React.FC = () => {
                         />
                         <div className="char-row">
                             <span className="char-count" style={{ color: getCharColor() }}>
-                                {charCount} / 2000
+                                <span className="font-roboto-number">{charCount}</span> / 2000
                             </span>
                         </div>
                     </div>

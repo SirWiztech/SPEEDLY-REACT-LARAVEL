@@ -311,8 +311,8 @@ const DriverLocation: React.FC = () => {
                     infoWindowRef.current.setContent(`
                         <div style="padding: 10px;">
                             <h3 style="font-weight: bold; color: #ff5e00;">📍 You Are Here</h3>
-                            <p>Accuracy: ±${coords.accuracy.toFixed(0)}m</p>
-                            <p>Speed: ${((coords.speed || 0) * 3.6).toFixed(1)} km/h</p>
+                            <p style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">Accuracy: ±${coords.accuracy.toFixed(0)}m</p>
+                            <p style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">Speed: ${((coords.speed || 0) * 3.6).toFixed(1)} km/h</p>
                         </div>
                     `);
                     infoWindowRef.current.open(mapInstanceRef.current, markerRef.current);
@@ -574,15 +574,15 @@ const DriverLocation: React.FC = () => {
                         <div className="location-coord-grid">
                             <div className="location-coord-item">
                                 <div className="coord-label">LATITUDE</div>
-                                <div className="coord-value">{userLocation?.lat.toFixed(6) || '--'}</div>
+                                <div className="coord-value font-roboto-number">{userLocation?.lat.toFixed(6) || '--'}</div>
                             </div>
                             <div className="location-coord-item">
                                 <div className="coord-label">LONGITUDE</div>
-                                <div className="coord-value">{userLocation?.lng.toFixed(6) || '--'}</div>
+                                <div className="coord-value font-roboto-number">{userLocation?.lng.toFixed(6) || '--'}</div>
                             </div>
                             <div className="location-coord-item">
                                 <div className="coord-label">ACCURACY</div>
-                                <div className="coord-value">±{userLocation ? formatAccuracy(userLocation.accuracy) : '--'}m</div>
+                                <div className="coord-value font-roboto-number">±{userLocation ? formatAccuracy(userLocation.accuracy) : '--'}m</div>
                             </div>
                             <div className="location-coord-item">
                                 <div className="coord-label">GPS SOURCE</div>
@@ -595,19 +595,19 @@ const DriverLocation: React.FC = () => {
                             <div className="location-stat-badge">
                                 <i className="fas fa-tachometer-alt"></i>
                                 <span className="stat-label">Speed</span>
-                                <span className="stat-value">{userLocation ? formatSpeed(userLocation.speed) : '0'}</span>
+                                <span className="stat-value font-roboto-number">{userLocation ? formatSpeed(userLocation.speed) : '0'}</span>
                                 <span className="stat-unit">km/h</span>
                             </div>
                             <div className="location-stat-badge">
                                 <i className="fas fa-compass"></i>
                                 <span className="stat-label">Heading</span>
-                                <span className="stat-value">{userLocation?.heading?.toFixed(0) || '--'}</span>
+                                <span className="stat-value font-roboto-number">{userLocation?.heading?.toFixed(0) || '--'}</span>
                                 <span className="stat-unit">°</span>
                             </div>
                             <div className="location-stat-badge">
                                 <i className="fas fa-mountain"></i>
                                 <span className="stat-label">Altitude</span>
-                                <span className="stat-value">{userLocation?.altitude?.toFixed(0) || '--'}</span>
+                                <span className="stat-value font-roboto-number">{userLocation?.altitude?.toFixed(0) || '--'}</span>
                                 <span className="stat-unit">m</span>
                             </div>
                         </div>

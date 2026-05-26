@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import './Splash.css';
@@ -10,6 +11,7 @@
 
 @theme {
     --font-syne: 'Syne', sans-serif;
+    --font-roboto: 'Roboto', sans-serif;
     --color-primary: #ff4500;
     --color-primary-dark: #e63900;
     --color-primary-light: rgba(255, 69, 0, 0.1);
@@ -54,6 +56,7 @@
 
 :root {
     --font-syne: 'Syne', sans-serif;
+    --font-roboto: 'Roboto', sans-serif;
     --color-primary: #ff4500;
     --color-primary-dark: #e63900;
     --color-primary-light: rgba(255, 69, 0, 0.1);
@@ -166,4 +169,9 @@ body {
 .card-selected {
     border-color: #2d1b4e;
     background-color: rgba(45, 27, 78, 0.05);
+}
+
+.font-roboto-number {
+    font-family: var(--font-roboto);
+    font-variant-numeric: tabular-nums;
 }
