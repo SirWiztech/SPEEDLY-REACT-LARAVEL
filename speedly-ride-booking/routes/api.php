@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rides/{id}/cancel', [RideController::class, 'cancel']);
     Route::post('/rides/{id}/rate-driver', [RideController::class, 'rateDriver']);
     Route::post('/rides/{id}/rate-client', [RideController::class, 'rateClient']);
+    Route::post('/rides/{id}/release-funds', [RideController::class, 'releaseFunds']);
 
     /*
     |--------------------------------------------------------------------------

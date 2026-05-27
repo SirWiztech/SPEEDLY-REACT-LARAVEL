@@ -39,6 +39,8 @@ interface Ride {
     user_rating: number | null;
     user_review: string | null;
     can_rate: boolean;
+    payment_status: string;
+    can_release_funds: boolean;
 }
 
 interface Notification {
@@ -153,6 +155,7 @@ const ClientRideHistory: React.FC = () => {
             'driver_assigned': '#2196F3',
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
+            'awaiting_release': '#FF9800',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'
@@ -165,6 +168,7 @@ const ClientRideHistory: React.FC = () => {
             'driver_assigned': 'fa-user-check',
             'driver_arrived': 'fa-map-pin',
             'ongoing': 'fa-spinner',
+            'awaiting_release': 'fa-hand-holding-usd',
             'cancelled_by_client': 'fa-times-circle',
             'cancelled_by_driver': 'fa-times-circle',
             'cancelled_by_admin': 'fa-times-circle'
@@ -183,7 +187,8 @@ const ClientRideHistory: React.FC = () => {
         const driverName = ride.driver_name || null;
         const driverPhone = ride.driver_phone || null;
         const vehicleDisplay = ride.vehicle_display || 'Vehicle not specified';
-        const canRate = ride.status === 'completed' && !ride.user_rating;
+        const canRate = (ride.status === 'awaiting_release' || ride.status === 'completed') && !ride.user_rating;
+        const canRelease = ride.status === 'awaiting_release';
 
         let html = `
             <div style="text-align: left; max-height: 70vh; overflow-y: auto; padding: 10px;">
@@ -218,6 +223,20 @@ const ClientRideHistory: React.FC = () => {
                     </div>
                 </div>
         `;
+
+        if (canRelease) {
+            html += `
+                <div style="background: #e8f5e9; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+                    <p style="margin-bottom: 10px; font-size: 14px; color: #2E7D32;">
+                        <i class="fas fa-info-circle"></i> Ride completed. Release payment to the driver.
+                    </p>
+                    <button onclick="window.releaseFundsFromModal('${ride.id}')" 
+                        style="padding: 12px 24px; background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                        <i class="fas fa-money-bill-wave"></i> Release Funds (₦${fare})
+                    </button>
+                </div>
+            `;
+        }
 
         if (driverName) {
             html += `
@@ -420,8 +439,45 @@ const ClientRideHistory: React.FC = () => {
             submitRating(rideId, rating, review);
         };
 
+        (window as any).releaseFundsFromModal = async (rideId: string) => {
+            Swal.fire({
+                title: 'Releasing funds...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
+            });
+
+            try {
+                const data = await api.rides.releaseFunds(rideId);
+                Swal.close();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Funds Released!',
+                        text: 'Payment has been released to the driver.',
+                        confirmButtonColor: '#ff5e00',
+                    }).then(() => fetchRideHistory());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: data.message || 'Failed to release funds',
+                        confirmButtonColor: '#ff5e00',
+                    });
+                }
+            } catch (error: any) {
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error?.message || 'Failed to release funds',
+                    confirmButtonColor: '#ff5e00',
+                });
+            }
+        };
+
         return () => {
             delete (window as any).submitRatingFromModal;
+            delete (window as any).releaseFundsFromModal;
         };
     }, [selectedRating]);
 
@@ -439,6 +495,7 @@ const ClientRideHistory: React.FC = () => {
             'driver_assigned': '#2196F3',
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
+            'awaiting_release': '#FF9800',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'

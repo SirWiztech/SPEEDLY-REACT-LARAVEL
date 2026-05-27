@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { queryClient } from '@/lib/queryClient';
+import CookieConsent from '@/components/CookieConsent';
 import '@/../css/Preloader.css';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -34,6 +35,7 @@ createInertiaApp({
                 <TooltipProvider delayDuration={0}>
                     {app}
                     <Toaster />
+                    <CookieConsent />
                 </TooltipProvider>
             </QueryClientProvider>
         );

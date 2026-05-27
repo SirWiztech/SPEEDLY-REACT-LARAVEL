@@ -170,7 +170,7 @@ class RideController extends Controller
                 'driver_payout' => $driverPayout,
                 'distance_km' => round($distance, 2),
                 'status' => 'pending',
-                'payment_status' => 'completed',
+                'payment_status' => 'held',
             ]);
 
             WalletTransaction::create([
@@ -349,7 +349,7 @@ class RideController extends Controller
         }
 
         return DB::transaction(function () use ($id, $user, $driverProfile) {
-            $ride = Ride::lockForUpdate()->find($id);
+            $ride = Ride::with('client.user')->lockForUpdate()->find($id);
 
             if (!$ride) {
                 return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
@@ -360,64 +360,28 @@ class RideController extends Controller
             }
 
             if (!in_array($ride->status, ['accepted', 'ongoing'])) {
-                return response()->json(['success' => false, 'message' => 'Ride cannot be completed'], 400);
+                return response()->json(['success' => false, 'message' => 'Ride cannot be completed. Current status: ' . $ride->status], 400);
             }
 
             $ride->update([
-                'status' => 'completed',
+                'status' => 'awaiting_release',
                 'completed_at' => Carbon::now(),
-                'payment_status' => 'paid',
+                'payment_status' => 'pending',
             ]);
 
-            $clientUser = $ride->client->user;
-            $driverUser = $user;
+            $clientUserId = $ride->client?->user_id;
+            if ($clientUserId) {
+                Notification::create([
+                    'id' => Str::random(32),
+                    'user_id' => $clientUserId,
+                    'type' => 'awaiting_release',
+                    'title' => 'Release Funds Required',
+                    'message' => "Your ride #{$ride->ride_number} has ended. Please release ₦{$ride->total_fare} to the driver.",
+                    'is_read' => false,
+                ]);
+            }
 
-            $lastClientTx = WalletTransaction::where('user_id', $clientUser->id)
-                ->orderBy('created_at', 'desc')->first();
-            $clientBalanceBefore = $lastClientTx ? $lastClientTx->balance_after : 0;
-            $clientBalanceAfter = $clientBalanceBefore - $ride->total_fare;
-
-            WalletTransaction::create([
-                'id' => Str::uuid(),
-                'user_id' => $clientUser->id,
-                'transaction_type' => 'debit',
-                'description' => "Payment for ride {$ride->ride_number}",
-                'amount' => $ride->total_fare,
-                'balance_before' => $clientBalanceBefore,
-                'balance_after' => $clientBalanceAfter,
-                'status' => 'completed',
-                'ride_id' => $ride->id,
-            ]);
-
-            $driverEarning = $ride->total_fare * 0.85;
-
-            $lastDriverTx = WalletTransaction::where('user_id', $driverUser->id)
-                ->orderBy('created_at', 'desc')->first();
-            $driverBalanceBefore = $lastDriverTx ? $lastDriverTx->balance_after : 0;
-            $driverBalanceAfter = $driverBalanceBefore + $driverEarning;
-
-            WalletTransaction::create([
-                'id' => Str::uuid(),
-                'user_id' => $driverUser->id,
-                'transaction_type' => 'credit',
-                'description' => "Earning from ride {$ride->ride_number}",
-                'amount' => $driverEarning,
-                'balance_before' => $driverBalanceBefore,
-                'balance_after' => $driverBalanceAfter,
-                'status' => 'completed',
-                'ride_id' => $ride->id,
-            ]);
-
-            Notification::create([
-                'id' => Str::random(32),
-                'user_id' => $ride->client->user_id,
-                'type' => 'ride_completed',
-                'title' => 'Ride Completed',
-                'message' => 'Your ride has been completed. Thank you for riding with us!',
-                'is_read' => false,
-            ]);
-
-            return response()->json(['success' => true, 'message' => 'Ride completed successfully']);
+            return response()->json(['success' => true, 'message' => 'Ride ended. Awaiting client to release funds.']);
         });
     }
 
@@ -445,7 +409,7 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        if (in_array($ride->status, ['completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])) {
+        if (in_array($ride->status, ['awaiting_release', 'completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])) {
             return response()->json(['success' => false, 'message' => 'Ride cannot be cancelled'], 400);
         }
 
@@ -462,7 +426,35 @@ class RideController extends Controller
                 'cancelled_at' => Carbon::now(),
             ]);
 
-            if ($isClient && $ride->driver_id) {
+            // Refund client's wallet
+            $clientUser = $ride->client->user;
+            $lastClientTx = WalletTransaction::where('user_id', $clientUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $clientBalanceBefore = $lastClientTx ? $lastClientTx->balance_after : 0;
+            $clientBalanceAfter = $clientBalanceBefore + $ride->total_fare;
+
+            WalletTransaction::create([
+                'id' => Str::uuid(),
+                'user_id' => $clientUser->id,
+                'transaction_type' => 'ride_refund',
+                'description' => "Refund for cancelled ride #{$ride->ride_number}",
+                'amount' => $ride->total_fare,
+                'balance_before' => $clientBalanceBefore,
+                'balance_after' => $clientBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
+            ]);
+
+            if ($isDriver) {
+                Notification::create([
+                    'id' => Str::random(32),
+                    'user_id' => $ride->client->user_id,
+                    'type' => 'ride_cancelled',
+                    'title' => 'Ride Cancelled',
+                    'message' => "The driver has cancelled ride #{$ride->ride_number}. ₦{$ride->total_fare} has been refunded to your wallet.",
+                    'is_read' => false,
+                ]);
+            } elseif ($isClient && $ride->driver_id) {
                 Notification::create([
                     'id' => Str::random(32),
                     'user_id' => $ride->driver->user_id,
@@ -471,18 +463,24 @@ class RideController extends Controller
                     'message' => 'The client has cancelled the ride.',
                     'is_read' => false,
                 ]);
-            } elseif ($isDriver) {
                 Notification::create([
                     'id' => Str::random(32),
                     'user_id' => $ride->client->user_id,
-                    'type' => 'ride_cancelled',
-                    'title' => 'Ride Cancelled',
-                    'message' => 'The driver has cancelled the ride.',
+                    'type' => 'ride_refund',
+                    'title' => 'Refund Processed',
+                    'message' => "₦{$ride->total_fare} has been refunded to your wallet for ride #{$ride->ride_number}.",
                     'is_read' => false,
                 ]);
             }
 
-            return response()->json(['success' => true, 'message' => 'Ride cancelled successfully']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Ride cancelled and refund processed.',
+                'data' => [
+                    'refund_amount' => $ride->total_fare,
+                    'new_balance' => $clientBalanceAfter,
+                ]
+            ]);
         });
     }
 
@@ -510,8 +508,8 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        if ($ride->status !== 'completed') {
-            return response()->json(['success' => false, 'message' => 'Can only rate after ride completion'], 400);
+        if (!in_array($ride->status, ['awaiting_release', 'completed'])) {
+            return response()->json(['success' => false, 'message' => 'Can only rate after ride ends'], 400);
         }
 
         DriverRating::create([
@@ -525,9 +523,104 @@ class RideController extends Controller
 
         $driverProfile = $ride->driver;
         $avgRating = DriverRating::where('driver_id', $driverProfile->id)->avg('rating');
-        $driverProfile->update(['average_rating' => round($avgRating, 2)]);
+        $totalReviews = DriverRating::where('driver_id', $driverProfile->id)->count();
+        $driverProfile->update([
+            'average_rating' => round($avgRating, 2),
+            'total_reviews' => $totalReviews,
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Driver rated successfully']);
+    }
+
+    public function releaseFunds(Request $request, $id)
+    {
+        $user = $request->user();
+        $clientProfile = ClientProfile::where('user_id', $user->id)->first();
+
+        if (!$clientProfile) {
+            return response()->json(['success' => false, 'message' => 'Client profile not found'], 404);
+        }
+
+        return DB::transaction(function () use ($id, $user, $clientProfile) {
+            $ride = Ride::lockForUpdate()->find($id);
+
+            if (!$ride) {
+                return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
+            }
+
+            if ($ride->client_id !== $clientProfile->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            if ($ride->status !== 'awaiting_release') {
+                return response()->json(['success' => false, 'message' => 'Funds are not ready to be released'], 400);
+            }
+
+            if ($ride->payment_status === 'paid') {
+                return response()->json(['success' => false, 'message' => 'Funds already released'], 400);
+            }
+
+            $clientUser = $user;
+            $driverUser = $ride->driver->user;
+
+            $lastClientTx = WalletTransaction::where('user_id', $clientUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $clientBalanceBefore = $lastClientTx ? $lastClientTx->balance_after : 0;
+            $clientBalanceAfter = $clientBalanceBefore - $ride->total_fare;
+
+            WalletTransaction::create([
+                'id' => Str::uuid(),
+                'user_id' => $clientUser->id,
+                'transaction_type' => 'debit',
+                'description' => "Payment for ride {$ride->ride_number}",
+                'amount' => $ride->total_fare,
+                'balance_before' => $clientBalanceBefore,
+                'balance_after' => $clientBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
+            ]);
+
+            $driverEarning = $ride->driver_payout ?? ($ride->total_fare * 0.85);
+
+            $lastDriverTx = WalletTransaction::where('user_id', $driverUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $driverBalanceBefore = $lastDriverTx ? $lastDriverTx->balance_after : 0;
+            $driverBalanceAfter = $driverBalanceBefore + $driverEarning;
+
+            WalletTransaction::create([
+                'id' => Str::uuid(),
+                'user_id' => $driverUser->id,
+                'transaction_type' => 'credit',
+                'description' => "Earning from ride {$ride->ride_number}",
+                'amount' => $driverEarning,
+                'balance_before' => $driverBalanceBefore,
+                'balance_after' => $driverBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
+            ]);
+
+            $ride->update([
+                'status' => 'completed',
+                'payment_status' => 'paid',
+            ]);
+
+            $driverProfile = $ride->driver;
+            $driverProfile->update([
+                'completed_rides' => Ride::where('driver_id', $driverProfile->id)->where('status', 'completed')->count(),
+                'total_earnings' => ($driverProfile->total_earnings ?? 0) + $driverEarning,
+            ]);
+
+            Notification::create([
+                'id' => Str::random(32),
+                'user_id' => $driverUser->id,
+                'type' => 'payment_released',
+                'title' => 'Payment Released',
+                'message' => "₦{$driverEarning} has been released for ride {$ride->ride_number}",
+                'is_read' => false,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Funds released to driver successfully']);
+        });
     }
 
     public function rateClient(Request $request, $id)
@@ -554,8 +647,8 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        if ($ride->status !== 'completed') {
-            return response()->json(['success' => false, 'message' => 'Can only rate after ride completion'], 400);
+        if (!in_array($ride->status, ['awaiting_release', 'completed'])) {
+            return response()->json(['success' => false, 'message' => 'Can only rate after ride ends'], 400);
         }
 
         ClientRating::create([

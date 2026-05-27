@@ -419,10 +419,10 @@ const DriverDashboardMobile: React.FC = () => {
                         });
                     }
                     Swal.fire({
-                        title: 'Ride Completed!',
+                        title: 'Ride Marked Complete!',
                         html: `
-                            <p>Ride completed successfully</p>
-                            <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">Earned: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${(data.earnings || payout).toLocaleString()}</span></p>
+                            <p>Awaiting client to release payment</p>
+                            <p class="mt-2 font-bold text-green-600" style="font-weight: bold; color: #10b981; margin-top: 8px;">Your earnings will be credited once the client releases funds.</p>
                         `,
                         icon: 'success',
                         timer: 2000,

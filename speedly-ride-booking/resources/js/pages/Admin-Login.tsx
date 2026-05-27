@@ -71,7 +71,7 @@ const AdminLogin: React.FC = () => {
         try {
             const data = await api.auth.adminLogin({ login: username, password });
             
-            if (data.status === 'success' || data.success) {
+            if (data.success) {
                 if (data.data?.token) setToken(data.data.token);
                 showToast('success', 'Login Successful!', 'Redirecting to dashboard...');
                 setTimeout(() => {
@@ -81,7 +81,7 @@ const AdminLogin: React.FC = () => {
                 showToast('error', 'Login Failed', data.message || 'Invalid credentials');
             }
         } catch (error) {
-            showToast('error', 'Connection Error', 'Unable to connect to the server. Please check your network and try again.');
+            console.error('Admin login raw error:', error); const errMsg = error?.message || String(error) || 'Connection failed'; showToast('error', 'Login Error', errMsg);
         } finally {
             setLoading(false);
         }

@@ -52,18 +52,19 @@ const ClientLocation: React.FC = () => {
     const [isTracking, setIsTracking] = useState<boolean>(false);
     const [nearbyPlaces, setNearbyPlaces] = useState<PlaceResult[]>([]);
     const [showPlaces, setShowPlaces] = useState<boolean>(false);
-    const [gpsStatus, setGpsStatus] = useState<string>('WAITING FOR GPS');
+    const [gpsStatus, setGpsStatus] = useState<string>('Click "Allow GPS" to enable location tracking');
 
     const watchIdRef = useRef<number | null>(null);
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
     const markerRef = useRef<google.maps.Marker | null>(null);
+    const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
     const mapInitRef = useRef(false);
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(300);
     const isMobile = useMobile();
 
     const fetchProfileData = useCallback(async () => {
@@ -79,7 +80,8 @@ const ClientLocation: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        fetchProfileData();
+        const timer = setTimeout(fetchProfileData, 0);
+        return () => clearTimeout(timer);
     }, [fetchProfileData]);
 
     // Initialize map (defined before effects that depend on it)
@@ -140,103 +142,76 @@ const ClientLocation: React.FC = () => {
         };
 
         loadGoogleMaps();
-        checkGeolocationPermission();
     }, [initMap]);
 
-    // Retry map init after preloader finishes (ensures map div is in DOM)
+    // Retry map init after preloader finishes
     useEffect(() => {
         if (!preloaderLoading) {
             initMap();
         }
     }, [preloaderLoading, initMap]);
 
-    // Check geolocation permission
-    const checkGeolocationPermission = () => {
-        if (!navigator.permissions) {
-            requestLocationPermission();
-            return;
-        }
-
-        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-            if (result.state === 'granted') {
-                setHasPermission(true);
-                startGPSTracking();
-            } else if (result.state === 'denied') {
-                setHasPermission(false);
-                setGpsStatus('GPS ACCESS DENIED');
-                updateGPSStatus('denied');
-            }
-
-            result.addEventListener('change', () => {
-                if (result.state === 'granted') {
-                    setHasPermission(true);
-                    startGPSTracking();
-                }
-            });
-        });
-    };
-
-    // Request location permission
+    // Request location permission - uses cached position first, then refines
     const requestLocationPermission = () => {
-        setGpsStatus('REQUESTING GPS ACCESS...');
-        
+        setGpsStatus('Getting your location...');
+
+        // First attempt: use cached/low-accuracy position for instant display
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setHasPermission(true);
-                startGPSTracking();
-            },
-            (error) => {
-                console.error('GPS permission denied:', error.message);
-                setHasPermission(false);
-                setGpsStatus('GPS ACCESS DENIED');
-                updateGPSStatus('denied');
-                
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Location Access Required',
-                    text: 'Please enable location access to use GPS features',
-                    confirmButtonColor: '#ff5e00'
-                });
-            },
-            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-        );
-    };
+                setIsTracking(true);
+                setGpsStatus('Location acquired. Refining accuracy...');
 
-    // Start GPS tracking
-    const startGPSTracking = () => {
-        if (!navigator.geolocation) {
-            Swal.fire({ icon: 'error', title: 'Not Supported', text: 'Geolocation is not supported', confirmButtonColor: '#ff5e00' });
-            return;
-        }
-
-        setGpsStatus('GPS ACTIVE - TRACKING');
-        setIsTracking(true);
-        updateGPSStatus('active');
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
                 const coords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                     accuracy: position.coords.accuracy,
                     altitude: position.coords.altitude,
                     speed: position.coords.speed,
-                    heading: position.coords.heading
+                    heading: position.coords.heading,
                 };
                 updateLocation(coords);
                 reverseGeocode(coords.lat, coords.lng);
                 startWatchingPosition();
+                updateGPSStatus('active');
+
+                // Second attempt: force high accuracy for refinement
+                navigator.geolocation.getCurrentPosition(
+                    (refinedPosition) => {
+                        const refinedCoords = {
+                            lat: refinedPosition.coords.latitude,
+                            lng: refinedPosition.coords.longitude,
+                            accuracy: refinedPosition.coords.accuracy,
+                            altitude: refinedPosition.coords.altitude,
+                            speed: refinedPosition.coords.speed,
+                            heading: refinedPosition.coords.heading,
+                        };
+                        updateLocation(refinedCoords);
+                        updateMapMarker(refinedCoords);
+                        reverseGeocode(refinedCoords.lat, refinedCoords.lng);
+                        setGpsStatus('GPS active — live tracking');
+                    },
+                    () => { /* refinement failed, using initial position */ },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
             },
             (error) => {
-                console.error('GPS Error:', error.message);
-                setGpsStatus('GPS ERROR');
-                updateGPSStatus('error');
+                console.error('GPS error:', error.message);
+                setHasPermission(false);
+                setIsTracking(false);
+
+                if (error.code === 1) {
+                    setGpsStatus('Location access denied. Please enable in browser settings.');
+                } else {
+                    setGpsStatus('Unable to get location. Check your connection.');
+                }
+                updateGPSStatus('denied');
             },
-            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
         );
     };
 
-    // Start watching position
+    // Start watching position (called AFTER permission is already granted)
     const startWatchingPosition = () => {
         if (watchIdRef.current) {
             navigator.geolocation.clearWatch(watchIdRef.current);
@@ -250,7 +225,7 @@ const ClientLocation: React.FC = () => {
                     accuracy: position.coords.accuracy,
                     altitude: position.coords.altitude,
                     speed: position.coords.speed,
-                    heading: position.coords.heading
+                    heading: position.coords.heading,
                 };
                 updateLocation(coords);
                 updateMapMarker(coords);
@@ -275,42 +250,75 @@ const ClientLocation: React.FC = () => {
         }
     };
 
-    // Update map marker
+    // Update map marker with accuracy circle
     const updateMapMarker = (coords: LocationCoords) => {
         if (!mapInstanceRef.current) return;
 
         const position = { lat: coords.lat, lng: coords.lng };
 
+        // Center map to exact position
+        mapInstanceRef.current.setCenter(position);
+
+        // Update or create accuracy circle
+        if (accuracyCircleRef.current) {
+            accuracyCircleRef.current.setCenter(position);
+            accuracyCircleRef.current.setRadius(coords.accuracy || 10);
+        } else {
+            accuracyCircleRef.current = new google.maps.Circle({
+                map: mapInstanceRef.current,
+                center: position,
+                radius: coords.accuracy || 10,
+                fillColor: '#ff5e00',
+                fillOpacity: 0.05,
+                strokeColor: '#ff5e00',
+                strokeOpacity: 0.25,
+                strokeWeight: 1,
+            });
+        }
+
+        // Update or create marker with custom larger icon
         if (markerRef.current) {
             markerRef.current.setPosition(position);
         } else {
+            const markerSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#ff5e00" stroke="white" stroke-width="2.5"/>
+                    <circle cx="12" cy="12" r="4" fill="white"/>
+                </svg>`;
+
             markerRef.current = new google.maps.Marker({
-                position: position,
+                position,
                 map: mapInstanceRef.current,
-                title: 'You are here',
+                title: 'Your exact location',
                 icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 10,
-                    fillColor: '#ff5e00',
-                    fillOpacity: 1,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 2
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(markerSvg),
+                    scaledSize: new google.maps.Size(36, 36),
+                    anchor: new google.maps.Point(18, 18),
                 },
-                animation: google.maps.Animation.DROP
+                zIndex: 1000,
+                animation: google.maps.Animation.DROP,
             });
 
             markerRef.current.addListener('click', () => {
                 if (infoWindowRef.current && markerRef.current) {
                     infoWindowRef.current.setContent(`
-                        <div style="padding: 10px;">
-                            <h3 style="font-weight: bold; color: #ff5e00;">📍 You Are Here</h3>
-                            <p>Accuracy: ±${coords.accuracy.toFixed(0)}m</p>
-                            <p>Speed: ${((coords.speed || 0) * 3.6).toFixed(1)} km/h</p>
+                        <div style="padding: 12px; font-family: sans-serif; min-width: 180px;">
+                            <h3 style="font-weight: bold; color: #ff5e00; margin-bottom: 6px;">📍 Your Location</h3>
+                            <p style="margin: 3px 0; font-size: 13px;">Accuracy: ±<strong>${coords.accuracy.toFixed(0)}m</strong></p>
+                            <p style="margin: 3px 0; font-size: 13px;">Speed: <strong>${((coords.speed || 0) * 3.6).toFixed(1)} km/h</strong></p>
+                            <p style="margin: 3px 0; font-size: 13px;">Alt: <strong>${(coords.altitude || 0).toFixed(0)}m</strong></p>
                         </div>
                     `);
                     infoWindowRef.current.open(mapInstanceRef.current, markerRef.current);
                 }
             });
+        }
+
+        // Fit map to accuracy circle if it's the first fix
+        if (!accuracyCircleRef.current) {
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(position);
+            mapInstanceRef.current.fitBounds(bounds, { maxZoom: 18 });
         }
     };
 
@@ -542,9 +550,16 @@ const ClientLocation: React.FC = () => {
                     {/* Info Panel */}
                     <div className="location-info-panel">
                         <div className="location-gps-header">
-                            <span className="desktop-gps-pulse"></span>
-                            <span className="desktop-gps-state">⏳ Waiting for GPS permission</span>
+                            <span className={`desktop-gps-pulse ${isTracking ? 'active' : ''}`}></span>
+                            <span className="desktop-gps-state">{gpsStatus}</span>
                         </div>
+
+                        {!isTracking && (
+                            <button className="location-permission-btn" onClick={requestLocationPermission}>
+                                <i className="fas fa-location-arrow"></i>
+                                ALLOW GPS ACCESS FOR ALL FEATURES
+                            </button>
+                        )}
 
                         {/* Address Card */}
                         <div className="location-address-card">
@@ -597,13 +612,6 @@ const ClientLocation: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Permission Button */}
-                        {!hasPermission && (
-                            <button className="location-permission-btn" onClick={requestLocationPermission}>
-                                <i className="fas fa-location-arrow"></i>
-                                ALLOW GPS ACCESS FOR ALL FEATURES
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>

@@ -43,7 +43,7 @@
     background: #f8f9fa;
     font-family: 'Syne', 'Segoe UI', sans-serif;
     position: relative;
-    margin-right: 700px;
+    
 }
 
 /* Sidebar - Desktop Only with responsive width */
@@ -1142,10 +1142,11 @@ body {
     width: 100%;
 }
 
-/* Ensure all section containers maintain consistent width */
-#root, .app, .admin-desktop-container {
+#root, #app, .app {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
 }
+
 

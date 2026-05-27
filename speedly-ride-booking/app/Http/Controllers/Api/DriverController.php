@@ -111,7 +111,7 @@ class DriverController extends Controller
 
         $rides = Ride::where(function ($query) use ($driverProfile) {
             $query->where('driver_id', $driverProfile->id)
-                ->whereIn('status', ['accepted', 'ongoing', 'completed']);
+                ->whereIn('status', ['accepted', 'ongoing', 'awaiting_release', 'completed']);
         })->orWhere(function ($query) use ($driverProfile) {
             $query->where('status', 'pending')
                 ->where('driver_id', $driverProfile->id);

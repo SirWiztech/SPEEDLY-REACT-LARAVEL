@@ -51,6 +51,17 @@ interface Ride {
     pickup_longitude: number | null;
     destination_latitude: number | null;
     destination_longitude: number | null;
+    payment_status?: string;
+    ride_number?: string;
+}
+
+interface AwaitingReleaseRide {
+    id: string;
+    ride_number: string;
+    pickup_address: string;
+    destination_address: string;
+    total_fare: number;
+    driver_name: string | null;
 }
 
 interface Notification {
@@ -83,6 +94,7 @@ const ClientDashboard: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedRating, setSelectedRating] = useState<number>(0);
     const [reviewText, setReviewText] = useState<string>('');
+    const [awaitingReleaseRides, setAwaitingReleaseRides] = useState<AwaitingReleaseRide[]>([]);
 
     const notificationIntervalRef = useRef<number | null>(null);
     const isMobile = useMobile();
@@ -96,6 +108,7 @@ const ClientDashboard: React.FC = () => {
             'driver_assigned': '#2196F3',
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
+            'awaiting_release': '#FF9800',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'
@@ -128,11 +141,12 @@ const ClientDashboard: React.FC = () => {
     // Fetch dashboard data
     const fetchDashboardData = useCallback(async () => {
         try {
-            const [profileData, statsData, ridesData, walletData] = await Promise.all([
+            const [profileData, statsData, ridesData, walletData, historyData] = await Promise.all([
                 api.client.profile(),
                 api.client.stats(),
                 api.client.rides(5),
-                api.client.wallet()
+                api.client.wallet(),
+                api.client.rideHistory({ status: 'awaiting_release' })
             ]);
 
             if (profileData.success) {
@@ -183,6 +197,20 @@ const ClientDashboard: React.FC = () => {
 
             if (walletData.success) {
                 setWalletBalance(parseFloat(walletData.data.balance) || 0);
+            }
+
+            if (historyData?.success && historyData.data?.rides) {
+                const awaiting = historyData.data.rides
+                    .filter((r: any) => r.status === 'awaiting_release')
+                    .map((r: any) => ({
+                        id: r.id,
+                        ride_number: r.ride_number || '',
+                        pickup_address: r.pickup_address || '',
+                        destination_address: r.destination_address || '',
+                        total_fare: r.total_fare || 0,
+                        driver_name: r.driver_name || 'Driver',
+                    }));
+                setAwaitingReleaseRides(awaiting);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -572,13 +600,17 @@ const ClientDashboard: React.FC = () => {
                 Swal.close();
 
                 if (data.success) {
+                    if (data.data?.new_balance !== undefined) {
+                        setWalletBalance(data.data.new_balance);
+                    }
+                    fetchDashboardData();
+                    const refundAmt = data.data?.refund_amount;
+                    const refundText = refundAmt ? `₦${refundAmt.toLocaleString()} has been refunded to your wallet.` : 'Your refund has been processed.';
                     Swal.fire({
                         icon: 'success',
-                        title: 'Cancelled',
-                        text: 'Your ride has been cancelled',
+                        title: 'Ride Cancelled',
+                        text: refundText,
                         confirmButtonColor: '#ff5e00'
-                    }).then(() => {
-                        fetchDashboardData();
                     });
                 } else {
                     Swal.fire({
@@ -609,6 +641,37 @@ const ClientDashboard: React.FC = () => {
             text: `${feature} feature will be available in the next update.`,
             confirmButtonColor: '#ff5e00'
         });
+    };
+
+    // Release funds
+    const releaseFunds = async (rideId: string) => {
+        const result = await Swal.fire({
+            title: 'Release Payment?',
+            text: 'This will transfer the fare to the driver. This action cannot be undone.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4CAF50',
+            confirmButtonText: 'Yes, Release Funds',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const data = await api.rides.releaseFunds(rideId);
+            Swal.close();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Funds Released!', text: 'Payment has been sent to the driver.', confirmButtonColor: '#ff5e00' });
+                fetchDashboardData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Failed', text: data.message || 'Could not release funds', confirmButtonColor: '#ff5e00' });
+            }
+        } catch (error: any) {
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Error', text: error?.message || 'Failed to release funds', confirmButtonColor: '#ff5e00' });
+        }
     };
 
     // Check notifications
@@ -770,6 +833,35 @@ const ClientDashboard: React.FC = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Release Funds Card */}
+                    {awaitingReleaseRides.length > 0 && (
+                        <div className="mt-8">
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <i className="fas fa-hand-holding-usd text-[#ff5e00]"></i> Release Payment
+                            </h2>
+                            <div className="grid gap-4">
+                                {awaitingReleaseRides.map((ride) => (
+                                    <div key={ride.id} className="bg-gradient-to-r from-[#fff3e0] to-white border-2 border-[#ff5e00] border-dashed rounded-xl p-6 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-500">Ride #{ride.ride_number}</p>
+                                            <p className="font-semibold">{ride.pickup_address} → {ride.destination_address}</p>
+                                            <p className="text-sm text-gray-600 mt-1">Driver: {ride.driver_name || 'Assigned'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-2xl font-bold text-[#ff5e00] font-roboto-number">₦{ride.total_fare.toLocaleString()}</p>
+                                            <button
+                                                className="mt-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition"
+                                                onClick={() => releaseFunds(ride.id)}
+                                            >
+                                                <i className="fas fa-check-circle mr-2"></i> Release Funds
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Quick Actions */}
                     <div className="mt-8">

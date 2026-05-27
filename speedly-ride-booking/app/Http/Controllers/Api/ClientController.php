@@ -36,7 +36,7 @@ class ClientController extends Controller
         $totalRides = Ride::where('client_id', $clientId)->count();
         $completedRides = Ride::where('client_id', $clientId)->where('status', 'completed')->count();
         $activeRides = Ride::where('client_id', $clientId)
-            ->whereIn('status', ['pending', 'accepted', 'driver_assigned', 'driver_arrived', 'ongoing'])
+            ->whereIn('status', ['pending', 'accepted', 'driver_assigned', 'driver_arrived', 'ongoing', 'awaiting_release'])
             ->count();
         $cancelledRides = Ride::where('client_id', $clientId)
             ->whereIn('status', ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
@@ -192,7 +192,9 @@ class ClientController extends Controller
                 'plate_number' => $ride->plate_number ?? '',
                 'user_rating' => $ride->driver_rating,
                 'user_review' => $ride->driver_review,
-                'can_rate' => $ride->status === 'completed' && !$ride->driver_rating,
+                'can_rate' => in_array($ride->status, ['awaiting_release', 'completed']) && !$ride->driver_rating,
+                'payment_status' => $ride->payment_status,
+                'can_release_funds' => $ride->status === 'awaiting_release',
             ];
         });
 

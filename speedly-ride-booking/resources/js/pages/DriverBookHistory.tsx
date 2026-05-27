@@ -335,6 +335,8 @@ const DriverBookHistory: React.FC = () => {
                                                 <td className="earnings-cell">
                                                     {ride.status === 'completed' ? (
                                                         <span style={{ color: '#10b981', fontWeight: '600' }} className="font-roboto-number">+{formatCurrency(ride.driver_payout)}</span>
+                                                    ) : ride.status === 'awaiting_release' ? (
+                                                        <span style={{ color: '#f59e0b' }} className="font-roboto-number">{formatCurrency(ride.driver_payout)} (awaiting release)</span>
                                                     ) : ride.status === 'pending' || ride.status === 'accepted' ? (
                                                         <span style={{ color: '#f59e0b' }} className="font-roboto-number">{formatCurrency(ride.driver_payout)} (pending)</span>
                                                     ) : (
@@ -343,8 +345,10 @@ const DriverBookHistory: React.FC = () => {
                                                 </td>
                                                 <td>
                                                     {ride.status === 'completed' && <span className="status-badge completed">Completed</span>}
+                                                    {ride.status === 'awaiting_release' && <span className="status-badge pending">Awaiting Release</span>}
                                                     {ride.status === 'pending' && <span className="status-badge pending">Pending</span>}
                                                     {ride.status === 'accepted' && <span className="status-badge accepted">Accepted</span>}
+                                                    {ride.status === 'ongoing' && <span className="status-badge accepted">Ongoing</span>}
                                                     {ride.status === 'cancelled_by_client' && <span className="status-badge cancelled">Cancelled by Client</span>}
                                                     {ride.status === 'cancelled_by_driver' && <span className="status-badge cancelled">Cancelled by You</span>}
                                                 </td>

@@ -35,4 +35,35 @@ export default defineConfig({
             '@/routes': resolve(__dirname, 'resources/js/routes'),
         },
     },
+    server: {
+        proxy: {
+            '/api': 'http://127.0.0.1:8000',
+            '/sanctum': 'http://127.0.0.1:8000',
+        },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', '@inertiajs/react'],
+                    ui: [
+                        '@headlessui/react',
+                        '@radix-ui/react-avatar',
+                        '@radix-ui/react-checkbox',
+                        '@radix-ui/react-collapsible',
+                        '@radix-ui/react-dialog',
+                        '@radix-ui/react-dropdown-menu',
+                        '@radix-ui/react-label',
+                        '@radix-ui/react-navigation-menu',
+                        '@radix-ui/react-select',
+                        '@radix-ui/react-slot',
+                        '@radix-ui/react-toggle',
+                        '@radix-ui/react-toggle-group',
+                        '@radix-ui/react-tooltip',
+                    ],
+                    utils: ['sweetalert2', 'sonner', 'chart.js'],
+                },
+            },
+        },
+    },
 });

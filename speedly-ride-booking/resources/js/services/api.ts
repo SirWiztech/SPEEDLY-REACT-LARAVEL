@@ -18,7 +18,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
-    ...options.headers,
+    ...options.headers as Record<string, string>,
   };
 
   if (token) {
@@ -35,13 +35,16 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers,
   });
 
-  const data = await response.json().catch(() => null);
+  const text = await response.text();
+  let data: any = null;
+  try { data = JSON.parse(text); } catch { /* non-JSON response */ }
 
   if (!response.ok) {
-    throw new Error(data?.message || 'An error occurred');
+    const msg = data?.message || data?.error || (`Server error: ${response.status} ${response.statusText}`);
+    throw new Error(msg);
   }
 
-  return data;
+  return data || { success: true };
 }
 
 export const api = {
@@ -181,6 +184,8 @@ export const api = {
       apiFetch(`/rides/${id}/rate-driver`, { method: 'POST', body: JSON.stringify(data) }),
     rateClient: (id: string, data: { rating: number; comment?: string }) =>
       apiFetch(`/rides/${id}/rate-client`, { method: 'POST', body: JSON.stringify(data) }),
+    releaseFunds: (id: string) =>
+      apiFetch(`/rides/${id}/release-funds`, { method: 'POST' }),
   },
 
   // Admin

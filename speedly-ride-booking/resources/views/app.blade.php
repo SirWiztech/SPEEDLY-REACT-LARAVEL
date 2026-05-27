@@ -30,9 +30,15 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="512x512" href="/favicon/icon-512.png?v=2">
+        <link rel="icon" type="image/png" sizes="192x192" href="/favicon/icon-192.png?v=2">
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png?v=2">
+        <link rel="manifest" href="/favicon/site.webmanifest?v=2">
+        <meta name="theme-color" content="#ff5e00">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="msapplication-TileColor" content="#ff5e00">
+        <meta name="msapplication-TileImage" content="/favicon/android-chrome-512x512.png?v=2">
 
         @fonts
 

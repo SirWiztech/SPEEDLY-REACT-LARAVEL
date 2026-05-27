@@ -426,14 +426,16 @@ const DriverDashboard: React.FC = () => {
 
                 if (data.success) {
                     Swal.fire({
-                        title: 'Ride Completed!',
+                        title: 'Ride Marked Complete!',
                         html: `
-                            <p>Ride completed successfully</p>
-                            <p class="mt-2 font-bold text-green-600">Earned: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${(data.earnings || payout).toLocaleString()}</span></p>
+                            <p>Ride has been marked as completed.</p>
+                            <p class="mt-2 font-bold text-amber-600">Status: Awaiting client to release payment</p>
+                            <p class="mt-1 text-sm text-gray-500">Your earnings of ₦${payout.toLocaleString()} will be credited once the client releases the funds.</p>
                         `,
                         icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
+                        timer: 3000,
+                        showConfirmButton: true,
+                        confirmButtonColor: '#ff5e00',
                     });
                     fetchDashboardData();
                 } else {
@@ -444,11 +446,11 @@ const DriverDashboard: React.FC = () => {
                         confirmButtonColor: '#ff5e00'
                     });
                 }
-            } catch (error) {
-                console.error('Error:', error);
+            } catch (error: any) {
+                console.error('Complete ride error:', error);
                 Swal.fire({
                     title: 'Error',
-                    text: 'Failed to complete ride',
+                    text: error?.message || 'Failed to complete ride',
                     icon: 'error',
                     confirmButtonColor: '#ff5e00'
                 });
