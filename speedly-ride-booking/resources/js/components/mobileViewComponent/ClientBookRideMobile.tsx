@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
+import { loadGoogleMapsApi } from '../../lib/googleMaps';
 import '../../../css/ClientBookRideMobileView.css';
 
 // Types (same as before)

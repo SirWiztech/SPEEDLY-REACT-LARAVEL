@@ -30,6 +30,44 @@ class RideController extends Controller
         ]]);
     }
 
+    public function activeRide(Request $request)
+    {
+        $user = $request->user();
+        $clientProfile = ClientProfile::where('user_id', $user->id)->first();
+        $driverProfile = DriverProfile::where('user_id', $user->id)->first();
+
+        $ride = null;
+        if ($clientProfile) {
+            $ride = Ride::with(['driver.user', 'client.user'])
+                ->where('client_id', $clientProfile->id)
+                ->whereNotIn('status', ['completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
+                ->latest()
+                ->first();
+        } elseif ($driverProfile) {
+            $ride = Ride::with(['driver.user', 'client.user'])
+                ->where('driver_id', $driverProfile->id)
+                ->whereNotIn('status', ['completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
+                ->latest()
+                ->first();
+        }
+
+        if (!$ride) {
+            return response()->json(['success' => true, 'data' => null]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $ride->id,
+                'ride_number' => $ride->ride_number,
+                'status' => $ride->status,
+                'driver_name' => $ride->driver?->user?->full_name,
+                'client_name' => $ride->client?->user?->full_name,
+                'user_role' => $clientProfile ? 'client' : 'driver',
+            ],
+        ]);
+    }
+
     public function calculateFare(Request $request)
     {
         $request->validate([
@@ -250,6 +288,13 @@ class RideController extends Controller
         $ride->client_phone = $ride->client?->user?->phone_number ?? '';
         $ride->driver_name = $ride->driver?->user?->full_name;
         $ride->driver_phone = $ride->driver?->user?->phone_number ?? '';
+
+        if (!$ride->release_token) {
+            $token = Str::random(32);
+            Ride::where('id', $ride->id)->update(['release_token' => $token]);
+            $ride->release_token = $token;
+        }
+
         $ride->vehicle_model = $vehicle?->vehicle_model ?? '';
         $ride->vehicle_color = $vehicle?->vehicle_color ?? '';
         $ride->plate_number = $vehicle?->plate_number ?? '';
@@ -620,6 +665,92 @@ class RideController extends Controller
             ]);
 
             return response()->json(['success' => true, 'message' => 'Funds released to driver successfully']);
+        });
+    }
+
+    public function qrRelease(Request $request, $id)
+    {
+        $request->validate(['release_token' => 'required|string']);
+
+        return DB::transaction(function () use ($id, $request) {
+            $ride = Ride::with(['client.user', 'driver.user'])->lockForUpdate()
+                ->where('id', $id)
+                ->where('release_token', $request->release_token)
+                ->first();
+
+            if (!$ride) {
+                return response()->json(['success' => false, 'message' => 'Invalid ride or token'], 404);
+            }
+
+            if ($ride->status !== 'awaiting_release') {
+                return response()->json(['success' => false, 'message' => 'Funds are not ready to be released'], 400);
+            }
+
+            if ($ride->payment_status === 'paid') {
+                return response()->json(['success' => false, 'message' => 'Funds already released'], 400);
+            }
+
+            if (!$ride->client?->user || !$ride->driver?->user) {
+                return response()->json(['success' => false, 'message' => 'Ride is not fully assigned yet'], 400);
+            }
+
+            $clientUser = $ride->client->user;
+            $driverUser = $ride->driver->user;
+
+            $lastClientTx = WalletTransaction::where('user_id', $clientUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $clientBalanceBefore = $lastClientTx ? $lastClientTx->balance_after : 0;
+            $clientBalanceAfter = $clientBalanceBefore - $ride->total_fare;
+
+            WalletTransaction::create([
+                'id' => Str::random(32),
+                'user_id' => $clientUser->id,
+                'transaction_type' => 'debit',
+                'description' => "QR release for ride {$ride->ride_number}",
+                'amount' => $ride->total_fare,
+                'balance_before' => $clientBalanceBefore,
+                'balance_after' => $clientBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
+            ]);
+
+            $driverEarning = $ride->driver_payout ?? ($ride->total_fare * 0.85);
+
+            $lastDriverTx = WalletTransaction::where('user_id', $driverUser->id)
+                ->orderBy('created_at', 'desc')->first();
+            $driverBalanceBefore = $lastDriverTx ? $lastDriverTx->balance_after : 0;
+            $driverBalanceAfter = $driverBalanceBefore + $driverEarning;
+
+            WalletTransaction::create([
+                'id' => Str::random(32),
+                'user_id' => $driverUser->id,
+                'transaction_type' => 'credit',
+                'description' => "QR release earning from ride {$ride->ride_number}",
+                'amount' => $driverEarning,
+                'balance_before' => $driverBalanceBefore,
+                'balance_after' => $driverBalanceAfter,
+                'status' => 'completed',
+                'ride_id' => $ride->id,
+            ]);
+
+            $ride->update(['status' => 'completed', 'payment_status' => 'paid']);
+
+            $driverProfile = $ride->driver;
+            $driverProfile->update([
+                'completed_rides' => Ride::where('driver_id', $driverProfile->id)->where('status', 'completed')->count(),
+                'total_earnings' => ($driverProfile->total_earnings ?? 0) + $driverEarning,
+            ]);
+
+            Notification::create([
+                'id' => Str::random(32),
+                'user_id' => $driverUser->id,
+                'type' => 'payment_released',
+                'title' => 'Payment Released (QR)',
+                'message' => "₦{$driverEarning} released via QR scan for ride {$ride->ride_number}",
+                'is_read' => false,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Funds released via QR scan']);
         });
     }
 

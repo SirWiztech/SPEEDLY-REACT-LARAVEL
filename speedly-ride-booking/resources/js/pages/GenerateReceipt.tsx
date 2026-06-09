@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import api from '../services/api';
+import { api } from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -25,6 +25,8 @@ interface RideData {
     client_name: string;
     client_email: string;
     client_phone: string;
+    release_token?: string;
+    status?: string;
 }
 
 interface PaymentData {
@@ -50,17 +52,14 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
     const [fareBreakdown, setFareBreakdown] = useState<FareBreakdown | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
+    const [copied, setCopied] = useState(false);
 
     const preloaderLoading = usePreloader(800);
     const isMobile = useMobile();
 
     useEffect(() => {
         const fetchRideData = async () => {
-            if (!rideId) {
-                setError('No ride ID provided');
-                setLoading(false);
-                return;
-            }
+            if (!rideId) { setError('No ride ID provided'); setLoading(false); return; }
             try {
                 const response = await api.rides.receipt(rideId);
                 const payload = response.data || response;
@@ -71,8 +70,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                 } else {
                     setError(response.message || 'Failed to load ride details');
                 }
-            } catch (error) {
-                console.error('Error fetching ride data:', error);
+            } catch {
                 setError('Failed to load ride details');
             } finally {
                 setLoading(false);
@@ -81,41 +79,60 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
         fetchRideData();
     }, [rideId]);
 
-    const downloadPDF = async () => {
+    const downloadImage = async () => {
         const element = document.getElementById('receipt-content');
         if (!element) return;
-        Swal.fire({ title: 'Generating PDF...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Generating image...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         try {
-            const html2pdf = (await import('html2pdf.js')).default;
-            const opt = {
-                margin: [0.5, 0.5, 0.5, 0.5],
-                filename: `speedly_receipt_${ride?.ride_number || rideId}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, logging: false, dpi: 192, letterRendering: true },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save().then(() => {
-                Swal.close();
-                Swal.fire({ icon: 'success', title: 'PDF Generated!', text: 'Receipt downloaded.', timer: 2000, showConfirmButton: false });
+            const { toPng } = await import('html-to-image');
+            const dataUrl = await toPng(element, {
+                backgroundColor: '#ffffff',
+                pixelRatio: 2,
+                skipAutoScale: true,
             });
+            const link = document.createElement('a');
+            link.download = `speedly_receipt_${ride?.ride_number || rideId}.png`;
+            link.href = dataUrl;
+            link.click();
+            Swal.close();
+            Swal.fire({ icon: 'success', title: 'Downloaded!', text: 'Receipt saved as PNG.', timer: 2000, showConfirmButton: false });
         } catch (e) {
             Swal.close();
-            Swal.fire({ icon: 'error', title: 'PDF Error', text: 'Could not generate PDF. Try printing instead.', confirmButtonColor: '#ff4500' });
+            console.error('Download error:', e);
+            const { toPng } = await import('html-to-image');
+            const dataUrl = await toPng(element, {
+                backgroundColor: '#ffffff',
+                pixelRatio: 1,
+                cacheBust: true,
+            });
+            const link = document.createElement('a');
+            link.download = `speedly_receipt_${ride?.ride_number || rideId}.png`;
+            link.href = dataUrl;
+            link.click();
+            Swal.close();
+            Swal.fire({ icon: 'success', title: 'Downloaded!', text: 'Receipt saved as PNG.', timer: 2000, showConfirmButton: false });
         }
+    };
+
+    const copyToken = () => {
+        if (!ride?.release_token) return;
+        const text = `SPEEDLY_RELEASE:${ride.id}:${ride.release_token}`;
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
     };
 
     const shareWhatsApp = () => {
         if (!ride) return;
         const text = [
             'SPEEDLY RIDE RECEIPT',
-            '',
             `Receipt: #${ride.ride_number}`,
             `Date: ${new Date(ride.created_at).toLocaleString()}`,
             `From: ${ride.pickup_address}`,
             `To: ${ride.destination_address}`,
             `Amount: \u20A6${Number(ride.total_fare).toLocaleString()}`,
             `Driver: ${ride.driver_name || 'N/A'}`,
-            '',
             'Thank you for riding with Speedly!'
         ].join('\n');
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -130,28 +147,26 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
             hour: '2-digit', minute: '2-digit'
         });
 
+    const qrData = ride?.release_token
+        ? `SPEEDLY_RELEASE:${ride.id}:${ride.release_token}`
+        : `SPEEDLY RECEIPT\n#${ride?.ride_number || ''}\n${ride ? formatCurrency(ride.total_fare) : ''}`;
+
     if (preloaderLoading) return <DesktopPreloader />;
 
-    if (loading) {
-        return (
-            <div className="receipt-loading">
-                <div className="spinner"></div>
-                <p>Loading receipt...</p>
-            </div>
-        );
-    }
+    if (loading) return (
+        <div className="receipt-loading">
+            <div className="spinner"></div>
+            <p>Loading receipt...</p>
+        </div>
+    );
 
-    if (error || !ride) {
-        return (
-            <div className="receipt-error">
-                <i className="fas fa-exclamation-circle"></i>
-                <p>{error || 'Ride not found'}</p>
-                <button onClick={() => router.visit('/ride-history')} className="btn-back">
-                    Back to Ride History
-                </button>
-            </div>
-        );
-    }
+    if (error || !ride) return (
+        <div className="receipt-error">
+            <i className="fas fa-exclamation-circle"></i>
+            <p>{error || 'Ride not found'}</p>
+            <button onClick={() => router.visit('/ride-history')} className="btn-back">Back to Ride History</button>
+        </div>
+    );
 
     const baseFare = fareBreakdown?.base_fare ?? 500;
     const distanceFare = fareBreakdown?.distance_fare ?? (ride.distance_km || 0) * 1000;
@@ -164,176 +179,224 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
             <div className="receipt-container" id="receipt-content">
                 <div className="receipt-top-border"></div>
 
-                <div className="receipt-header">
-                    <img src="/main-assets/logo-no-background.png" alt="Speedly" className="receipt-logo" />
-                    <h1>RIDE RECEIPT</h1>
-                    <p className="receipt-subtitle">Official Payment Confirmation</p>
+                <div className="receipt-header" style={{ textAlign: 'center', position: 'relative', padding: '24px 0' }}>
+                    <img
+                        src="/main-assets/logo-no-background.png"
+                        alt="Speedly"
+                        style={{ height: 45, marginBottom: 16, objectFit: 'contain' }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div style={{
+                        position: 'absolute', top: 16, right: 16,
+                        background: '#fff3ed', padding: '4px 10px', borderRadius: 8,
+                        fontSize: 11, fontWeight: 700, color: '#ff5e00'
+                    }}>
+                        ⚡ SPEEDLY
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a1a', marginBottom: 4 }}>
+                        🚖 RIDE RECEIPT
+                    </div>
+                    <p style={{ color: '#888', fontSize: 13, margin: 0 }}>Official Payment Confirmation</p>
                 </div>
 
-                <div className="receipt-divider">
-                    <span>RECEIPT #{ride.ride_number}</span>
+                <div style={{
+                    background: 'linear-gradient(135deg, #fff3ed, #ffe8d6)',
+                    padding: 12, margin: '0 20px 16px', borderRadius: 12,
+                    textAlign: 'center', fontWeight: 700, fontSize: 14,
+                    color: '#1a1a1a', border: '2px dashed #ffd4b8'
+                }}>
+                    RECEIPT #{ride.ride_number}
                 </div>
 
-                <div className="receipt-body">
-                    <div className="info-section">
-                        <h3><i className="fas fa-info-circle"></i> Ride Information</h3>
-                        <div className="info-grid">
-                            <div className="info-item">
-                                <span className="info-label">Date & Time</span>
-                                <span className="info-value">{formatDate(ride.created_at)}</span>
+                <div style={{ padding: '0 20px' }}>
+                    {/* Ride Info */}
+                    <div style={{ background: '#fafafa', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                        <h3 style={{ margin: '0 0 12px', fontSize: 13, color: '#555', textTransform: 'uppercase', letterSpacing: 1 }}>
+                            📋 Ride Information
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            {[
+                                ['Date & Time', formatDate(ride.created_at)],
+                                ['Ride Type', (ride.ride_type || 'Economy').charAt(0).toUpperCase() + (ride.ride_type || 'Economy').slice(1)],
+                                ['Distance', `${Number(ride.distance_km || 0).toFixed(1)} km`],
+                                ['Payment', 'PAID'],
+                            ].map(([label, value], i) => (
+                                <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
+                                    <div style={{ fontSize: 10, color: '#999', textTransform: 'uppercase' }}>{label}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Locations */}
+                    <div style={{ background: '#fafafa', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <div style={{ width: 12, height: 12, borderRadius: 6, background: '#4CAF50', flexShrink: 0 }}></div>
+                            <div>
+                                <div style={{ fontSize: 10, color: '#999', textTransform: 'uppercase' }}>Pickup</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{ride.pickup_address}</div>
                             </div>
-                            <div className="info-item">
-                                <span className="info-label">Ride Type</span>
-                                <span className="info-value capitalize">{ride.ride_type || 'Economy'}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="info-label">Distance</span>
-                                <span className="info-value">{Number(ride.distance_km || 0).toFixed(1)} km</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="info-label">Payment</span>
-                                <span className="info-value">
-                                    <span className="status-badge">PAID</span>
-                                </span>
+                        </div>
+                        <div style={{ width: 1, height: 16, background: '#ddd', marginLeft: 5 }}></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 12, height: 12, borderRadius: 6, background: '#F44336', flexShrink: 0 }}></div>
+                            <div>
+                                <div style={{ fontSize: 10, color: '#999', textTransform: 'uppercase' }}>Drop-off</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{ride.destination_address}</div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="locations-section">
-                        <div className="location-block">
-                            <div className="location-dot pickup"></div>
-                            <div className="location-content">
-                                <span className="location-label">Pickup</span>
-                                <span className="location-address">{ride.pickup_address}</span>
+                    {/* Parties */}
+                    <div style={{ background: '#fafafa', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                                <div style={{
+                                    width: 36, height: 36, borderRadius: 18, background: '#ff5e00',
+                                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: 700, fontSize: 14, margin: '0 auto 6px'
+                                }}>
+                                    {ride.client_name?.charAt(0)?.toUpperCase() || 'C'}
+                                </div>
+                                <div style={{ fontSize: 10, color: '#999' }}>Client</div>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{ride.client_name || 'Customer'}</div>
                             </div>
-                        </div>
-                        <div className="location-line"></div>
-                        <div className="location-block">
-                            <div className="location-dot dropoff"></div>
-                            <div className="location-content">
-                                <span className="location-label">Drop-off</span>
-                                <span className="location-address">{ride.destination_address}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="parties-section">
-                        <div className="party-card">
-                            <div className="party-avatar" style={{ background: '#ff4500' }}>
-                                {ride.client_name?.charAt(0)?.toUpperCase() || 'C'}
-                            </div>
-                            <div className="party-info">
-                                <span className="party-label">Client</span>
-                                <span className="party-name">{ride.client_name || 'Customer'}</span>
-                                {ride.client_phone && <span className="party-contact">{ride.client_phone}</span>}
-                            </div>
-                        </div>
-                        <div className="party-card">
-                            <div className="party-avatar" style={{ background: '#cc3700' }}>
-                                {ride.driver_name?.charAt(0)?.toUpperCase() || 'D'}
-                            </div>
-                            <div className="party-info">
-                                <span className="party-label">Driver</span>
-                                <span className="party-name">{ride.driver_name || 'TBA'}</span>
-                                {ride.driver_phone && <span className="party-contact">{ride.driver_phone}</span>}
+                            <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                                <div style={{
+                                    width: 36, height: 36, borderRadius: 18, background: '#cc3700',
+                                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: 700, fontSize: 14, margin: '0 auto 6px'
+                                }}>
+                                    {ride.driver_name?.charAt(0)?.toUpperCase() || 'D'}
+                                </div>
+                                <div style={{ fontSize: 10, color: '#999' }}>Driver</div>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{ride.driver_name || 'TBA'}</div>
                             </div>
                         </div>
                     </div>
 
                     {ride.vehicle_model && (
-                        <div className="vehicle-section">
-                            <i className="fas fa-car"></i>
-                            <span>{ride.vehicle_model}{ride.vehicle_color ? ` \u2022 ${ride.vehicle_color}` : ''}</span>
-                            {ride.plate_number && <span className="plate">{ride.plate_number}</span>}
+                        <div style={{
+                            background: '#fafafa', borderRadius: 12, padding: 12, marginBottom: 12,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            fontSize: 13, color: '#555'
+                        }}>
+                            🚗 <strong>{ride.vehicle_model}</strong>
+                            {ride.vehicle_color && <span>• {ride.vehicle_color}</span>}
+                            {ride.plate_number && <span style={{ background: '#e8e8e8', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>{ride.plate_number}</span>}
                         </div>
                     )}
 
-                    <div className="fare-section">
-                        <h3><i className="fas fa-calculator"></i> Fare Breakdown</h3>
-                        <div className="fare-table">
-                            <div className="fare-row">
-                                <span>Base Fare</span>
-                                <span>{formatCurrency(baseFare)}</span>
+                    {/* Fare Breakdown */}
+                    <div style={{ background: '#fafafa', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                        <h3 style={{ margin: '0 0 12px', fontSize: 13, color: '#555', textTransform: 'uppercase', letterSpacing: 1 }}>
+                            💰 Fare Breakdown
+                        </h3>
+                        {[
+                            ['Base Fare', baseFare],
+                            ['Distance Fare', distanceFare],
+                            ['Service Fee', serviceFee],
+                            ['Platform Commission', platformCommission],
+                        ].map(([label, amount], i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#666' }}>
+                                <span>{label}</span>
+                                <span style={{ fontWeight: 500 }}>{formatCurrency(Number(amount))}</span>
                             </div>
-                            <div className="fare-row">
-                                <span>Distance Fare ({Number(ride.distance_km || 0).toFixed(1)} km)</span>
-                                <span>{formatCurrency(distanceFare)}</span>
-                            </div>
-                            <div className="fare-row">
-                                <span>Service Fee</span>
-                                <span>{formatCurrency(serviceFee)}</span>
-                            </div>
-                            <div className="fare-row">
-                                <span>Platform Commission</span>
-                                <span>{formatCurrency(platformCommission)}</span>
-                            </div>
-                            <div className="fare-row divider"></div>
-                            <div className="fare-row total">
-                                <span>Total Paid</span>
-                                <span>{formatCurrency(ride.total_fare)}</span>
-                            </div>
+                        ))}
+                        <div style={{ borderTop: '2px solid #eee', marginTop: 6, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800, color: '#1a1a1a' }}>
+                            <span>Total Paid</span>
+                            <span style={{ color: '#ff5e00' }}>{formatCurrency(ride.total_fare)}</span>
                         </div>
                     </div>
 
-                    <div className="payment-section">
-                        <h3><i className="fas fa-credit-card"></i> Payment</h3>
-                        <div className="payment-card">
-                            <div className="payment-row">
-                                <span><i className="fas fa-wallet"></i> Speedly Wallet</span>
-                                <span className="payment-amount">{formatCurrency(ride.total_fare)}</span>
-                            </div>
-                            <div className="payment-row">
-                                <span><i className="fas fa-user-check"></i> Driver Payout</span>
-                                <span className="payment-amount driver">{formatCurrency(driverPayout)}</span>
-                            </div>
-                            <div className="payment-row muted">
-                                <span>Reference</span>
-                                <span className="ref">{payment?.reference || `WAL-${ride.ride_number?.substring(0, 8)}`}</span>
-                            </div>
+                    {/* Payment Info */}
+                    <div style={{ background: '#fafafa', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+                            <span style={{ color: '#888' }}>💳 Speedly Wallet</span>
+                            <span style={{ fontWeight: 600 }}>{formatCurrency(ride.total_fare)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+                            <span style={{ color: '#888' }}>👤 Driver Payout</span>
+                            <span style={{ fontWeight: 600, color: '#4CAF50' }}>{formatCurrency(driverPayout)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#aaa' }}>
+                            <span>Reference</span>
+                            <span>{payment?.reference || `WAL-${ride.ride_number?.substring(0, 8)}`}</span>
                         </div>
                     </div>
 
-                    <div className="qr-section">
+                    {/* QR Code Section */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, #fff, #fff3ed)',
+                        borderRadius: 16, padding: '20px 16px', textAlign: 'center',
+                        border: '2px dashed #ffd4b8', marginBottom: 16
+                    }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#ff5e00', marginBottom: 12 }}>
+                            📱 SCAN TO RELEASE FUNDS
+                        </div>
                         <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`SPEEDLY RECEIPT\n#${ride.ride_number}\n${formatCurrency(ride.total_fare)}\n${ride.created_at}`)}`}
-                            alt="QR"
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}&bgcolor=fff&color=ff5e00`}
+                            alt="Release QR"
+                            style={{ width: 150, height: 150, borderRadius: 8 }}
                         />
-                        <p>Verify this receipt</p>
+                        <p style={{ fontSize: 11, color: '#999', margin: '8px 0 12px' }}>
+                            {ride.release_token
+                                ? 'Driver can scan this QR code to release funds instantly'
+                                : 'Scan to verify receipt'}
+                        </p>
+                        <div style={{
+                            padding: '10px 14px', background: '#fff',
+                            borderRadius: 10, border: '1px solid #ffd4b8',
+                            display: 'flex', alignItems: 'center', gap: 10
+                        }}>
+                            <input
+                                readOnly
+                                value={`SPEEDLY_RELEASE:${ride.id}:${ride.release_token}`}
+                                style={{
+                                    flex: 1, border: 'none', outline: 'none',
+                                    fontFamily: 'monospace', fontSize: 10, color: '#555',
+                                    background: 'transparent', wordBreak: 'break-all',
+                                    cursor: 'text',
+                                }}
+                                onClick={(e) => (e.target as HTMLInputElement).select()}
+                            />
+                            <button onClick={copyToken} style={{
+                                background: copied ? '#4CAF50' : '#ff5e00',
+                                color: '#fff', border: 'none', borderRadius: 8,
+                                padding: '6px 14px', cursor: 'pointer',
+                                fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+                                transition: 'background 0.2s'
+                            }}>
+                                {copied ? '✓ Copied' : '📋 Copy'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="receipt-footer">
-                    <div className="footer-brand">
-                        <i className="fas fa-bolt"></i> SPEEDLY
+                <div style={{
+                    background: '#1a1a1a', color: '#fff', padding: 20, textAlign: 'center',
+                    borderBottomLeftRadius: 16, borderBottomRightRadius: 16
+                }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>⚡ SPEEDLY</div>
+                    <div style={{ fontSize: 11, color: '#aaa' }}>
+                        support@speedly.com | +234 800 000 0000
                     </div>
-                    <p className="footer-contact">
-                        <i className="fas fa-envelope"></i> support@speedly.com
-                        <span className="sep">|</span>
-                        <i className="fas fa-phone-alt"></i> +234 800 000 0000
-                    </p>
-                    <p className="footer-copy">
-                        &copy; {new Date().getFullYear()} Speedly. All rights reserved.
-                    </p>
-                    <p className="footer-disclaimer">Computer-generated receipt \u2022 No signature required</p>
+                    <div style={{ fontSize: 10, color: '#777', marginTop: 6 }}>
+                        &copy; {new Date().getFullYear()} Speedly. Computer-generated receipt • No signature required
+                    </div>
                 </div>
             </div>
 
-            <div className="receipt-actions">
-                <button className="action-btn download" onClick={downloadPDF}>
-                    <i className="fas fa-download"></i> Download
-                </button>
-                <button className="action-btn print" onClick={() => window.print()}>
-                    <i className="fas fa-print"></i> Print
-                </button>
-                <button className="action-btn share" onClick={shareWhatsApp}>
-                    <i className="fab fa-whatsapp"></i> Share
-                </button>
-                <button className="action-btn history" onClick={() => router.visit('/clientridehistory')}>
-                    <i className="fas fa-history"></i> History
-                </button>
-                <button className="action-btn book" onClick={() => router.visit('/clientbookride')}>
-                    <i className="fas fa-plus-circle"></i> New Ride
-                </button>
+            <div className="receipt-actions" style={{
+                display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20,
+                flexWrap: 'wrap', padding: '0 12px'
+            }}>
+                <button className="action-btn download" onClick={downloadImage}>📥 Download</button>
+                <button className="action-btn print" onClick={() => window.print()}>🖨 Print</button>
+                <button className="action-btn share" onClick={shareWhatsApp}>💬 Share</button>
+                <button className="action-btn history" onClick={() => router.visit('/clientridehistory')}>📋 History</button>
+                <button className="action-btn book" onClick={() => router.visit('/clientbookride')}>🚗 New Ride</button>
             </div>
         </div>
     );

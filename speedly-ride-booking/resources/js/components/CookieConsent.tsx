@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import '../../css/CookieConsent.css';
 
@@ -34,36 +35,49 @@ function storeConsent(state: ConsentState): void {
 }
 
 function applyPerformanceOptimizations(): void {
-  // Preconnect to Google Maps and Font Awesome
+  // Preconnect to Google Maps & CDNs — run on EVERY page load if consent exists
   const preconnects = [
     'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
     'https://fonts.googleapis.com',
     'https://fonts.gstatic.com',
     'https://ka-f.fontawesome.com',
   ];
   preconnects.forEach(url => {
+    const exists = document.querySelector(`link[rel="preconnect"][href="${url}"]`);
+    if (exists) return;
     const link = document.createElement('link');
     link.rel = 'preconnect';
     link.href = url;
     link.crossOrigin = 'anonymous';
-    document.head.appendChild(link);
+    document.head.prepend(link);
   });
 
-  // DNS prefetch for API calls
-  const dnsPrefetches = ['//127.0.0.1:8000'];
+  // Preload the Google Maps API script so it's ready before any page needs it
+  const existingPreload = document.querySelector('link[rel="preload"][href*="maps.googleapis.com"]');
+  if (!existingPreload) {
+    const preloadLink = document.createElement('link');
+    preloadLink.rel = 'preload';
+    preloadLink.as = 'script';
+    preloadLink.href = 'https://maps.googleapis.com/maps/api/js?key=' +
+      (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '') +
+      '&libraries=places,geometry&loading=async';
+    document.head.prepend(preloadLink);
+  }
+
+  // DNS prefetch
+  const dnsPrefetches = ['//127.0.0.1:8000', 'https://maps.googleapis.com', 'https://maps.gstatic.com'];
   dnsPrefetches.forEach(url => {
+    if (document.querySelector(`link[rel="dns-prefetch"][href="${url}"]`)) return;
     const link = document.createElement('link');
     link.rel = 'dns-prefetch';
     link.href = url;
-    document.head.appendChild(link);
+    document.head.prepend(link);
   });
 
-  // Set fetch-cache hint
-  const sessionCache = sessionStorage.getItem('speedly_cache_ts');
-  if (sessionCache) {
-    document.documentElement.setAttribute('data-cached', 'true');
-  }
+  // Set cache markers
   sessionStorage.setItem('speedly_cache_ts', Date.now().toString());
+  document.documentElement.setAttribute('data-cached', 'true');
 }
 
 const CookieConsent: React.FC = () => {

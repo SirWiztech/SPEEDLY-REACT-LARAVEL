@@ -17,6 +17,7 @@ use App\Models\SystemSetting;
 use App\Models\Notification;
 use App\Models\DriverKycDocument;
 use App\Models\SupportTicket;
+use App\Models\Place;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +49,7 @@ class AdminController extends Controller
                 'phone_number' => $u->phone_number ?? '',
                 'verification_status' => $u->driverProfile?->verification_status ?? 'pending',
                 'driver_status' => $u->driverProfile?->driver_status ?? 'offline',
+                'is_active' => $u->is_active,
                 'vehicle_count' => $u->driverProfile?->vehicles?->count() ?? 0,
                 'ride_count' => $rideCount,
             ];
@@ -272,6 +274,18 @@ class AdminController extends Controller
         
         $withdrawals = $query->orderBy('created_at', 'desc')->paginate(15);
         
+        $withdrawals->getCollection()->transform(function ($w) {
+            return [
+                'id' => $w->id,
+                'driver_name' => $w->driver?->user?->full_name ?? 'Unknown',
+                'amount' => $w->amount ?? 0,
+                'bank_name' => $w->bank_name ?? '',
+                'account_number' => $w->account_number ?? '',
+                'status' => $w->status,
+                'created_at' => $w->created_at,
+            ];
+        });
+        
         return response()->json([
             'success' => true,
             'message' => 'Withdrawals retrieved successfully',
@@ -290,9 +304,28 @@ class AdminController extends Controller
                 'data' => null
             ]);
         }
+
+        $user = $withdrawal->driver->user;
+        $lastTx = WalletTransaction::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')->first();
+        $balanceBefore = $lastTx ? $lastTx->balance_after : 0;
+        $balanceAfter = $balanceBefore - $withdrawal->amount;
+        
+        WalletTransaction::create([
+            'id' => Str::random(32),
+            'user_id' => $user->id,
+            'transaction_type' => 'withdrawal',
+            'amount' => $withdrawal->amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
+            'description' => 'Withdrawal to ' . $withdrawal->bank_name . ' (' . $withdrawal->account_number . ')',
+            'status' => 'completed',
+            'category' => 'withdrawal',
+        ]);
         
         $withdrawal->update([
             'status' => 'completed',
+            'processed_by' => $request->user()->id,
             'processed_at' => Carbon::now(),
         ]);
         
@@ -307,7 +340,7 @@ class AdminController extends Controller
         
         return response()->json([
             'success' => true,
-            'message' => 'Withdrawal approved successfully',
+            'message' => 'Withdrawal approved and wallet debited',
             'data' => $withdrawal
         ]);
     }
@@ -439,6 +472,28 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'User details retrieved successfully',
             'data' => $data
+        ]);
+    }
+
+    public function toggleUserActive(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        $action = $user->is_active ? 'activated' : 'suspended';
+
+        AdminActivityLog::create([
+            'id' => Str::uuid(),
+            'admin_id' => $request->user()->id,
+            'action' => $action,
+            'description' => "User {$user->full_name} ({$user->email}) was {$action}",
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "User {$action} successfully",
+            'data' => ['id' => $user->id, 'is_active' => $user->is_active],
         ]);
     }
 
@@ -687,6 +742,57 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'Support ticket closed successfully',
             'data' => $ticket,
+        ]);
+    }
+
+    public function listPlaces(Request $request)
+    {
+        $query = Place::orderBy('id', 'desc');
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where('name', 'LIKE', '%' . $search . '%');
+        }
+        $places = $query->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Places retrieved',
+            'data' => $places,
+        ]);
+    }
+
+    public function addPlace(Request $request)
+    {
+        $data = $request->validate([
+            'name'           => 'required|string|max:255',
+            'state'          => 'nullable|string|max:100',
+            'lat'            => 'required|numeric',
+            'lng'            => 'required|numeric',
+            'feature_code'   => 'nullable|string|max:10',
+            'full_address'   => 'nullable|string|max:500',
+            'population'     => 'nullable|integer',
+        ]);
+
+        $place = Place::create([
+            'geoname_id'       => null,
+            'name'             => $data['name'],
+            'ascii_name'       => iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $data['name']) ?: $data['name'],
+            'alternate_names'  => null,
+            'lat'              => $data['lat'],
+            'lng'              => $data['lng'],
+            'feature_class'    => 'P',
+            'feature_code'     => $data['feature_code'] ?? 'PPL',
+            'state_code'       => null,
+            'state'            => $data['state'] ?? null,
+            'lga'              => null,
+            'population'       => $data['population'] ?? 0,
+            'full_address'     => $data['full_address'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Place added successfully',
+            'data' => $place,
         ]);
     }
 }

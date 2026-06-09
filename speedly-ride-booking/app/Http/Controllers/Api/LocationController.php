@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\DriverProfile;
 use App\Models\Ride;
 use App\Models\ClientProfile;
+use App\Models\Place;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 
 class LocationController extends Controller
 {
@@ -88,107 +90,127 @@ class LocationController extends Controller
 
     public function getSuggestions(Request $request)
     {
-        $request->validate(['query' => 'required|string']);
+        $request->validate(['query' => 'required|string|min:2']);
 
         $query = $request->input('query');
-        $apiKey = config('services.google.maps_api_key') ?: env('GOOGLE_MAPS_API_KEY');
+        $state = $request->input('state');
+        $limit = min((int) ($request->input('limit', 8)), 20);
 
-        if ($apiKey) {
-            $response = Http::get('https://maps.googleapis.com/maps/api/place/autocomplete/json', [
-                'input' => $query,
-                'key' => $apiKey
+        $likeTerm = $query . '%';
+        $ftTerm = '+' . preg_replace('/\s+/', '* +', trim($query)) . '*';
+
+        $q1 = Place::where('name', 'LIKE', $likeTerm)
+            ->selectRaw("id, name, state, lat, lng, full_address, feature_code, population, 1 AS priority");
+        $q2 = Place::whereRaw("MATCH(name, ascii_name, alternate_names, full_address) AGAINST (? IN BOOLEAN MODE)", [$ftTerm])
+            ->where('name', 'NOT LIKE', $likeTerm)
+            ->selectRaw("id, name, state, lat, lng, full_address, feature_code, population, 2 AS priority");
+
+        if ($state) {
+            $q1->where('state', $state);
+            $q2->where('state', $state);
+        }
+
+        $results = $q1->union($q2)
+            ->orderBy('priority')
+            ->orderBy('population', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id'           => (int) $p->id,
+                    'name'         => $p->name,
+                    'label'        => $p->name . ($p->state ? ', ' . $p->state : '') . ', Nigeria',
+                    'state'        => $p->state,
+                    'lat'          => $p->lat ? (float) $p->lat : null,
+                    'lng'          => $p->lng ? (float) $p->lng : null,
+                    'full_address' => $p->full_address,
+                    'feature_code' => $p->feature_code,
+                    'population'   => (int) $p->population,
+                ];
+            });
+
+        if ($results->isNotEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Suggestions retrieved successfully',
+                'data' => ['suggestions' => $results->toArray()],
             ]);
-
-            if ($response->successful() && $response->json('status') === 'OK') {
-                $suggestions = collect($response->json('predictions'))->map(function ($prediction) {
-                    return [
-                        'description' => $prediction['description'],
-                        'place_id' => $prediction['place_id'],
-                        'lat' => null,
-                        'lng' => null
-                    ];
-                })->toArray();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Suggestions retrieved successfully',
-                    'data' => ['suggestions' => $suggestions]
-                ]);
-            }
         }
 
         $response = Http::get('https://nominatim.openstreetmap.org/search', [
             'q' => $query,
             'format' => 'json',
-            'limit' => 5
+            'limit' => $limit,
+            'countrycodes' => 'ng',
         ]);
 
         $suggestions = collect($response->json())->map(function ($place) {
             return [
-                'description' => $place['display_name'],
-                'place_id' => $place['place_id'],
-                'lat' => $place['lat'],
-                'lng' => $place['lon']
+                'id'           => null,
+                'name'         => $place['name'] ?? $place['display_name'],
+                'label'        => $place['display_name'],
+                'state'        => null,
+                'lat'          => $place['lat'] ? (float) $place['lat'] : null,
+                'lng'          => $place['lon'] ? (float) $place['lon'] : null,
+                'full_address' => $place['display_name'],
+                'feature_code' => 'OSM',
+                'population'   => 0,
             ];
         })->toArray();
 
         return response()->json([
             'success' => true,
-            'message' => 'Suggestions retrieved successfully',
-            'data' => ['suggestions' => $suggestions]
+            'message' => 'Suggestions retrieved from OSM',
+            'data' => ['suggestions' => $suggestions],
         ]);
     }
 
     public function getPlaceDetails(Request $request)
     {
-        $request->validate([
-            'place_id' => 'sometimes|string',
-            'query' => 'sometimes|string'
-        ]);
+        // Local DB lookup by ID
+        if ($request->has('id')) {
+            $place = Place::find($request->input('id'));
 
-        if ($request->has('place_id')) {
-            $apiKey = config('services.google.maps_api_key') ?: env('GOOGLE_MAPS_API_KEY');
-
-            if ($apiKey) {
-                $response = Http::get('https://maps.googleapis.com/maps/api/place/details/json', [
-                    'place_id' => $request->place_id,
-                    'key' => $apiKey
+            if ($place && $place->lat && $place->lng) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Place details retrieved successfully',
+                    'data' => [
+                        'name'    => $place->name,
+                        'address' => $place->full_address,
+                        'lat'     => (float) $place->lat,
+                        'lng'     => (float) $place->lng,
+                    ],
                 ]);
-
-                if ($response->successful() && $response->json('status') === 'OK') {
-                    $result = $response->json('result');
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Place details retrieved successfully',
-                        'data' => [
-                            'name' => $result['name'],
-                            'address' => $result['formatted_address'],
-                            'lat' => $result['geometry']['location']['lat'],
-                            'lng' => $result['geometry']['location']['lng']
-                        ]
-                    ]);
-                }
             }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Place not found in local database',
+                'data' => null,
+            ]);
         }
 
+        // Fallback: search by query via Nominatim
         if ($request->has('query')) {
             $response = Http::get('https://nominatim.openstreetmap.org/search', [
-                'q' => $request->query,
+                'q'     => $request->input('query'),
                 'format' => 'json',
-                'limit' => 1
+                'limit'  => 1,
+                'countrycodes' => 'ng',
             ]);
 
             $places = $response->json();
             if (!empty($places)) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Place details retrieved successfully',
+                    'message' => 'Place details retrieved from OSM',
                     'data' => [
-                        'name' => $places[0]['name'] ?? $places[0]['display_name'],
+                        'name'    => $places[0]['name'] ?? $places[0]['display_name'],
                         'address' => $places[0]['display_name'],
-                        'lat' => $places[0]['lat'],
-                        'lng' => $places[0]['lon']
-                    ]
+                        'lat'     => (float) $places[0]['lat'],
+                        'lng'     => (float) $places[0]['lon'],
+                    ],
                 ]);
             }
         }
@@ -196,7 +218,7 @@ class LocationController extends Controller
         return response()->json([
             'success' => false,
             'message' => 'Place not found',
-            'data' => null
+            'data' => null,
         ]);
     }
 }

@@ -603,7 +603,32 @@
     font-family: 'Syne', sans-serif;
     font-weight: 800;
     color: #1a1a1a;
-    word-break: break-word;
+}
+
+.stat-card.revenue-stat, .stat-card.withdrawal-stat {
+    grid-column: span 1;
+    min-width: 230px;
+}
+
+.stat-value.stat-currency {
+    font-size: 15px;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-details:has(.stat-currency) {
+    min-width: 130px;
+}
+
+@media (max-width: 1366px) {
+    .stat-value {
+        font-size: 24px;
+    }
+    .stat-value.stat-currency {
+        font-size: 16px;
+    }
 }
 
 @media (max-width: 1200px) {

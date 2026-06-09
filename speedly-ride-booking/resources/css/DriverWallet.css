@@ -1,7 +1,7 @@
 /* ===== DRIVER WALLET CSS - DESKTOP ONLY ===== */
 /* Premium Design System with Working Scrollbars */
 
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Roboto:wght@400;500;700;900&display=swap');
 
 * {
     margin: 0;
@@ -16,6 +16,22 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Syne', sans-serif;
+}
+
+/* Roboto font for numbers - Global number styling */
+.font-roboto-number,
+.hero-balance-amount,
+.hero-stat-value,
+.earning-amount-desktop,
+.withdrawal-amount,
+.summary-value,
+.tips-stat-value,
+.amount-value,
+.price-value,
+.balance-number {
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
 }
 
 /* ========== DESKTOP VIEW ========== */
@@ -140,6 +156,8 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 /* API Alert */
@@ -209,7 +227,8 @@ h1, h2, h3, h4, h5, h6 {
     color: white;
     margin-bottom: 28px;
     letter-spacing: -2px;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 .hero-balance-actions {
@@ -279,7 +298,8 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 22px;
     font-weight: 700;
     color: white;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Desktop Grid */
@@ -446,7 +466,8 @@ h1, h2, h3, h4, h5, h6 {
 .earning-amount-desktop {
     font-size: 20px;
     font-weight: 700;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 .earning-amount-desktop.positive {
@@ -511,7 +532,8 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
     color: #1a1a1a;
     margin-bottom: 5px;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 .withdrawal-meta {
@@ -580,7 +602,8 @@ h1, h2, h3, h4, h5, h6 {
 .summary-value {
     font-weight: 700;
     color: #1a1a1a;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 .summary-value.pending {
@@ -654,7 +677,8 @@ h1, h2, h3, h4, h5, h6 {
     display: block;
     font-size: 24px;
     font-weight: 800;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Empty States Desktop */
@@ -797,4 +821,23 @@ h1, h2, h3, h4, h5, h6 {
     max-width: 100%;
     margin: 0;
     padding: 0;
+}
+
+/* Additional Roboto number styling for any other numeric elements */
+.hero-balance-amount,
+.hero-stat-value,
+.earning-amount-desktop,
+.withdrawal-amount,
+.summary-value,
+.tips-stat-value,
+.notif-badge-desktop {
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+}
+
+/* Style for currency amounts in buttons and other places */
+button span.font-roboto-number,
+button .font-roboto-number {
+    font-family: 'Roboto', sans-serif;
+    font-variant-numeric: tabular-nums;
 }

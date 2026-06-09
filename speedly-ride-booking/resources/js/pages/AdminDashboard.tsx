@@ -27,6 +27,7 @@ interface User {
     role: string;
     created_at: string;
     is_verified: boolean;
+    is_active: boolean;
 }
 
 interface Driver {
@@ -139,6 +140,9 @@ const AdminDashboard: React.FC = () => {
     const [activityLoading, setActivityLoading] = useState<boolean>(false);
     const [reportsData, setReportsData] = useState<any>(null);
     const [reportsLoading, setReportsLoading] = useState<boolean>(false);
+    const [places, setPlaces] = useState<any[]>([]);
+    const [placesLoading, setPlacesLoading] = useState<boolean>(false);
+    const [placesSearch, setPlacesSearch] = useState<string>('');
     const [page, setPage] = useState<number>(1);
     
     let chartInstance: Chart | null = null;
@@ -224,6 +228,16 @@ const AdminDashboard: React.FC = () => {
         }
     }, []);
 
+    const fetchFullWithdrawals = useCallback(async () => {
+        setPaymentsLoading(true);
+        try {
+            const data = await api.admin.withdrawals({ status: filterStatus === 'all' ? undefined : filterStatus, page });
+            if (data.success) {
+                setWithdrawals(data.data?.data || []);
+            }
+        } catch { } finally { setPaymentsLoading(false); }
+    }, [filterStatus, page]);
+
     const fetchSettings = useCallback(async () => {
         setSettingsLoading(true);
         try {
@@ -245,12 +259,69 @@ const AdminDashboard: React.FC = () => {
             if (data.success) {
                 setActivityLogs(data.data?.data || []);
             }
-        } catch (error) {
-            console.error('Error fetching activity logs:', error);
-        } finally {
-            setActivityLoading(false);
-        }
+        } catch { } finally { setActivityLoading(false); }
     }, []);
+
+    const fetchPlaces = useCallback(async () => {
+        setPlacesLoading(true);
+        try {
+            const data = await api.admin.listPlaces({ search: placesSearch || undefined, page });
+            if (data.success) {
+                setPlaces(data.data?.data || []);
+            }
+        } catch { } finally { setPlacesLoading(false); }
+    }, [placesSearch, page]);
+
+    const handleAddPlace = async () => {
+        const { value: formValues } = await Swal.fire({
+            title: 'Add New Place',
+            html: `
+                <input id="swal-place-name" class="swal2-input" placeholder="Place Name *" style="margin-bottom:10px">
+                <input id="swal-place-state" class="swal2-input" placeholder="State (e.g. Anambra)" style="margin-bottom:10px">
+                <div style="display:flex;gap:10px">
+                    <input id="swal-place-lat" class="swal2-input" placeholder="Latitude *" type="number" step="any" style="flex:1">
+                    <input id="swal-place-lng" class="swal2-input" placeholder="Longitude *" type="number" step="any" style="flex:1">
+                </div>
+                <input id="swal-place-address" class="swal2-input" placeholder="Full Address" style="margin-top:10px;margin-bottom:10px">
+                <input id="swal-place-code" class="swal2-input" placeholder="Feature Code (e.g. PPL, SCH, HSP)" style="margin-bottom:10px">
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Add Place',
+            cancelButtonText: 'Cancel',
+            preConfirm: () => {
+                const name = (document.getElementById('swal-place-name') as HTMLInputElement)?.value?.trim();
+                const lat = parseFloat((document.getElementById('swal-place-lat') as HTMLInputElement)?.value);
+                const lng = parseFloat((document.getElementById('swal-place-lng') as HTMLInputElement)?.value);
+                if (!name || isNaN(lat) || isNaN(lng)) {
+                    Swal.showValidationMessage('Name, Latitude, and Longitude are required');
+                    return false;
+                }
+                return {
+                    name,
+                    state: (document.getElementById('swal-place-state') as HTMLInputElement)?.value?.trim() || '',
+                    lat,
+                    lng,
+                    full_address: (document.getElementById('swal-place-address') as HTMLInputElement)?.value?.trim() || '',
+                    feature_code: (document.getElementById('swal-place-code') as HTMLInputElement)?.value?.trim() || 'PPL',
+                };
+            }
+        });
+
+        if (formValues) {
+            try {
+                const data = await api.admin.addPlace(formValues);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Added', text: 'Place added successfully', timer: 1500, showConfirmButton: false });
+                    fetchPlaces();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to add place', confirmButtonColor: '#ff5e00' });
+                }
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to add place', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
 
     const fetchReports = useCallback(async () => {
         setReportsLoading(true);
@@ -409,6 +480,8 @@ const AdminDashboard: React.FC = () => {
     useEffect(() => {
         if (activePage === 'wallets' && !loading) {
             fetchWallets();
+        } else if (activePage === 'withdrawals' && !loading) {
+            fetchFullWithdrawals();
         }
     }, [activePage, loading]);
 
@@ -427,6 +500,12 @@ const AdminDashboard: React.FC = () => {
     useEffect(() => {
         if (activePage === 'activity' && !loading) {
             fetchActivityLogs();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
+        if (activePage === 'places' && !loading) {
+            fetchPlaces();
         }
     }, [activePage, loading]);
 
@@ -519,13 +598,15 @@ const AdminDashboard: React.FC = () => {
         { id: 'drivers', label: 'Drivers', icon: 'fa-id-card' },
         { id: 'rides', label: 'Rides', icon: 'fa-car' },
         { id: 'payments', label: 'Payments', icon: 'fa-credit-card' },
+        { id: 'withdrawals', label: 'Withdrawals', icon: 'fa-hand-holding-usd' },
         { id: 'wallets', label: 'Wallets', icon: 'fa-wallet' },
         { id: 'kyc', label: 'KYC Approvals', icon: 'fa-file-alt' },
         { id: 'disputes', label: 'Disputes', icon: 'fa-exclamation-triangle' },
         { id: 'reports', label: 'Reports', icon: 'fa-chart-line' },
         { id: 'settings', label: 'Settings', icon: 'fa-cog' },
         { id: 'activity', label: 'Activity Log', icon: 'fa-history' },
-        { id: 'support', label: 'Support Tickets', icon: 'fa-headset' }
+        { id: 'support', label: 'Support Tickets', icon: 'fa-headset' },
+        { id: 'places', label: 'Manage Places', icon: 'fa-map-marker-alt' }
     ];
 
     // Filter functions for desktop
@@ -564,6 +645,87 @@ const AdminDashboard: React.FC = () => {
             user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.email.toLowerCase().includes(searchTerm.toLowerCase())
         );
+    };
+
+    const handleApproveWithdrawal = async (withdrawalId: string) => {
+        const result = await Swal.fire({
+            title: 'Approve Withdrawal?',
+            text: 'The amount will be deducted from the driver\'s wallet.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, approve',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const data = await api.admin.approveWithdrawal(withdrawalId);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Approved', text: data.message, timer: 2000, showConfirmButton: false });
+                    fetchFullWithdrawals();
+                    fetchDashboardData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to approve', confirmButtonColor: '#ff5e00' });
+                }
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to approve withdrawal', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleRejectWithdrawal = async (withdrawalId: string) => {
+        const result = await Swal.fire({
+            title: 'Reject Withdrawal?',
+            text: 'Are you sure you want to reject this withdrawal?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, reject',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const data = await api.admin.rejectWithdrawal(withdrawalId, { reason: 'Rejected by admin' });
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Rejected', text: data.message, timer: 2000, showConfirmButton: false });
+                    fetchFullWithdrawals();
+                    fetchDashboardData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to reject', confirmButtonColor: '#ff5e00' });
+                }
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reject withdrawal', confirmButtonColor: '#ff5e00' });
+            }
+        }
+    };
+
+    const handleToggleUserActive = async (userId: string, isActive: boolean) => {
+        const action = isActive ? 'suspend' : 'activate';
+        const result = await Swal.fire({
+            title: `${action.charAt(0).toUpperCase() + action.slice(1)} User?`,
+            text: `Are you sure you want to ${action} this user?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: action === 'suspend' ? '#f59e0b' : '#10b981',
+            confirmButtonText: `Yes, ${action}`,
+            cancelButtonText: 'Cancel'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const data = await api.admin.toggleUserActive(userId);
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Done', text: `User ${action}d successfully`, timer: 1500, showConfirmButton: false });
+                    fetchDashboardData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed', confirmButtonColor: '#ff5e00' });
+                }
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update user', confirmButtonColor: '#ff5e00' });
+            }
+        }
     };
 
     const handleApproveKyc = async (docId: string) => {
@@ -896,19 +1058,19 @@ const AdminDashboard: React.FC = () => {
                                     <div className="stat-change positive">All time</div>
                                 </div>
                             </div>
-                            <div className="stat-card">
+                            <div className="stat-card revenue-stat">
                                 <div className="stat-icon revenue"><i className="fas fa-naira-sign"></i></div>
                                 <div className="stat-details">
                                     <h3>Total Revenue</h3>
-                                    <div className="stat-value">{formatCurrency(stats.total_revenue)}</div>
+                                    <div className="stat-value stat-currency">{formatCurrency(stats.total_revenue)}</div>
                                     <div className="stat-change positive">+22% this month</div>
                                 </div>
                             </div>
-                            <div className="stat-card">
+                            <div className="stat-card withdrawal-stat">
                                 <div className="stat-icon pending"><i className="fas fa-clock"></i></div>
                                 <div className="stat-details">
                                     <h3>Pending Withdrawals</h3>
-                                    <div className="stat-value">{formatCurrency(stats.pending_withdrawals)}</div>
+                                    <div className="stat-value stat-currency">{formatCurrency(stats.pending_withdrawals)}</div>
                                     <div className="stat-change negative">{stats.pending_count} requests</div>
                                 </div>
                             </div>
@@ -993,8 +1155,9 @@ const AdminDashboard: React.FC = () => {
                                             <td><span className={`status-badge ${user.is_verified ? 'approved' : 'pending'}`}>{user.is_verified ? 'Verified' : 'Unverified'}</span></td>
                                             <td className="actions-cell">
                                                 <button className="action-btn" title="View"><i className="fas fa-eye"></i></button>
-                                                <button className="action-btn" title="Suspend"><i className="fas fa-ban"></i></button>
-                                                <button className="action-btn danger" title="Delete"><i className="fas fa-trash"></i></button>
+                                                <button className={`action-btn ${user.is_active ? 'danger' : 'approve'}`} title={user.is_active ? 'Suspend' : 'Activate'} onClick={() => handleToggleUserActive(user.id, user.is_active)}>
+                                                    <i className={`fas fa-${user.is_active ? 'ban' : 'check-circle'}`}></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -1019,7 +1182,7 @@ const AdminDashboard: React.FC = () => {
                         <div className="table-container">
                             <table className="data-table">
                                 <thead>
-                                    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Vehicles</th><th>Rides</th><th>Verification</th><th>Status</th><th>Actions</th></tr>
+                                    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr>
                                 </thead>
                                 <tbody>
                                     {drivers.length > 0 ? drivers.map(driver => (
@@ -1027,10 +1190,6 @@ const AdminDashboard: React.FC = () => {
                                             <td>{driver.full_name}</td>
                                             <td>{driver.email}</td>
                                             <td>{driver.phone_number}</td>
-                                            <td>{driver.vehicle_count}</td>
-                                            <td>{driver.ride_count}</td>
-                                            <td><span className={getStatusBadgeClass(driver.verification_status)}>{driver.verification_status}</span></td>
-                                            <td><span className={getStatusBadgeClass(driver.driver_status)}>{driver.driver_status}</span></td>
                                             <td className="actions-cell">
                                                 <button className="action-btn" title="View"><i className="fas fa-eye"></i></button>
                                                 {driver.verification_status === 'pending' && (
@@ -1039,6 +1198,9 @@ const AdminDashboard: React.FC = () => {
                                                         <button className="action-btn danger" title="Reject" onClick={() => handleRejectDriver(driver.id)}><i className="fas fa-times-circle"></i></button>
                                                     </>
                                                 )}
+                                                <button className={`action-btn ${driver.is_active ? 'danger' : 'approve'}`} title={driver.is_active ? 'Suspend' : 'Activate'} onClick={() => handleToggleUserActive(driver.id, driver.is_active)}>
+                                                    <i className={`fas fa-${driver.is_active ? 'ban' : 'check-circle'}`}></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     )) : (
@@ -1303,6 +1465,55 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
+                {/* Withdrawals Page */}
+                {activePage === 'withdrawals' && (
+                    <div className="withdrawals-page">
+                        <div className="page-header">
+                            <h2>Withdrawal Management</h2>
+                            <div className="filter-tabs">
+                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); fetchFullWithdrawals(); }}>All</button>
+                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => { setFilterStatus('pending'); fetchFullWithdrawals(); }}>Pending</button>
+                                <button className={`filter-tab ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => { setFilterStatus('completed'); fetchFullWithdrawals(); }}>Approved</button>
+                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => { setFilterStatus('rejected'); fetchFullWithdrawals(); }}>Rejected</button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>Driver</th><th>Amount</th><th>Bank</th><th>Account</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    {withdrawals.length > 0 ? withdrawals.map((w: any) => (
+                                        <tr key={w.id}>
+                                            <td>{w.driver_name || 'Unknown'}</td>
+                                            <td style={{ fontWeight: 600 }}>{formatCurrency(w.amount || 0)}</td>
+                                            <td>{w.bank_name || '-'}</td>
+                                            <td>{w.account_number || '-'}</td>
+                                            <td><span className={`status-badge ${w.status === 'completed' ? 'approved' : w.status}`}>{w.status}</span></td>
+                                            <td>{new Date(w.created_at).toLocaleDateString()}</td>
+                                            <td className="actions-cell">
+                                                {w.status === 'pending' && (
+                                                    <>
+                                                        <button className="action-btn approve" title="Approve" onClick={() => handleApproveWithdrawal(w.id)}><i className="fas fa-check-circle"></i></button>
+                                                        <button className="action-btn danger" title="Reject" onClick={() => handleRejectWithdrawal(w.id)}><i className="fas fa-times-circle"></i></button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                {paymentsLoading ? 'Loading...' : 'No withdrawals found'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {/* Reports Page */}
                 {activePage === 'reports' && (
                     <div className="reports-page">
@@ -1469,6 +1680,77 @@ const AdminDashboard: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                )}
+
+                {/* Manage Places Page */}
+                {activePage === 'places' && (
+                    <div className="places-page">
+                        <div className="page-header">
+                            <h2>Manage Places</h2>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <div className="search-bar" style={{ minWidth: '250px' }}>
+                                    <i className="fas fa-search"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Search places..."
+                                        value={placesSearch}
+                                        onChange={e => { setPlacesSearch(e.target.value); setPage(1); }}
+                                    />
+                                </div>
+                                <button className="btn-premium" onClick={handleAddPlace} style={{ marginLeft: 'auto' }}>
+                                    <i className="fas fa-plus"></i> New Place
+                                </button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr><th>ID</th><th>Name</th><th>State</th><th>Latitude</th><th>Longitude</th><th>Code</th><th>Address</th></tr>
+                                </thead>
+                                <tbody>
+                                    {places.length > 0 ? places.map((p: any) => (
+                                        <tr key={p.id}>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.id}</td>
+                                            <td style={{ fontWeight: 600 }}>{p.name}</td>
+                                            <td>{p.state || '—'}</td>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.lat ? parseFloat(p.lat).toFixed(5) : '—'}</td>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.lng ? parseFloat(p.lng).toFixed(5) : '—'}</td>
+                                            <td><span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: '#f8f9fa', color: '#6c757d' }}>{p.feature_code || '—'}</span></td>
+                                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.full_address || '—'}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                                                {placesLoading ? 'Loading...' : 'No places found'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {places.length > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', gap: '12px' }}>
+                                <button
+                                    className="btn-premium"
+                                    onClick={() => { setPage(prev => Math.max(1, prev - 1)); fetchPlaces(); }}
+                                    disabled={page <= 1}
+                                    style={{ opacity: page <= 1 ? 0.5 : 1 }}
+                                >
+                                    <i className="fas fa-arrow-left"></i> Previous
+                                </button>
+                                <span style={{ fontSize: '13px', color: '#6c757d', fontWeight: 600 }}>Page {page}</span>
+                                <button
+                                    className="btn-premium"
+                                    onClick={() => { setPage(prev => prev + 1); fetchPlaces(); }}
+                                    disabled={places.length < 20}
+                                    style={{ opacity: places.length < 20 ? 0.5 : 1 }}
+                                >
+                                    Next <i className="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

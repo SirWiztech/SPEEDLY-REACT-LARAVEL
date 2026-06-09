@@ -94,4 +94,42 @@ Route::middleware(['auth'])->group(function () {
 */
 Route::get('/payment/callback', [\App\Http\Controllers\Api\PaymentController::class, 'callback']);
 
+Route::view('/auth/google/complete', 'google-popup-callback');
+Route::view('/auth/google/role', 'google-role-picker');
+
 require __DIR__.'/settings.php';
+
+
+
+Route::get('/test-payout', function () {
+    $secretKey = env('KORAPAY_SECRET_KEY');
+    
+    $reference = 'TEST-' . time();
+    
+    $response = Http::withOptions(['verify' => false])
+        ->withToken($secretKey)
+        ->post('https://api.korapay.com/merchant/api/v1/transactions/disburse', [
+            'reference' => $reference,
+            'destination' => [
+                'type' => 'bank_account',
+                'amount' => '100',
+                'currency' => 'NGN',
+                'narration' => 'Test payout',
+                'bank_account' => [
+                    'bank' => '305',
+                    'account' => '8108787625',
+                ],
+                'customer' => [
+                    'name' => 'UGOCHUKWU JOSIAH OGARAKU',
+                    'email' => 'test@example.com',
+                ],
+            ],
+        ]);
+    
+    return response()->json([
+        'reference' => $reference,
+        'status_code' => $response->status(),
+        'success' => $response->successful(),
+        'response' => $response->json(),
+    ]);
+});

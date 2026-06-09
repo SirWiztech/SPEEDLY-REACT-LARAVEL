@@ -30,6 +30,15 @@
             }
         </style>
 
+        <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+        <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preconnect" href="https://ka-f.fontawesome.com" crossorigin>
+        <link rel="dns-prefetch" href="https://maps.googleapis.com">
+        <link rel="dns-prefetch" href="https://maps.gstatic.com">
+        <link rel="dns-prefetch" href="https://ka-f.fontawesome.com">
+
         <link rel="icon" type="image/png" sizes="512x512" href="/favicon/icon-512.png?v=2">
         <link rel="icon" type="image/png" sizes="192x192" href="/favicon/icon-192.png?v=2">
         <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png?v=2">

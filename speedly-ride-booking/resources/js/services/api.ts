@@ -62,6 +62,8 @@ export const api = {
       apiFetch('/admin/logout', { method: 'POST' }),
     me: () =>
       apiFetch('/me'),
+    googleRedirect: () =>
+      apiFetch('/auth/google'),
     changePassword: (data: { current_password: string; new_password: string }) =>
       apiFetch('/change-password', { method: 'POST', body: JSON.stringify(data) }),
     deleteAccount: () =>
@@ -74,6 +76,10 @@ export const api = {
       apiFetch('/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
     resetPassword: (data: { email: string; token: string; password: string }) =>
       apiFetch('/reset-password', { method: 'POST', body: JSON.stringify(data) }),
+    googleRedirect: () =>
+      apiFetch('/auth/google'),
+    facebookRedirect: () =>
+      apiFetch('/auth/facebook'),
   },
 
   // Client
@@ -186,6 +192,12 @@ export const api = {
       apiFetch(`/rides/${id}/rate-client`, { method: 'POST', body: JSON.stringify(data) }),
     releaseFunds: (id: string) =>
       apiFetch(`/rides/${id}/release-funds`, { method: 'POST' }),
+    qrRelease: (id: string, token: string) =>
+      apiFetch(`/rides/${id}/qr-release`, { method: 'POST', body: JSON.stringify({ release_token: token }) }),
+    chatHistory: (id: string, before?: string) =>
+      apiFetch(`/rides/${id}/chat${before ? `?before=${before}` : ''}`),
+    sendChat: (id: string, message: string) =>
+      apiFetch(`/rides/${id}/chat`, { method: 'POST', body: JSON.stringify({ message }) }),
   },
 
   // Admin
@@ -221,6 +233,8 @@ export const api = {
     saveSettings: (data: Record<string, string | number>) =>
       apiFetch('/admin/settings', { method: 'POST', body: JSON.stringify(data) }),
     getUser: (id: string) => apiFetch(`/admin/users/${id}`),
+    toggleUserActive: (id: string) =>
+      apiFetch(`/admin/users/${id}/toggle-active`, { method: 'POST' }),
     rides: (params?: { status?: string; search?: string; page?: number; per_page?: number }) => {
       const qs = new URLSearchParams();
       if (params?.status) qs.set('status', params.status);
@@ -256,6 +270,14 @@ export const api = {
       apiFetch(`/admin/kyc/${id}/approve`, { method: 'POST' }),
     rejectKyc: (id: string, data: { reason: string }) =>
       apiFetch(`/admin/kyc/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
+    listPlaces: (params?: { search?: string; page?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.search) qs.set('search', params.search);
+      if (params?.page) qs.set('page', String(params.page));
+      return apiFetch(`/admin/places?${qs}`);
+    },
+    addPlace: (data: { name: string; state?: string; lat: number; lng: number; feature_code?: string; full_address?: string; population?: number }) =>
+      apiFetch('/admin/places/add', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // Notifications
@@ -268,20 +290,27 @@ export const api = {
   },
 
   // Payment
-  payment: {
+  // Payment
+payment: {
     initiate: (data: { amount: number; email: string; name: string; reference?: string; metadata?: Record<string, string> }) =>
-      apiFetch('/payment/initiate', { method: 'POST', body: JSON.stringify(data) }),
+        apiFetch('/payment/initiate', { method: 'POST', body: JSON.stringify(data) }),
     callback: (paymentId: string, payerId: string) =>
-      apiFetch(`/payment/callback?paymentId=${paymentId}&PayerID=${payerId}`),
+        apiFetch(`/payment/callback?paymentId=${paymentId}&PayerID=${payerId}`),
     verify: (reference: string) =>
-      apiFetch(`/payment/verify?reference=${reference}`),
-  },
+        apiFetch(`/payment/verify?reference=${reference}`),
+    getBanks: (currency: string = 'NGN') =>
+        apiFetch(`/payment/banks?currency=${currency}`),
+    verifyAccount: (data: { bank_code: string; account_number: string }) =>
+        apiFetch('/payment/verify-account', { method: 'POST', body: JSON.stringify(data) }),
+},
 
   // Location
   location: {
     suggestions: (query: string) => apiFetch(`/location/suggestions?query=${encodeURIComponent(query)}`),
-    placeDetails: (data: { place_id?: string; query?: string }) =>
-      apiFetch('/location/details', { method: 'POST', body: JSON.stringify(data) }),
+    placeDetails: (params: { id?: number; query?: string }) => {
+      if (params.id) return apiFetch(`/location/details?id=${params.id}`);
+      return apiFetch('/location/details', { method: 'POST', body: JSON.stringify({ query: params.query }) });
+    },
   },
 };
 

@@ -7,6 +7,7 @@ import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import DriverLocationMobile from '../components/mobileViewComponent/DriverLocationMobile';
 import api from '../services/api';
+import { loadGoogleMapsApi } from '../lib/googleMaps';
 import '../../css/DriverLocation.css';
 
 // Types
@@ -53,8 +54,6 @@ const DriverLocation: React.FC = () => {
     const [nearbyPlaces, setNearbyPlaces] = useState<PlaceResult[]>([]);
     const [showPlaces, setShowPlaces] = useState<boolean>(false);
     const [gpsStatus, setGpsStatus] = useState<string>('WAITING FOR GPS');
-    const [gpsClicked, setGpsClicked] = useState(false);
-
     const watchIdRef = useRef<number | null>(null);
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -101,31 +100,17 @@ const DriverLocation: React.FC = () => {
     const preloaderLoading = usePreloader(300);
     const isMobile = useMobile();
 
-    // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-    // Load Google Maps script
+    // Load Google Maps shared instance
     useEffect(() => {
-        const loadGoogleMaps = () => {
-            if (document.querySelector('#google-maps-script-location')) {
+        const load = async () => {
+            try {
+                await loadGoogleMapsApi();
                 initMap();
-                return;
+            } catch (e) {
+                console.error("Failed to load maps:", e);
             }
-
-            const script = document.createElement('script');
-            script.id = 'google-maps-script-location';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocation&loading=async`;
-            script.async = true;
-            script.defer = true;
-
-            (window as any).initMapLocation = () => {
-                initMap();
-            };
-
-            document.head.appendChild(script);
         };
-
-        loadGoogleMaps();
+        load();
     }, [initMap]);
 
     useEffect(() => {
@@ -133,6 +118,18 @@ const DriverLocation: React.FC = () => {
             initMap();
         }
     }, [preloaderLoading, initMap]);
+
+    const fetchUserData = useCallback(async () => {
+        try {
+            const data = await api.driver.profile();
+            if (data.success || data.data) {
+                const user = data.data?.user || data.user || data.data;
+                setUserData(user);
+            }
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+        }
+    }, []);
 
     useEffect(() => {
         fetchUserData();
@@ -427,25 +424,17 @@ const DriverLocation: React.FC = () => {
         }
     };
 
-    // Update GPS status UI
+    // Update GPS status — drives UI through React state only.
+    // The old version wrote directly into DOM nodes that React controls via
+    // {gpsStatus} and the isTracking CSS class; those DOM writes were
+    // overwritten on every re-render, causing a flicker conflict.
     const updateGPSStatus = (status: 'active' | 'denied' | 'error') => {
-        const pulseElement = document.querySelector('.desktop-gps-pulse') as HTMLElement;
-        const stateElement = document.querySelector('.desktop-gps-state') as HTMLElement;
-
-        if (pulseElement && stateElement) {
-            if (status === 'active') {
-                pulseElement.style.background = '#4ade80';
-                stateElement.innerHTML = '🟢 GPS ACTIVE - LIVE TRACKING';
-                stateElement.style.color = '#4caf50';
-            } else if (status === 'denied') {
-                pulseElement.style.background = '#ef4444';
-                stateElement.innerHTML = '❌ GPS ACCESS DENIED';
-                stateElement.style.color = '#ef4444';
-            } else {
-                pulseElement.style.background = '#ff9800';
-                stateElement.innerHTML = '⚠️ GPS ERROR';
-                stateElement.style.color = '#ff9800';
-            }
+        if (status === 'active') {
+            setGpsStatus('🟢 GPS ACTIVE - LIVE TRACKING');
+        } else if (status === 'denied') {
+            setGpsStatus('❌ GPS ACCESS DENIED');
+        } else {
+            setGpsStatus('⚠️ GPS ERROR');
         }
     };
 

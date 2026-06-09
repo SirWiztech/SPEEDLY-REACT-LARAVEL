@@ -32,6 +32,9 @@ class User extends Authenticatable
         'is_active',
         'is_verified',
         'last_login',
+        'google_id',
+        'facebook_id',
+        'avatar',
     ];
 
     protected static function boot()

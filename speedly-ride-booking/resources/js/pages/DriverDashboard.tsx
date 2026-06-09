@@ -8,6 +8,7 @@ import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import DriverDashboardMobile from '../components/mobileViewComponent/DriverDashboardMobile';
 import ErrorBoundary from '../components/ErrorBoundary';
+import DriverQRScanner from '../components/DriverQRScanner';
 import '../../css/DriverDashboard.css';
 
 // Types
@@ -99,6 +100,7 @@ const DriverDashboard: React.FC = () => {
     const [verificationStatus, setVerificationStatus] = useState<string>('pending');
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
+    const [showQrScanner, setShowQrScanner] = useState(false);
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const pendingRidesCountRef = useRef<number>(0);
@@ -517,6 +519,25 @@ const DriverDashboard: React.FC = () => {
                     confirmButtonColor: '#ff5e00'
                 });
             }
+        }
+    };
+
+    // QR release handler
+    const handleQrRelease = async (rideId: string, token: string) => {
+        setShowQrScanner(false);
+        Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const data = await api.rides.qrRelease(rideId, token);
+            Swal.close();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Funds Released!', text: data.message || 'Payment has been processed via QR scan.', confirmButtonColor: '#ff5e00' });
+                fetchDashboardData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Failed', text: data.message || 'Invalid QR code', confirmButtonColor: '#ff5e00' });
+            }
+        } catch (e: any) {
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed to process QR release', confirmButtonColor: '#ff5e00' });
         }
     };
 
@@ -1028,6 +1049,10 @@ const DriverDashboard: React.FC = () => {
                                 <i className="fas fa-headset"></i>
                                 <span>Support</span>
                             </button>
+                            <button className="quick-action-btn" onClick={() => setShowQrScanner(true)}>
+                                <i className="fas fa-qrcode"></i>
+                                <span>Scan QR</span>
+                            </button>
                             <button className="quick-action-btn" onClick={showDetailedStats}>
                                 <i className="fas fa-chart-bar"></i>
                                 <span>My stats</span>
@@ -1085,6 +1110,13 @@ const DriverDashboard: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {showQrScanner && (
+                <DriverQRScanner
+                    onClose={() => setShowQrScanner(false)}
+                    onRelease={handleQrRelease}
+                />
+            )}
         </div>
     );
 };

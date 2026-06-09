@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\SocialiteController;
 use App\Http\Controllers\Api\DriverBankController;
 use App\Http\Controllers\Api\DriverController;
 use App\Http\Controllers\Api\KYCController;
@@ -26,6 +28,9 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
+Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle']);
+Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback']);
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes (Sanctum)
@@ -48,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::get('/ride-types', [RideController::class, 'getRideTypes']);
+    Route::get('/active-ride', [RideController::class, 'activeRide']);
     Route::get('/rides/calculate-fare', [RideController::class, 'calculateFare']);
 
     Route::post('/rides/book', [RideController::class, 'book']);
@@ -62,6 +68,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rides/{id}/rate-driver', [RideController::class, 'rateDriver']);
     Route::post('/rides/{id}/rate-client', [RideController::class, 'rateClient']);
     Route::post('/rides/{id}/release-funds', [RideController::class, 'releaseFunds']);
+    Route::post('/rides/{id}/qr-release', [RideController::class, 'qrRelease']);
+
+    Route::get('/rides/{id}/chat', [ChatController::class, 'history']);
+    Route::post('/rides/{id}/chat', [ChatController::class, 'send']);
 
     /*
     |--------------------------------------------------------------------------
@@ -141,6 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/settings', [AdminController::class, 'saveSettings']);
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::get('/users/{id}', [AdminController::class, 'getUser']);
+        Route::post('/users/{id}/toggle-active', [AdminController::class, 'toggleUserActive']);
         Route::get('/drivers', [AdminController::class, 'drivers']);
         Route::get('/rides', [AdminController::class, 'rides']);
         Route::post('/drivers/{id}/approve', [AdminController::class, 'approveDriver']);
@@ -155,6 +166,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/support-tickets', [AdminController::class, 'supportTickets']);
         Route::post('/support-tickets/{id}/reply', [AdminController::class, 'replySupportTicket']);
         Route::post('/support-tickets/{id}/close', [AdminController::class, 'closeSupportTicket']);
+
+        // Places management
+        Route::get('/places', [AdminController::class, 'listPlaces']);
+        Route::post('/places/add', [AdminController::class, 'addPlace']);
     });
 
     /*
@@ -189,3 +204,8 @@ Route::middleware('auth:sanctum')->group(function () {
 */
 Route::get('/payment/verify', [PaymentController::class, 'verify']);
 Route::post('/payment/webhook/korapay', [PaymentController::class, 'webhook']);
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/payment/banks', [PaymentController::class, 'getBanks']);
+    Route::post('/payment/verify-account', [PaymentController::class, 'verifyAccount']);
+});

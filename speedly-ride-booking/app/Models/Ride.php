@@ -15,7 +15,7 @@ class Ride extends Model
         'pickup_address', 'pickup_latitude', 'pickup_longitude', 'pickup_place_id',
         'destination_address', 'destination_latitude', 'destination_longitude', 'dest_place_id',
         'ride_type', 'distance_km', 'total_fare', 'platform_commission', 'driver_payout',
-        'status', 'payment_status', 'payment_method',
+        'status', 'payment_status', 'payment_method', 'release_token',
         'client_rating', 'client_review', 'driver_rating', 'driver_review',
         'completed_at',
     ];

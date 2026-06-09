@@ -44,24 +44,10 @@ export default defineConfig({
     build: {
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom', '@inertiajs/react'],
-                    ui: [
-                        '@headlessui/react',
-                        '@radix-ui/react-avatar',
-                        '@radix-ui/react-checkbox',
-                        '@radix-ui/react-collapsible',
-                        '@radix-ui/react-dialog',
-                        '@radix-ui/react-dropdown-menu',
-                        '@radix-ui/react-label',
-                        '@radix-ui/react-navigation-menu',
-                        '@radix-ui/react-select',
-                        '@radix-ui/react-slot',
-                        '@radix-ui/react-toggle',
-                        '@radix-ui/react-toggle-group',
-                        '@radix-ui/react-tooltip',
-                    ],
-                    utils: ['sweetalert2', 'sonner', 'chart.js'],
+                manualChunks(id: string) {
+                    if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/@inertiajs/react')) return 'vendor';
+                    if (id.includes('node_modules/@headlessui') || id.includes('node_modules/@radix-ui')) return 'ui';
+                    if (id.includes('node_modules/sweetalert2') || id.includes('node_modules/sonner') || id.includes('node_modules/chart.js')) return 'utils';
                 },
             },
         },

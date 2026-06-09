@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
+import { loadGoogleMapsApi } from '../../lib/googleMaps';
 import '../../../css/ClientLocationMobile.css';
 
 // Types
@@ -30,9 +30,8 @@ interface PlaceResult {
     location: { lat: number; lng: number };
 }
 
-const ClientLocationMobile: React.FC = () => {
+const DriverLocationMobile: React.FC = () => {
     // State
-    const [userData, setUserData] = useState<any>(null);
     const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
     const [address, setAddress] = useState<AddressComponents>({
         street: 'Waiting for GPS...',
@@ -68,56 +67,34 @@ const ClientLocationMobile: React.FC = () => {
         altitude: '--',
     });
 
-    // Google Maps API Key
-    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-    // Initialize map
+    // initMap MUST be defined before the useEffects that list it as a dependency.
+    // It was missing entirely from this file — every reference below was a
+    // ReferenceError that crashed the component on mount, producing a blank page.
     const initMap = useCallback(() => {
         if (!mapRef.current || !window.google || mapInitRef.current) return;
         mapInitRef.current = true;
 
-        const defaultCenter = { lat: 6.2109, lng: 6.7985 };
-
         mapInstanceRef.current = new google.maps.Map(mapRef.current, {
-            center: defaultCenter,
+            center: { lat: 6.2109, lng: 6.7985 },
             zoom: 15,
             mapTypeId: google.maps.MapTypeId.ROADMAP,
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true,
-            zoomControl: true
+            zoomControl: true,
+            gestureHandling: 'greedy',
         });
 
         infoWindowRef.current = new google.maps.InfoWindow();
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
     }, []);
 
-    // Load Google Maps script
+    // Load Google Maps shared instance
     useEffect(() => {
-        const loadGoogleMaps = () => {
-            if (document.querySelector('#google-maps-script-location-mobile')) {
-                initMap();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.id = 'google-maps-script-location-mobile';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&callback=initMapLocationMobile&loading=async`;
-            script.async = true;
-            script.defer = true;
-
-            (window as any).initMapLocationMobile = () => {
-                initMap();
-            };
-
-            document.head.appendChild(script);
-        };
-
-        loadGoogleMaps();
-        checkGeolocationPermission();
+        loadGoogleMapsApi().then(() => initMap()).catch(e => console.error('Maps:', e));
     }, [initMap]);
 
-    // Init map after mount
+    // Init map after mount (fallback for when the API is already loaded)
     useEffect(() => {
         const timer = setTimeout(() => {
             initMap();
@@ -571,7 +548,7 @@ const ClientLocationMobile: React.FC = () => {
                                 <span className="mobile-gps-state">{gpsStatus}</span>
                             </div>
                             <span className="mobile-gps-badge">
-                                <i className="fas fa-satellite-dish"></i> Google Maps GPS
+                                <i className="fas fa-satellite-dish"></i> Mapbox GPS
                             </span>
                         </div>
 
@@ -694,4 +671,4 @@ const ClientLocationMobile: React.FC = () => {
     );
 };
 
-export default ClientLocationMobile;
+export default DriverLocationMobile;
