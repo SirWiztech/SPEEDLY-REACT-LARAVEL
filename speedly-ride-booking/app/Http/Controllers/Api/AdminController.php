@@ -192,7 +192,7 @@ class AdminController extends Controller
         
         $users->getCollection()->transform(function ($user) {
             $balance = $user->walletTransactions()
-                ->select(DB::raw('SUM(CASE WHEN transaction_type = "credit" THEN amount ELSE -amount END) as balance'))
+                ->select(DB::raw("SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) as balance"))
                 ->first()->balance ?? 0;
                 
             return [
@@ -218,28 +218,28 @@ class AdminController extends Controller
         $to = $request->get('to', Carbon::now()->toDateString());
         
         $dateFormat = match($type) {
-            'weekly' => '%Y-%u',
-            'monthly' => '%Y-%m',
-            default => '%Y-%m-%d',
+            'weekly' => 'YYYY-IW',
+            'monthly' => 'YYYY-MM',
+            default => 'YYYY-MM-DD',
         };
         
         $ridesPerDay = DB::table('rides')
-            ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as date"), DB::raw('COUNT(*) as count'))
+            ->select(DB::raw("TO_CHAR(created_at, '{$dateFormat}') as date"), DB::raw('COUNT(*) as count'))
             ->whereBetween('created_at', [$from, $to])
-            ->groupBy(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}')"))
+            ->groupBy(DB::raw("TO_CHAR(created_at, '{$dateFormat}')"))
             ->get();
             
         $revenuePerDay = DB::table('rides')
-            ->select(DB::raw("DATE_FORMAT(completed_at, '{$dateFormat}') as date"), DB::raw('SUM(platform_commission) as total'))
+            ->select(DB::raw("TO_CHAR(completed_at, '{$dateFormat}') as date"), DB::raw('SUM(platform_commission) as total'))
             ->where('status', 'completed')
             ->whereBetween('completed_at', [$from, $to])
-            ->groupBy(DB::raw("DATE_FORMAT(completed_at, '{$dateFormat}')"))
+            ->groupBy(DB::raw("TO_CHAR(completed_at, '{$dateFormat}')"))
             ->get();
             
         $newUsersPerDay = DB::table('users')
-            ->select(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as date"), DB::raw('COUNT(*) as count'))
+            ->select(DB::raw("TO_CHAR(created_at, '{$dateFormat}') as date"), DB::raw('COUNT(*) as count'))
             ->whereBetween('created_at', [$from, $to])
-            ->groupBy(DB::raw("DATE_FORMAT(created_at, '{$dateFormat}')"))
+            ->groupBy(DB::raw("TO_CHAR(created_at, '{$dateFormat}')"))
             ->get();
         
         return response()->json([

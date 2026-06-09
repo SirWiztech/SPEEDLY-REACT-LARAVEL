@@ -97,11 +97,11 @@ class LocationController extends Controller
         $limit = min((int) ($request->input('limit', 8)), 20);
 
         $likeTerm = $query . '%';
-        $ftTerm = '+' . preg_replace('/\s+/', '* +', trim($query)) . '*';
+        $fuzzyTerm = '%' . $query . '%';
 
         $q1 = Place::where('name', 'LIKE', $likeTerm)
             ->selectRaw("id, name, state, lat, lng, full_address, feature_code, population, 1 AS priority");
-        $q2 = Place::whereRaw("MATCH(name, ascii_name, alternate_names, full_address) AGAINST (? IN BOOLEAN MODE)", [$ftTerm])
+        $q2 = Place::where('name', 'ILIKE', $fuzzyTerm)
             ->where('name', 'NOT LIKE', $likeTerm)
             ->selectRaw("id, name, state, lat, lng, full_address, feature_code, population, 2 AS priority");
 
