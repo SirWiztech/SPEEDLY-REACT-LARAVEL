@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
-import ClientNavMobile from '../../components/navbars/ClientNavmobile';
+import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import { loadGoogleMapsApi } from '../../lib/googleMaps';
 import '../../../css/ClientLocationMobile.css';
