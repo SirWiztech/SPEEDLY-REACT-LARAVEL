@@ -1,54 +1,35 @@
 import { createInertiaApp } from '@inertiajs/react';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { initializeTheme } from '@/hooks/use-appearance';
-import AppLayout from '@/layouts/app-layout';
-import AuthLayout from '@/layouts/auth-layout';
-import SettingsLayout from '@/layouts/settings/layout';
 import { queryClient } from '@/lib/queryClient';
-import CookieConsent from '@/components/CookieConsent';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ActiveRideProvider } from '@/contexts/ActiveRideContext';
-import GlobalChatBubble from '@/components/GlobalChatBubble';
 import '@/../css/Preloader.css';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Speedly';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
-    layout: (name) => {
-        switch (true) {
-            case name === 'welcome':
-                return null;
-            case name === 'Home':
-                return null;
-            case name.startsWith('auth/'):
-                return AuthLayout;
-            case name.startsWith('settings/'):
-                return [AppLayout, SettingsLayout];
-            default:
-                return AppLayout;
+    resolve: (name) => {
+        const pages = import.meta.glob('./pages/**/*.tsx', { eager: false });
+        const page = pages[`./pages/${name}.tsx`];
+        if (!page) {
+            console.warn('Page not found:', name);
+            return import('./pages/Home');
         }
+        return page;
     },
-    strictMode: true,
-    withApp(app) {
-        return (
-            <QueryClientProvider client={queryClient}>
-                <TooltipProvider delayDuration={0}>
+    setup({ el, App, props }) {
+        // @ts-ignore
+        import('react-dom/client').then(({ createRoot }) => {
+            createRoot(el).render(
+                <QueryClientProvider client={queryClient}>
                     <ActiveRideProvider>
-                        {app}
-                        <Toaster />
-                        <CookieConsent />
-                        <GlobalChatBubble />
+                        <App {...props} />
                     </ActiveRideProvider>
-                </TooltipProvider>
-            </QueryClientProvider>
-        );
+                </QueryClientProvider>
+            );
+        });
     },
     progress: {
-        color: '#4B5563',
+        color: '#ff5e00',
     },
 });
-
-// This will set light / dark mode on load...
-initializeTheme();
