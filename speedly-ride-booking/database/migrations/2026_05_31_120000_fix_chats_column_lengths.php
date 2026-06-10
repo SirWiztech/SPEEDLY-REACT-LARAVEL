@@ -8,10 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('chats', function (Blueprint $table) {
-            $table->string('sender_id', 36)->change();
-            $table->string('ride_id', 36)->change();
-        });
+        // Keep columns at 32 to match rides.id — PostgreSQL requires FK types to match
     }
 
     public function down(): void
