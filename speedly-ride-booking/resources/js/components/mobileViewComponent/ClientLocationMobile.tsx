@@ -1,3 +1,5 @@
+// ClientLocationMobile.tsx - Updated version with proper spacing
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
@@ -70,8 +72,6 @@ const ClientLocationMobile: React.FC = () => {
     });
 
     // initMap MUST be defined before any useEffect that lists it as a dependency.
-    // It was missing entirely from this file — every reference to it was a
-    // ReferenceError that crashed the component on mount, causing the blank page.
     const initMap = useCallback(() => {
         if (!mapRef.current || !window.google || mapInitRef.current) return;
         mapInitRef.current = true;
@@ -437,11 +437,18 @@ const ClientLocationMobile: React.FC = () => {
 
     return (
         <>
-            {/* Force full width inline styles */}
             <style>{`
-                /* Force full width - no white space */
-                .mobile-location-container,
-                .mobile-location-view {
+                /* Reset all margins and paddings */
+                html, body, #app, .app-container, main {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    overflow-x: hidden !important;
+                    background: white !important;
+                }
+                
+                .mobile-location-container {
                     width: 100vw !important;
                     max-width: 100vw !important;
                     min-width: 100vw !important;
@@ -455,56 +462,96 @@ const ClientLocationMobile: React.FC = () => {
                     overflow-y: auto !important;
                     overflow-x: hidden !important;
                     padding-bottom: 80px !important;
-                    height: 100vh !important;
+                    min-height: 100vh !important;
                     display: flex !important;
                     flex-direction: column !important;
-                }
-                
-                /* Ensure body and html have no margins */
-                html, body, #app, .app-container, main {
-                    margin: 0 !important;
-                    padding: 0 !important;
                     width: 100% !important;
-                    max-width: 100% !important;
-                    overflow-x: hidden !important;
-                    background: white !important;
                 }
                 
-                /* Full width for all containers */
+                /* Ensure proper scrollable content */
+                .mobile-location-content {
+                    flex: 1 !important;
+                    overflow-y: visible !important;
+                }
+                
+                /* Map container - FIXED HEIGHT with proper spacing */
+                .mobile-map-container {
+                    position: relative !important;
+                    margin: 0 !important;
+                    overflow: hidden !important;
+                    border: none !important;
+                    width: 100% !important;
+                    height: 55vh !important;
+                    min-height: 350px !important;
+                    max-height: 500px !important;
+                    flex-shrink: 0 !important;
+                }
+                
+                .mobile-map {
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                
+                /* Cards - full width with proper margins */
                 .mobile-location-card,
                 .mobile-permission-prompt,
-                .mobile-map-container {
-                    margin-left: 0 !important;
-                    margin-right: 0 !important;
-                    border-radius: 0 !important;
+                .mobile-enable-location-btn-container {
                     width: 100% !important;
+                    margin: 0 !important;
+                    border-radius: 0 !important;
                 }
                 
                 .mobile-location-card {
                     padding: 20px !important;
-                    margin-bottom: 16px !important;
+                    margin-bottom: 0 !important;
+                    background: white !important;
+                    border-bottom: 1px solid #f0f0f0 !important;
                 }
                 
-                .mobile-permission-prompt {
-                    padding: 20px !important;
-                }
-                
-                .mobile-map-container {
-                    margin-top: 0 !important;
-                    margin-bottom: 16px !important;
-                    border-radius: 0 !important;
+                /* GPS Status Card - make it compact but visible */
+                .mobile-location-card {
                     flex-shrink: 0 !important;
                 }
                 
-                /* Make content scrollable */
-                .mobile-location-view {
-                    scroll-behavior: smooth !important;
+                /* Ensure map is not overlapped */
+                .mobile-map-container {
+                    flex-shrink: 0 !important;
                 }
                 
-                /* Ensure proper spacing */
-                .mobile-location-content {
-                    flex: 1 !important;
-                    overflow-y: visible !important;
+                /* Fix for iOS Safari viewport */
+                @supports (-webkit-touch-callout: none) {
+                    .mobile-location-view {
+                        height: -webkit-fill-available !important;
+                    }
+                    .mobile-map-container {
+                        height: 50vh !important;
+                    }
+                }
+                
+                /* Landscape mode adjustments */
+                @media (orientation: landscape) and (max-height: 500px) {
+                    .mobile-map-container {
+                        height: 45vh !important;
+                        min-height: 250px !important;
+                    }
+                    .mobile-location-card {
+                        padding: 12px 20px !important;
+                    }
+                    .mobile-coordinate-row,
+                    .mobile-movement-stats {
+                        gap: 8px !important;
+                    }
+                }
+                
+                /* Small phones */
+                @media (max-width: 380px) {
+                    .mobile-map-container {
+                        height: 50vh !important;
+                        min-height: 300px !important;
+                    }
+                    .mobile-location-card {
+                        padding: 16px !important;
+                    }
                 }
             `}</style>
             
@@ -518,7 +565,7 @@ const ClientLocationMobile: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Enable Location Button - Always visible when GPS is not active */}
+                    {/* Enable Location Button - Only shown when GPS is not active */}
                     {(!hasPermission || !isTracking) && (
                         <div className="mobile-enable-location-btn-container">
                             <button className="mobile-enable-location-btn" onClick={requestLocationPermission}>
@@ -542,86 +589,88 @@ const ClientLocationMobile: React.FC = () => {
                         </div>
                     )}
 
-                    {/* GPS Status Card */}
-                    <div className="mobile-location-card">
-                        <div className="mobile-location-header-row">
-                            <div className="mobile-location-title">
-                                <span className={`mobile-gps-pulse ${hasPermission && isTracking ? 'active' : 'inactive'}`}></span>
-                                <span className="mobile-gps-state">{gpsStatus}</span>
+                    {/* GPS Status Card - Always visible when tracking is active or permission granted */}
+                    {(hasPermission || isTracking) && (
+                        <div className="mobile-location-card">
+                            <div className="mobile-location-header-row">
+                                <div className="mobile-location-title">
+                                    <span className={`mobile-gps-pulse ${hasPermission && isTracking ? 'active' : 'inactive'}`}></span>
+                                    <span className="mobile-gps-state">{gpsStatus}</span>
+                                </div>
+                                <span className="mobile-gps-badge">
+                                    <i className="fas fa-satellite-dish"></i> GPS Live
+                                </span>
                             </div>
-                            <span className="mobile-gps-badge">
-                                <i className="fas fa-satellite-dish"></i> Mapbox GPS
-                            </span>
+
+                            {/* Stop/Start GPS Button */}
+                            {hasPermission && (
+                                <div className="mobile-gps-control">
+                                    {isTracking ? (
+                                        <button className="mobile-stop-gps-btn" onClick={stopGPSTracking}>
+                                            <i className="fas fa-stop-circle"></i> Stop Tracking
+                                        </button>
+                                    ) : (
+                                        <button className="mobile-start-gps-btn" onClick={startGPSTracking}>
+                                            <i className="fas fa-play-circle"></i> Start Tracking
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="mobile-street-address">
+                                <i className="fas fa-location-dot"></i>
+                                <span className="mobile-street-name">
+                                    {address.street}
+                                </span>
+                            </div>
+
+                            <div className="mobile-full-address">
+                                <i className="fas fa-map-pin"></i>
+                                <span>{address.formatted}</span>
+                            </div>
+
+                            <div className="mobile-coordinate-row">
+                                <div className="mobile-coord-item">
+                                    <i className="fas fa-globe-africa"></i>
+                                    <div className="coord-label">Latitude</div>
+                                    <div className="coord-value">{locationStats.latitude}</div>
+                                </div>
+                                <div className="mobile-coord-item">
+                                    <i className="fas fa-globe-americas"></i>
+                                    <div className="coord-label">Longitude</div>
+                                    <div className="coord-value">{locationStats.longitude}</div>
+                                </div>
+                                <div className="mobile-coord-item">
+                                    <i className="fas fa-bullseye"></i>
+                                    <div className="coord-label">Accuracy</div>
+                                    <div className="coord-value">{locationStats.accuracy}m</div>
+                                </div>
+                            </div>
+
+                            <div className="mobile-movement-stats">
+                                <div className="mobile-stat-badge">
+                                    <i className="fas fa-tachometer-alt"></i>
+                                    <span className="stat-label">Speed</span>
+                                    <span className="stat-value">{locationStats.speed}</span>
+                                    <span className="stat-unit">km/h</span>
+                                </div>
+                                <div className="mobile-stat-badge">
+                                    <i className="fas fa-compass"></i>
+                                    <span className="stat-label">Heading</span>
+                                    <span className="stat-value">{locationStats.heading}</span>
+                                    <span className="stat-unit">°</span>
+                                </div>
+                                <div className="mobile-stat-badge">
+                                    <i className="fas fa-mountain"></i>
+                                    <span className="stat-label">Altitude</span>
+                                    <span className="stat-value">{locationStats.altitude}</span>
+                                    <span className="stat-unit">m</span>
+                                </div>
+                            </div>
                         </div>
+                    )}
 
-                        {/* Stop/Start GPS Button */}
-                        {hasPermission && (
-                            <div className="mobile-gps-control">
-                                {isTracking ? (
-                                    <button className="mobile-stop-gps-btn" onClick={stopGPSTracking}>
-                                        <i className="fas fa-stop-circle"></i> Stop Tracking
-                                    </button>
-                                ) : (
-                                    <button className="mobile-start-gps-btn" onClick={startGPSTracking}>
-                                        <i className="fas fa-play-circle"></i> Start Tracking
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="mobile-street-address">
-                            <i className="fas fa-location-dot"></i>
-                            <span className="mobile-street-name">
-                                {address.street}
-                            </span>
-                        </div>
-
-                        <div className="mobile-full-address">
-                            <i className="fas fa-map-pin"></i>
-                            <span>{address.formatted}</span>
-                        </div>
-
-                        <div className="mobile-coordinate-row">
-                            <div className="mobile-coord-item">
-                                <i className="fas fa-globe-africa"></i>
-                                <div className="coord-label">Latitude</div>
-                                <div className="coord-value">{locationStats.latitude}</div>
-                            </div>
-                            <div className="mobile-coord-item">
-                                <i className="fas fa-globe-americas"></i>
-                                <div className="coord-label">Longitude</div>
-                                <div className="coord-value">{locationStats.longitude}</div>
-                            </div>
-                            <div className="mobile-coord-item">
-                                <i className="fas fa-bullseye"></i>
-                                <div className="coord-label">Accuracy</div>
-                                <div className="coord-value">{locationStats.accuracy}m</div>
-                            </div>
-                        </div>
-
-                        <div className="mobile-movement-stats">
-                            <div className="mobile-stat-badge">
-                                <i className="fas fa-tachometer-alt"></i>
-                                <span className="stat-label">Speed</span>
-                                <span className="stat-value">{locationStats.speed}</span>
-                                <span className="stat-unit">km/h</span>
-                            </div>
-                            <div className="mobile-stat-badge">
-                                <i className="fas fa-compass"></i>
-                                <span className="stat-label">Heading</span>
-                                <span className="stat-value">{locationStats.heading}</span>
-                                <span className="stat-unit">°</span>
-                            </div>
-                            <div className="mobile-stat-badge">
-                                <i className="fas fa-mountain"></i>
-                                <span className="stat-label">Altitude</span>
-                                <span className="stat-value">{locationStats.altitude}</span>
-                                <span className="stat-unit">m</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Map Container */}
+                    {/* Map Container - Always visible, with proper spacing */}
                     <div className="mobile-map-container">
                         <div ref={mapRef} className="mobile-map"></div>
                         <div className="mobile-map-controls">

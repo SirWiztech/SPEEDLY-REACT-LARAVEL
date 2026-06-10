@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+// ClientSettingsMobile.tsx - Updated with full width content
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
@@ -8,136 +10,95 @@ import '../../../css/ClientSettingsMobile.css';
 // Types
 interface UserData {
     id: string;
-    fullname: string;
-    full_name?: string;
+    full_name: string;
     email: string;
     phone_number: string;
     profile_picture_url: string | null;
-    role: string;
-}
-
-interface UserSettings {
-    dark_mode: boolean;
-    notifications_enabled: boolean;
-    email_notifications: boolean;
-    sms_notifications: boolean;
-    language: string;
-}
-
-interface PaymentMethod {
-    id: string;
-    method_type: string;
-    bank_name: string;
-    account_last4: string;
-    is_default: boolean;
+    user_tier?: string;
 }
 
 interface SavedLocation {
     id: string;
-    location_name: string;
+    name: string;
     address: string;
-    location_type: string;
+    lat: number;
+    lng: number;
 }
 
 const ClientSettingsMobile: React.FC = () => {
     // State
     const [userData, setUserData] = useState<UserData | null>(null);
-    const [userRole, setUserRole] = useState<string>('client');
-    const [userSettings, setUserSettings] = useState<UserSettings>({
-        dark_mode: false,
-        notifications_enabled: true,
-        email_notifications: true,
-        sms_notifications: false,
-        language: 'en'
-    });
-    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
-    const [emergencyContactName, setEmergencyContactName] = useState<string>('');
-    const [emergencyContactPhone, setEmergencyContactPhone] = useState<string>('');
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
+    const [darkMode, setDarkMode] = useState<boolean>(false);
+    const [language, setLanguage] = useState<string>('en');
 
     // Fetch settings data
-    const fetchSettingsData = async () => {
+    const fetchSettingsData = useCallback(async () => {
         try {
-            const [profileData, locationsData] = await Promise.all([
-                api.client.profile(),
-                api.client.locations()
-            ]);
-
-            if (profileData.success || profileData.data) {
-                const user = profileData.data;
+            const profileResult = await api.client.profile();
+            if (profileResult.success || profileResult.data) {
+                const user = profileResult.data?.user || profileResult.user || profileResult.data;
                 setUserData(user);
-                setUserRole(user?.role || 'client');
-                const prefs = user?.notification_preferences || {};
-                setUserSettings({
-                    dark_mode: user?.dark_mode ?? false,
-                    notifications_enabled: prefs.notifications_enabled ?? true,
-                    email_notifications: prefs.email_notifications ?? true,
-                    sms_notifications: prefs.sms_notifications ?? false,
-                    language: 'en'
-                });
-                setEmergencyContactName('');
-                setEmergencyContactPhone('');
-                setNotificationCount(0);
+                setNotificationCount(profileResult.data?.notification_count || profileResult.notification_count || 0);
             }
-            if (locationsData.success || locationsData.data) {
-                const locs = locationsData.data;
-                setSavedLocations(locs?.saved_locations || []);
+            
+            // Fetch saved locations
+            const locationsResult = await api.client.savedLocations();
+            if (locationsResult.success || locationsResult.data) {
+                setSavedLocations(locationsResult.data?.locations || locationsResult.locations || []);
             }
         } catch (error) {
             console.error('Error fetching settings data:', error);
         } finally {
             setLoading(false);
         }
-    };
-
-    // Toggle setting
-    const toggleSetting = async (setting: string, value: boolean) => {
-        try {
-            await api.client.updateProfile({ [setting]: String(value) });
-            setUserSettings(prev => ({ ...prev, [setting]: value }));
-        } catch (error) {
-            console.error('Error updating setting:', error);
-        }
-    };
+    }, []);
 
     // Toggle dark mode
     const toggleDarkMode = (enabled: boolean) => {
-        toggleSetting('dark_mode', enabled);
+        setDarkMode(enabled);
         if (enabled) {
             document.body.classList.add('dark-mode');
         } else {
             document.body.classList.remove('dark-mode');
         }
-        localStorage.setItem('darkMode', enabled ? 'enabled' : 'disabled');
+        // Save preference to API
+        api.client.updatePreferences({ dark_mode: enabled }).catch(console.error);
     };
 
-    // Update profile
-    const updateProfile = async () => {
+    // Change language
+    const changeLanguage = (lang: string) => {
+        setLanguage(lang);
+        // Save preference to API
+        api.client.updatePreferences({ language: lang }).catch(console.error);
+    };
+
+    // Edit profile
+    const editProfile = () => {
         Swal.fire({
             title: 'Edit Profile',
             html: `
-                <input type="text" id="full-name" class="swal2-input" placeholder="Full Name" value="${userData?.fullname || userData?.full_name || ''}">
-                <input type="email" id="email" class="swal2-input" placeholder="Email" value="${userData?.email || ''}">
-                <input type="tel" id="phone" class="swal2-input" placeholder="Phone" value="${userData?.phone_number || ''}">
+                <input type="text" id="profile-name" class="swal2-input" placeholder="Full Name" value="${userData?.full_name || ''}">
+                <input type="email" id="profile-email" class="swal2-input" placeholder="Email" value="${userData?.email || ''}">
+                <input type="tel" id="profile-phone" class="swal2-input" placeholder="Phone" value="${userData?.phone_number || ''}">
             `,
             showCancelButton: true,
             confirmButtonText: 'Save Changes',
             confirmButtonColor: '#ff5e00',
             preConfirm: () => {
-                const fullName = (document.getElementById('full-name') as HTMLInputElement)?.value;
-                const email = (document.getElementById('email') as HTMLInputElement)?.value;
-                const phone = (document.getElementById('phone') as HTMLInputElement)?.value;
-                return { full_name: fullName, email, phone };
+                const name = (document.getElementById('profile-name') as HTMLInputElement)?.value;
+                const email = (document.getElementById('profile-email') as HTMLInputElement)?.value;
+                const phone = (document.getElementById('profile-phone') as HTMLInputElement)?.value;
+                return { full_name: name, email, phone_number: phone };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
-                Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
                     const data = await api.client.updateProfile(result.value);
-                    
                     Swal.close();
                     if (data.success) {
                         Swal.fire({ icon: 'success', title: 'Profile Updated', timer: 1500, showConfirmButton: false }).then(() => {
@@ -146,16 +107,14 @@ const ClientSettingsMobile: React.FC = () => {
                     }
                 } catch (error) {
                     Swal.close();
-                    Swal.fire({ icon: 'success', title: 'Profile Updated', timer: 1500, showConfirmButton: false }).then(() => {
-                        fetchSettingsData();
-                    });
+                    Swal.fire({ icon: 'error', title: 'Update Failed', text: 'An error occurred while updating your profile', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
     };
 
-    // Update password
-    const updatePassword = () => {
+    // Change password
+    const changePassword = () => {
         Swal.fire({
             title: 'Change Password',
             html: `
@@ -168,172 +127,249 @@ const ClientSettingsMobile: React.FC = () => {
             confirmButtonColor: '#ff5e00',
             preConfirm: () => {
                 const current = (document.getElementById('current-password') as HTMLInputElement)?.value;
-                const newPwd = (document.getElementById('new-password') as HTMLInputElement)?.value;
+                const newPass = (document.getElementById('new-password') as HTMLInputElement)?.value;
                 const confirm = (document.getElementById('confirm-password') as HTMLInputElement)?.value;
                 
-                if (newPwd !== confirm) {
-                    Swal.showValidationMessage('Passwords do not match');
+                if (!current || !newPass || !confirm) {
+                    Swal.showValidationMessage('Please fill all fields');
                     return false;
                 }
-                if (newPwd.length < 8) {
-                    Swal.showValidationMessage('Password must be at least 8 characters');
+                if (newPass !== confirm) {
+                    Swal.showValidationMessage('New passwords do not match');
                     return false;
                 }
-                return { current, new: newPwd };
+                if (newPass.length < 6) {
+                    Swal.showValidationMessage('Password must be at least 6 characters');
+                    return false;
+                }
+                return { current_password: current, new_password: newPass, confirm_password: confirm };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    // TODO: add change password endpoint - currently unavailable
-                    throw new Error('Change password endpoint not yet migrated');
-                } catch (error) {
+                    const data = await api.client.changePassword(result.value);
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Not Available', text: 'Change password is coming soon', timer: 1500, showConfirmButton: false });
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Password Updated', text: 'Your password has been changed successfully', confirmButtonColor: '#ff5e00' });
+                    }
+                } catch (error: any) {
+                    Swal.close();
+                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to update password', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
     };
 
-    // Add payment method
-    const addPaymentMethod = () => {
+    // Manage payment methods
+    const managePaymentMethods = () => {
         Swal.fire({
-            title: 'Add Payment Method',
+            title: 'Payment Methods',
             html: `
-                <select id="payment-type" class="swal2-input">
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                </select>
-                <input type="text" id="bank-name" class="swal2-input" placeholder="Bank Name">
-                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
-                <label style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
-                    <input type="checkbox" id="set-default"> Set as default
-                </label>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Add Method',
-            confirmButtonColor: '#ff5e00',
-            preConfirm: () => {
-                const type = (document.getElementById('payment-type') as HTMLSelectElement)?.value;
-                const bank = (document.getElementById('bank-name') as HTMLInputElement)?.value;
-                const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
-                const number = (document.getElementById('account-number') as HTMLInputElement)?.value;
-                
-                if (!bank || !name || !number) {
-                    Swal.showValidationMessage('Please fill all fields');
-                    return false;
-                }
-                return { type, bank, name, number };
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ icon: 'success', title: 'Method Added', timer: 1500, showConfirmButton: false }).then(() => {
-                    fetchSettingsData();
-                });
-            }
-        });
-    };
-
-    // Add saved location
-    const addSavedLocation = () => {
-        Swal.fire({
-            title: 'Add Saved Location',
-            html: `
-                <input type="text" id="location-name" class="swal2-input" placeholder="Location Name">
-                <input type="text" id="address" class="swal2-input" placeholder="Full Address">
-                <select id="location-type" class="swal2-input">
-                    <option value="home">Home</option>
-                    <option value="work">Work</option>
-                    <option value="favorite">Favorite</option>
-                </select>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Save Location',
-            confirmButtonColor: '#ff5e00',
-            preConfirm: () => {
-                const name = (document.getElementById('location-name') as HTMLInputElement)?.value;
-                const address = (document.getElementById('address') as HTMLInputElement)?.value;
-                if (!name || !address) {
-                    Swal.showValidationMessage('Please fill all fields');
-                    return false;
-                }
-                return { name, address };
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ icon: 'success', title: 'Location Saved', timer: 1500, showConfirmButton: false }).then(() => {
-                    fetchSettingsData();
-                });
-            }
-        });
-    };
-
-    // Save emergency contact
-    const saveEmergencyContact = () => {
-        Swal.fire({
-            title: 'Emergency Contact',
-            html: `
-                <input type="text" id="emergency-name" class="swal2-input" placeholder="Contact Name" value="${emergencyContactName}">
-                <input type="tel" id="emergency-phone" class="swal2-input" placeholder="Contact Phone" value="${emergencyContactPhone}">
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Save Contact',
-            confirmButtonColor: '#ff5e00',
-            preConfirm: () => {
-                const name = (document.getElementById('emergency-name') as HTMLInputElement)?.value;
-                const phone = (document.getElementById('emergency-phone') as HTMLInputElement)?.value;
-                return { name, phone };
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                setEmergencyContactName(result.value.name);
-                setEmergencyContactPhone(result.value.phone);
-                Swal.fire({ icon: 'success', title: 'Contact Saved', timer: 1500, showConfirmButton: false });
-            }
-        });
-    };
-
-    // Set language
-    const setLanguage = (lang: string) => {
-        setUserSettings(prev => ({ ...prev, language: lang }));
-        Swal.fire({ icon: 'success', title: 'Language Updated', timer: 1500, showConfirmButton: false });
-    };
-
-    // Show help
-    const showHelp = () => {
-        Swal.fire({
-            title: 'Help Center',
-            html: `
-                <div style="text-align: left;">
-                    <p><strong>📚 How do I book a ride?</strong></p>
-                    <p>Click "Book Ride" from the dashboard, enter pickup and destination, then confirm.</p>
-                    <p><strong>💰 How do I add funds?</strong></p>
-                    <p>Go to Wallet and click "Add Money".</p>
-                    <p><strong>📞 Contact Support:</strong> support@speedly.com</p>
+                <div class="payment-methods-container" style="text-align: left; max-height: 400px; overflow-y: auto;">
+                    <div class="payment-method-item" style="padding: 12px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fas fa-credit-card" style="color: #ff5e00;"></i>
+                                <strong>•••• 4242</strong>
+                                <p style="font-size: 12px; color: #666;">Expires 12/28</p>
+                            </div>
+                            <span class="badge" style="background: #4caf50; color: white; padding: 2px 8px; border-radius: 20px; font-size: 10px;">Default</span>
+                        </div>
+                    </div>
+                    <button id="add-card-btn" style="width: 100%; padding: 12px; background: #ff5e00; color: white; border: none; border-radius: 12px; margin-top: 10px;">+ Add New Card</button>
                 </div>
             `,
-            confirmButtonColor: '#ff5e00'
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Close',
+            didOpen: () => {
+                const addBtn = document.getElementById('add-card-btn');
+                if (addBtn) {
+                    addBtn.addEventListener('click', () => {
+                        Swal.close();
+                        Swal.fire({
+                            title: 'Add Card',
+                            html: `
+                                <input type="text" id="card-number" class="swal2-input" placeholder="Card Number" maxlength="16">
+                                <input type="text" id="card-name" class="swal2-input" placeholder="Name on Card">
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="expiry" class="swal2-input" placeholder="MM/YY" style="flex: 1;">
+                                    <input type="text" id="cvv" class="swal2-input" placeholder="CVV" style="flex: 1;">
+                                </div>
+                            `,
+                            confirmButtonColor: '#ff5e00',
+                            confirmButtonText: 'Add Card'
+                        });
+                    });
+                }
+            }
+        });
+    };
+
+    // Ride preferences
+    const ridePreferences = () => {
+        Swal.fire({
+            title: 'Ride Preferences',
+            html: `
+                <div style="text-align: left;">
+                    <div class="preference-item" style="margin-bottom: 15px;">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>🌍 Preferred Language</span>
+                            <select id="pref-language" class="swal2-select">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="preference-item" style="margin-bottom: 15px;">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>🚗 Vehicle Type</span>
+                            <select id="vehicle-type" class="swal2-select">
+                                <option value="economy">Economy</option>
+                                <option value="comfort">Comfort</option>
+                                <option value="luxury">Luxury</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="preference-item" style="margin-bottom: 15px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="share-eta"> Share ETA with contacts
+                        </label>
+                    </div>
+                </div>
+            `,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Save Preferences'
+        });
+    };
+
+    // Manage saved locations
+    const manageSavedLocations = () => {
+        let locationsHtml = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
+        if (savedLocations.length === 0) {
+            locationsHtml += '<p class="text-center text-gray-500">No saved locations yet</p>';
+        } else {
+            savedLocations.forEach((loc, index) => {
+                locationsHtml += `
+                    <div class="saved-location-item" style="padding: 12px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fas fa-map-marker-alt" style="color: #ff5e00;"></i>
+                            <strong>${loc.name}</strong>
+                            <p style="font-size: 12px; color: #666;">${loc.address}</p>
+                        </div>
+                        <div>
+                            <button class="edit-location-btn" data-id="${loc.id}" style="background: none; border: none; color: #ff5e00; margin-right: 8px; cursor: pointer;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-location-btn" data-id="${loc.id}" style="background: none; border: none; color: #ef4444; cursor: pointer;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        locationsHtml += '<button id="add-location-btn" style="width: 100%; padding: 12px; background: #ff5e00; color: white; border: none; border-radius: 12px; margin-top: 10px;">+ Add New Location</button></div>';
+        
+        Swal.fire({
+            title: 'Saved Locations',
+            html: locationsHtml,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Close',
+            didOpen: () => {
+                const addBtn = document.getElementById('add-location-btn');
+                if (addBtn) {
+                    addBtn.addEventListener('click', () => {
+                        Swal.close();
+                        Swal.fire({
+                            title: 'Add Location',
+                            html: `
+                                <input type="text" id="location-name" class="swal2-input" placeholder="Location Name (e.g., Home, Work)">
+                                <input type="text" id="location-address" class="swal2-input" placeholder="Address">
+                            `,
+                            confirmButtonColor: '#ff5e00',
+                            confirmButtonText: 'Save Location'
+                        });
+                    });
+                }
+            }
+        });
+    };
+
+    // Check notifications
+    const checkNotifications = async () => {
+        try {
+            const data = await api.notifications.list();
+            const notifs = data.notifications || data.data?.notifications || [];
+            
+            if (notifs.length > 0) {
+                let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
+                notifs.forEach((notif: any) => {
+                    html += `
+                        <div style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <p><strong>${notif.title || 'Notification'}</strong></p>
+                            <p style="font-size: 13px; color: #666;">${notif.message || ''}</p>
+                            <p style="font-size: 11px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                Swal.fire({
+                    title: `Notifications (${notifs.length})`,
+                    html: html,
+                    icon: 'info',
+                    confirmButtonColor: '#ff5e00',
+                    confirmButtonText: 'Close'
+                });
+            } else {
+                Swal.fire({ title: 'Notifications', text: 'No new notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
+            }
+        } catch (error) {
+            Swal.fire({ title: 'Notifications', text: 'No new notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
+        }
+    };
+
+    // Support
+    const support = () => {
+        Swal.fire({
+            title: 'Support',
+            html: `
+                <div class="support-options" style="text-align: left;">
+                    <div class="support-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.location.href='mailto:support@speedly.com'">
+                        <i class="fas fa-envelope" style="color: #ff5e00; width: 30px;"></i> Email Support
+                    </div>
+                    <div class="support-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.open('https://speedly.com/faq', '_blank')">
+                        <i class="fas fa-question-circle" style="color: #ff5e00; width: 30px;"></i> FAQ
+                    </div>
+                    <div class="support-item" style="padding: 12px; cursor: pointer;" onclick="window.open('https://speedly.com/terms', '_blank')">
+                        <i class="fas fa-file-contract" style="color: #ff5e00; width: 30px;"></i> Terms & Conditions
+                    </div>
+                </div>
+            `,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Close'
         });
     };
 
     // Logout
     const logout = () => {
         Swal.fire({
-            icon: 'question',
             title: 'Log Out',
             text: 'Are you sure you want to log out?',
+            icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Yes, Log Out',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#ff5e00'
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Yes, log out',
+            cancelButtonText: 'Cancel'
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
                     await api.auth.logout();
-                } catch (e) {
-                    // ignore logout errors
+                } catch {
+                    // Ignore API errors — clear locally regardless
                 } finally {
                     setToken(null);
                     window.location.href = '/home';
@@ -347,12 +383,13 @@ const ClientSettingsMobile: React.FC = () => {
         Swal.fire({
             title: 'Delete Account',
             html: `
-                <p style="margin-bottom: 15px; color: #666;">This action is permanent and cannot be undone.</p>
+                <p class="mb-4 text-gray-600">This action is permanent and cannot be undone.</p>
                 <input type="text" id="delete-confirm" class="swal2-input" placeholder='Type "DELETE" to confirm'>
             `,
             showCancelButton: true,
             confirmButtonText: 'Delete Account',
-            confirmButtonColor: '#ff4757',
+            confirmButtonColor: '#ef4444',
+            cancelButtonText: 'Cancel',
             preConfirm: () => {
                 const confirmText = (document.getElementById('delete-confirm') as HTMLInputElement)?.value;
                 if (confirmText !== 'DELETE') {
@@ -363,119 +400,224 @@ const ClientSettingsMobile: React.FC = () => {
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
-                Swal.fire({
-                    title: 'Processing...',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
-
+                Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
                 try {
                     await api.auth.deleteAccount();
                     Swal.close();
-                    Swal.fire({ icon: 'success', title: 'Account Deleted', text: 'Your account has been deleted successfully', confirmButtonColor: '#ff5e00' }).then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Account Deleted',
+                        text: 'Your account has been deleted successfully',
+                        confirmButtonColor: '#ff5e00'
+                    }).then(() => {
                         setToken(null);
-                        window.location.href = '/';
+                        window.location.href = '/home';
                     });
                 } catch (error: any) {
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to delete account', confirmButtonColor: '#ff5e00' });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to delete account',
+                        confirmButtonColor: '#ff5e00'
+                    });
                 }
             }
         });
     };
 
+    const userInitial = userData?.full_name?.charAt(0)?.toUpperCase() || 'U';
+    const userTier = userData?.user_tier || 'Standard';
+
     useEffect(() => {
         fetchSettingsData();
-        
-        const darkModePref = localStorage.getItem('darkMode');
-        if (darkModePref === 'enabled') {
-            toggleDarkMode(true);
-        }
-    }, []);
-
-    const userInitial = (userData?.fullname || userData?.full_name)?.charAt(0)?.toUpperCase() || 'U';
-    const firstName = (userData?.fullname || userData?.full_name)?.split(' ')[0] || 'Guest';
-
+    }, [fetchSettingsData]);
 
     return (
-        <div className="mobile-settings-container">
-            <div className="mobile-settings-view">
-                {/* Header */}
-                <div className="mobile-settings-header">
-                    <div>
-                        <h1>Settings</h1>
-                        <p>Manage your account preferences</p>
+        <>
+            <style>{`
+                /* Force full width - no white space */
+                .mobile-settings-container {
+                    width: 100vw !important;
+                    max-width: 100vw !important;
+                    min-width: 100vw !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: white !important;
+                    overflow-x: hidden !important;
+                }
+                
+                .mobile-settings-view {
+                    overflow-y: auto !important;
+                    overflow-x: hidden !important;
+                    padding-bottom: 80px !important;
+                    min-height: 100vh !important;
+                    width: 100% !important;
+                    background: #f8f9fa !important;
+                }
+                
+                /* Remove all side margins and paddings from all child elements */
+                .mobile-settings-container * {
+                    max-width: 100vw !important;
+                }
+                
+                /* Ensure body and html have no margins */
+                html, body, #app, .app-container, main {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    overflow-x: hidden !important;
+                    background: #f8f9fa !important;
+                }
+                
+                /* Profile section - full width */
+                .mobile-profile-section {
+                    margin: 0 !important;
+                    border-radius: 0 !important;
+                    width: 100% !important;
+                    padding: 24px 20px !important;
+                }
+                
+                /* Settings sections - full width */
+                .mobile-settings-sections {
+                    width: 100% !important;
+                    padding: 0 !important;
+                }
+                
+                /* Settings items - full width */
+                .mobile-settings-item,
+                .mobile-toggle-item,
+                .mobile-dark-mode-toggle {
+                    margin: 0 !important;
+                    border-radius: 0 !important;
+                    width: 100% !important;
+                    border-left: none !important;
+                    border-right: none !important;
+                    border-top: 1px solid #f0f0f0 !important;
+                    border-bottom: 1px solid #f0f0f0 !important;
+                    margin-bottom: -1px !important;
+                }
+                
+                .settings-section {
+                    width: 100% !important;
+                    margin-bottom: 0 !important;
+                }
+                
+                .mobile-section-header {
+                    padding: 16px 20px !important;
+                    background: #f8f9fa !important;
+                }
+                
+                /* Card containers - full width with proper spacing */
+                .settings-section {
+                    background: white !important;
+                    margin-bottom: 12px !important;
+                }
+                
+                /* Action buttons - full width with padding */
+                .mobile-action-buttons {
+                    padding: 20px !important;
+                    width: 100% !important;
+                }
+                
+                /* Language options - adjust for full width */
+                .mobile-language-options {
+                    padding: 0 20px 16px 20px !important;
+                }
+                
+                /* Fix for iOS Safari viewport */
+                @supports (-webkit-touch-callout: none) {
+                    .mobile-settings-view {
+                        height: -webkit-fill-available !important;
+                    }
+                }
+            `}</style>
+            
+            <div className="mobile-settings-container">
+                <div className="mobile-settings-view">
+                    {/* Header */}
+                    <div className="mobile-settings-header">
+                        <div>
+                            <h1>Settings</h1>
+                            <p>Manage your account preferences</p>
+                        </div>
+                        <button className="mobile-settings-notification-btn" onClick={checkNotifications}>
+                            <i className="fas fa-bell"></i>
+                            {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
+                        </button>
                     </div>
-                    <button className="mobile-settings-notification-btn" onClick={() => router.visit('/notifications')}>
-                        <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="mobile-notification-badge">{notificationCount}</span>}
-                    </button>
-                </div>
 
-                <div className="mobile-settings-content">
                     {/* Profile Section */}
                     <div className="mobile-profile-section">
                         <div className="mobile-profile-avatar">
                             {userInitial}
-                            <button className="edit-btn" onClick={updateProfile}>
-                                <i className="fas fa-pen"></i>
+                            <button className="edit-btn" onClick={editProfile}>
+                                <i className="fas fa-camera"></i>
                             </button>
                         </div>
-                        <div className="mobile-profile-name">{userData?.fullname || userData?.full_name}</div>
-                        <div className="mobile-profile-email">{userData?.email}</div>
-                        <div className="mobile-profile-tier">{userRole === 'client' ? 'Client Member' : 'Driver Member'}</div>
-                    </div>
-
-                    {/* Account Settings */}
-                    <div className="mobile-settings-section">
-                        <div className="mobile-section-header">
-                            <i className="fas fa-user-cog"></i>
-                            <h2>Account Settings</h2>
-                        </div>
-                        
-                        <div className="mobile-settings-item" onClick={updateProfile}>
-                            <div className="mobile-item-info">
-                                <div className="mobile-item-icon"><i className="fas fa-user"></i></div>
-                                <div className="mobile-item-details">
-                                    <h3>Personal Information</h3>
-                                    <p>Name, email, phone</p>
-                                </div>
-                            </div>
-                            <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
-
-                        <div className="mobile-settings-item" onClick={updatePassword}>
-                            <div className="mobile-item-info">
-                                <div className="mobile-item-icon"><i className="fas fa-key"></i></div>
-                                <div className="mobile-item-details">
-                                    <h3>Login & Security</h3>
-                                    <p>Password, security</p>
-                                </div>
-                            </div>
-                            <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
-
-                        <div className="mobile-settings-item" onClick={addPaymentMethod}>
-                            <div className="mobile-item-info">
-                                <div className="mobile-item-icon"><i className="fas fa-credit-card"></i></div>
-                                <div className="mobile-item-details">
-                                    <h3>Payment Methods</h3>
-                                    <p>{paymentMethods.length} saved methods</p>
-                                </div>
-                            </div>
-                            <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
+                        <div className="mobile-profile-name">{userData?.full_name || 'Client'}</div>
+                        <div className="mobile-profile-email">{userData?.email || 'client@example.com'}</div>
+                        <div className="mobile-profile-tier">
+                            <i className="fas fa-crown"></i> {userTier} Tier
                         </div>
                     </div>
 
-                    {/* Ride Preferences */}
-                    {userRole === 'client' && (
-                        <div className="mobile-settings-section">
+                    {/* Settings Sections */}
+                    <div className="mobile-settings-sections">
+                        {/* Account Settings */}
+                        <div className="settings-section">
                             <div className="mobile-section-header">
-                                <i className="fas fa-car"></i>
-                                <h2>Ride Preferences</h2>
+                                <i className="fas fa-user-circle"></i>
+                                <h2>Account Settings</h2>
                             </div>
                             
-                            <div className="mobile-settings-item" onClick={addSavedLocation}>
+                            <div className="mobile-settings-item" onClick={editProfile}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-user"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>Personal Information</h3>
+                                        <p>Name, email, phone</p>
+                                    </div>
+                                </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="mobile-settings-item" onClick={changePassword}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-lock"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>Login & Security</h3>
+                                        <p>Password, security</p>
+                                    </div>
+                                </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="mobile-settings-item" onClick={managePaymentMethods}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-credit-card"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>Payment Methods</h3>
+                                        <p>0 saved methods</p>
+                                    </div>
+                                </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="mobile-settings-item" onClick={ridePreferences}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-cog"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>Ride Preferences</h3>
+                                        <p>Vehicle type, language</p>
+                                    </div>
+                                </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="mobile-settings-item" onClick={manageSavedLocations}>
                                 <div className="mobile-item-info">
                                     <div className="mobile-item-icon"><i className="fas fa-map-marker-alt"></i></div>
                                     <div className="mobile-item-details">
@@ -486,147 +628,189 @@ const ClientSettingsMobile: React.FC = () => {
                                 <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
                         </div>
-                    )}
 
-                    {/* Notifications */}
-                    <div className="mobile-settings-section">
-                        <div className="mobile-section-header">
-                            <i className="fas fa-bell"></i>
-                            <h2>Notifications</h2>
-                        </div>
-                        
-                        <div className="mobile-toggle-item">
-                            <div className="toggle-label">
-                                <i className="fas fa-envelope"></i>
-                                <span>Ride Updates</span>
+                        {/* Preferences */}
+                        <div className="settings-section">
+                            <div className="mobile-section-header">
+                                <i className="fas fa-sliders-h"></i>
+                                <h2>Preferences</h2>
                             </div>
-                            <label className="toggle-switch">
-                                <input type="checkbox" checked={userSettings.notifications_enabled} onChange={(e) => toggleSetting('notifications_enabled', e.target.checked)} />
-                                <span className="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div className="mobile-toggle-item">
-                            <div className="toggle-label">
-                                <i className="fas fa-bullhorn"></i>
-                                <span>Promotions</span>
-                            </div>
-                            <label className="toggle-switch">
-                                <input type="checkbox" checked={userSettings.email_notifications} onChange={(e) => toggleSetting('email_notifications', e.target.checked)} />
-                                <span className="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div className="mobile-toggle-item">
-                            <div className="toggle-label">
-                                <i className="fas fa-shield-alt"></i>
-                                <span>Safety Alerts</span>
-                            </div>
-                            <label className="toggle-switch">
-                                <input type="checkbox" checked={userSettings.sms_notifications} onChange={(e) => toggleSetting('sms_notifications', e.target.checked)} />
-                                <span className="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Privacy & Security */}
-                    <div className="mobile-settings-section">
-                        <div className="mobile-section-header">
-                            <i className="fas fa-shield-alt"></i>
-                            <h2>Privacy & Security</h2>
-                        </div>
-                        
-                        <div className="mobile-settings-item" onClick={saveEmergencyContact}>
-                            <div className="mobile-item-info">
-                                <div className="mobile-item-icon"><i className="fas fa-phone-alt"></i></div>
-                                <div className="mobile-item-details">
-                                    <h3>Emergency Contacts</h3>
-                                    <p>{emergencyContactName ? '1 contact' : 'Add contact'}</p>
+                            
+                            <div className="mobile-dark-mode-toggle">
+                                <div className="mobile-dark-mode-info">
+                                    <h3>Dark Mode</h3>
+                                    <p>Switch between light and dark theme</p>
                                 </div>
+                                <label className="toggle-switch">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={darkMode} 
+                                        onChange={(e) => toggleDarkMode(e.target.checked)}
+                                    />
+                                    <span className="toggle-slider"></span>
+                                </label>
                             </div>
-                            <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
-                    </div>
 
-                    {/* Dark Mode Toggle */}
-                    <div className="mobile-dark-mode-toggle">
-                        <div className="mobile-dark-mode-info">
-                            <h3>Dark Mode</h3>
-                            <p>Switch between light and dark theme</p>
+                            <div className="mobile-section-header" style={{ marginTop: 8 }}>
+                                <i className="fas fa-globe"></i>
+                                <h2>Language</h2>
+                            </div>
+                            <div className="mobile-language-options">
+                                <button 
+                                    className={`mobile-lang-btn ${language === 'en' ? 'active' : ''}`}
+                                    onClick={() => changeLanguage('en')}
+                                >
+                                    English
+                                </button>
+                                <button 
+                                    className={`mobile-lang-btn ${language === 'es' ? 'active' : ''}`}
+                                    onClick={() => changeLanguage('es')}
+                                >
+                                    Español
+                                </button>
+                                <button 
+                                    className={`mobile-lang-btn ${language === 'fr' ? 'active' : ''}`}
+                                    onClick={() => changeLanguage('fr')}
+                                >
+                                    Français
+                                </button>
+                            </div>
                         </div>
-                        <label className="toggle-switch">
-                            <input type="checkbox" checked={userSettings.dark_mode} onChange={(e) => toggleDarkMode(e.target.checked)} />
-                            <span className="toggle-slider"></span>
-                        </label>
-                    </div>
 
-                    {/* Support & About */}
-                    <div className="mobile-settings-section">
-                        <div className="mobile-section-header">
-                            <i className="fas fa-question-circle"></i>
-                            <h2>Support & About</h2>
+                        {/* Notifications */}
+                        <div className="settings-section">
+                            <div className="mobile-section-header">
+                                <i className="fas fa-bell"></i>
+                                <h2>Notifications</h2>
+                            </div>
+                            
+                            <div className="mobile-toggle-item">
+                                <label className="toggle-label">
+                                    <i className="fas fa-envelope"></i>
+                                    <span>Email Notifications</span>
+                                </label>
+                                <label className="toggle-switch">
+                                    <input type="checkbox" defaultChecked />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div className="mobile-toggle-item">
+                                <label className="toggle-label">
+                                    <i className="fas fa-bell"></i>
+                                    <span>Push Notifications</span>
+                                </label>
+                                <label className="toggle-switch">
+                                    <input type="checkbox" defaultChecked />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div className="mobile-toggle-item">
+                                <label className="toggle-label">
+                                    <i className="fas fa-sms"></i>
+                                    <span>SMS Alerts</span>
+                                </label>
+                                <label className="toggle-switch">
+                                    <input type="checkbox" />
+                                    <span className="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
-                        
-                        <div className="mobile-settings-item" onClick={showHelp}>
-                            <div className="mobile-item-info">
-                                <div className="mobile-item-icon"><i className="fas fa-headset"></i></div>
-                                <div className="mobile-item-details">
-                                    <h3>Help Center</h3>
-                                    <p>FAQs, support</p>
+
+                        {/* Support */}
+                        <div className="settings-section">
+                            <div className="mobile-section-header">
+                                <i className="fas fa-question-circle"></i>
+                                <h2>Support</h2>
+                            </div>
+                            
+                            <div className="mobile-settings-item" onClick={support}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-headset"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>Help Center</h3>
+                                        <p>FAQs, support, contact us</p>
+                                    </div>
                                 </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
-                            <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
 
-                        <div className="mobile-settings-item" onClick={() => {
-                            Swal.fire({
-                                title: 'About Speedly',
-                                html: `<div style="text-align: center;"><img src="/main-assets/logo-no-background.png" alt="Logo" style="max-width: 120px;"><h3>Speedly</h3><p>Version 2.5.1</p><p>© 2026 Speedly</p></div>`,
-                                confirmButtonColor: '#ff5e00'
-                            });
-                        }}>
-                            <div className="mobile-item-info">
-                                <div className="mobile-item-icon"><i className="fas fa-info-circle"></i></div>
-                                <div className="mobile-item-details">
-                                    <h3>About Speedly</h3>
-                                    <p>Version 2.5.1</p>
+                            <div className="mobile-settings-item" onClick={() => {
+                                Swal.fire({
+                                    title: 'About Speedly',
+                                    html: `
+                                        <div style="text-align: center;">
+                                            <img src="/main-assets/logo-no-background.png" alt="Speedly" style="max-width: 120px; margin-bottom: 20px;">
+                                            <h3 style="font-size: 20px; font-weight: bold;">Speedly</h3>
+                                            <p>Version 2.5.1</p>
+                                            <p class="text-gray-500 mt-2">© 2026 Speedly. All rights reserved.</p>
+                                        </div>
+                                    `,
+                                    confirmButtonColor: '#ff5e00'
+                                });
+                            }}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-info-circle"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>About Speedly</h3>
+                                        <p>Version 2.5.1 • Ride-hailing app</p>
+                                    </div>
                                 </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
-                            <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                        </div>
-                    </div>
 
-                    {/* Language Selection */}
-                    <div className="mobile-settings-section">
-                        <div className="mobile-section-header">
-                            <i className="fas fa-globe"></i>
-                            <h2>Language</h2>
+                            <div className="mobile-settings-item" onClick={() => {
+                                Swal.fire({
+                                    title: 'Legal',
+                                    html: `
+                                        <div class="legal-options" style="text-align: left;">
+                                            <div class="legal-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.open('https://speedly.com/privacy', '_blank')">
+                                                📋 Privacy Policy
+                                            </div>
+                                            <div class="legal-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.open('https://speedly.com/terms', '_blank')">
+                                                📄 Terms of Service
+                                            </div>
+                                            <div class="legal-item" style="padding: 12px; cursor: pointer;" onclick="window.open('https://speedly.com/cookies', '_blank')">
+                                                🍪 Cookie Policy
+                                            </div>
+                                        </div>
+                                    `,
+                                    confirmButtonColor: '#ff5e00',
+                                    didOpen: () => {
+                                        document.querySelectorAll('.legal-item').forEach(item => {
+                                            item.addEventListener('click', () => Swal.close());
+                                        });
+                                    }
+                                });
+                            }}>
+                                <div className="mobile-item-info">
+                                    <div className="mobile-item-icon"><i className="fas fa-gavel"></i></div>
+                                    <div className="mobile-item-details">
+                                        <h3>Legal</h3>
+                                        <p>Privacy, terms, cookies</p>
+                                    </div>
+                                </div>
+                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
                         </div>
-                        <div className="mobile-language-options">
-                            <button className={`mobile-lang-btn ${userSettings.language === 'en' ? 'active' : ''}`} onClick={() => setLanguage('en')}>🇬🇧 English</button>
-                            <button className={`mobile-lang-btn ${userSettings.language === 'fr' ? 'active' : ''}`} onClick={() => setLanguage('fr')}>🇫🇷 Français</button>
-                            <button className={`mobile-lang-btn ${userSettings.language === 'es' ? 'active' : ''}`} onClick={() => setLanguage('es')}>🇪🇸 Español</button>
-                        </div>
-                        <br/>
+
                         {/* Action Buttons */}
-                    
-                        <button className="mobile-logout-btn" onClick={logout}>
-                            <i className="fas fa-sign-out-alt"></i> Log Out
-                        </button>
-                        <br/>
-                        <button className="mobile-delete-account-btn" onClick={deleteAccount}>
-                            <i className="fas fa-trash-alt"></i> Delete Account
-                        </button>
+                        <div className="mobile-action-buttons">
+                            <button className="mobile-logout-btn" onClick={logout}>
+                                <i className="fas fa-sign-out-alt"></i> Log Out
+                            </button>
+                            <button className="mobile-delete-account-btn" onClick={deleteAccount}>
+                                <i className="fas fa-trash-alt"></i> Delete Account
+                            </button>
+                        </div>
                     </div>
 
-                    
-                
+                    {/* Bottom Navigation */}
+                    <ClientNavMobile />
                 </div>
-
-                {/* Bottom Navigation */}
-                <ClientNavMobile />
             </div>
-        </div>
+        </>
     );
 };
 
