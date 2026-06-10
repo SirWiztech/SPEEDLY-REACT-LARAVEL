@@ -7,7 +7,6 @@ use Illuminate\Support\Str;
 
 class DriverProfile extends Model
 {
-    protected $primaryKey = 'id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -16,13 +15,13 @@ class DriverProfile extends Model
         parent::boot();
         static::creating(function ($model) {
             if (empty($model->{$model->getKeyName()})) {
-                $model->{$model->getKeyName()} = (string) Str::uuid();
+                $model->{$model->getKeyName()} = Str::uuid()->getHex();
             }
         });
     }
 
     protected $fillable = [
-        'id', 'user_id', 'license_number', 'license_expiry',
+        'user_id', 'license_number', 'license_expiry',
         'driver_status', 'verification_status', 'is_available',
         'current_latitude', 'current_longitude', 'last_location_update',
         'completed_rides', 'average_rating', 'total_reviews', 'total_earnings',

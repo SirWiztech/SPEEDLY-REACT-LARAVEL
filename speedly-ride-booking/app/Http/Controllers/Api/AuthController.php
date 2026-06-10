@@ -38,7 +38,6 @@ class AuthController extends Controller
 
         $user = DB::transaction(function () use ($data, $phone) {
             $user = User::create([
-                'id' => Str::uuid()->toString(),
                 'full_name' => $data['full_name'],
                 'username' => $data['username'],
                 'email' => $data['email'],
@@ -51,12 +50,10 @@ class AuthController extends Controller
 
             if ($data['role'] === 'client') {
                 ClientProfile::create([
-                    'id' => Str::uuid()->toString(),
                     'user_id' => $user->id,
                 ]);
             } elseif ($data['role'] === 'driver') {
                 DriverProfile::create([
-                    'id' => Str::uuid()->toString(),
                     'user_id' => $user->id,
                     'driver_status' => 'offline',
                     'verification_status' => 'pending',
