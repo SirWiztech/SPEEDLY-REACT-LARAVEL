@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('ride_declines', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('ride_id');
-            $table->uuid('driver_id');
+            $table->string('ride_id', 32);
+            $table->string('driver_id', 32);
             $table->boolean('auto_decline')->default(false);
             $table->integer('response_time_seconds')->default(0);
             $table->timestamps();
