@@ -9,7 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE rides MODIFY COLUMN status VARCHAR(255) DEFAULT 'pending' NOT NULL");
+        Schema::table('rides', function (Blueprint $table) {
+            $table->string('status')->default('pending')->change();
+        });
     }
 
     public function down(): void
