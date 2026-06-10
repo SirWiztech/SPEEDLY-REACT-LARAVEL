@@ -36,51 +36,55 @@ class AuthController extends Controller
             $phone = '+234' . substr($phone, 1);
         }
 
-        $user = User::create([
-            'id' => Str::uuid()->toString(),
-            'full_name' => $data['full_name'],
-            'username' => $data['username'],
-            'email' => $data['email'],
-            'password' => bcrypt($data['password']),
-            'role' => $data['role'],
-            'phone_number' => $phone,
-            'is_active' => true,
-            'is_verified' => false,
-        ]);
-
-        if ($data['role'] === 'client') {
-            ClientProfile::create([
+        $user = DB::transaction(function () use ($data, $phone) {
+            $user = User::create([
                 'id' => Str::uuid()->toString(),
-                'user_id' => $user->id,
+                'full_name' => $data['full_name'],
+                'username' => $data['username'],
+                'email' => $data['email'],
+                'password' => bcrypt($data['password']),
+                'role' => $data['role'],
+                'phone_number' => $phone,
+                'is_active' => true,
+                'is_verified' => false,
             ]);
-        } elseif ($data['role'] === 'driver') {
-            DriverProfile::create([
-                'id' => Str::uuid()->toString(),
+
+            if ($data['role'] === 'client') {
+                ClientProfile::create([
+                    'id' => Str::uuid()->toString(),
+                    'user_id' => $user->id,
+                ]);
+            } elseif ($data['role'] === 'driver') {
+                DriverProfile::create([
+                    'id' => Str::uuid()->toString(),
+                    'user_id' => $user->id,
+                    'driver_status' => 'offline',
+                    'verification_status' => 'pending',
+                    'license_number' => '',
+                    'license_expiry' => null,
+                    'is_available' => false,
+                    'completed_rides' => 0,
+                    'average_rating' => 0,
+                    'total_reviews' => 0,
+                    'total_earnings' => 0,
+                ]);
+            }
+
+            $otp = sprintf("%06d", mt_rand(1, 999999));
+            PasswordReset::create([
                 'user_id' => $user->id,
-                'driver_status' => 'offline',
-                'verification_status' => 'pending',
-                'license_number' => '',
-                'license_expiry' => null,
-                'is_available' => false,
-                'completed_rides' => 0,
-                'average_rating' => 0,
-                'total_reviews' => 0,
-                'total_earnings' => 0,
+                'token' => $otp,
+                'expires_at' => Carbon::now()->addMinutes(10),
             ]);
-        }
 
-        $otp = sprintf("%06d", mt_rand(1, 999999));
-        PasswordReset::create([
-            'user_id' => $user->id,
-            'token' => $otp,
-            'expires_at' => Carbon::now()->addMinutes(10),
-        ]);
+            try {
+                Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
+            } catch (\Exception $e) {
+                // Log email failure but don't block registration
+            }
 
-        try {
-            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
-        } catch (\Exception $e) {
-            // Log email failure but don't block registration
-        }
+            return $user;
+        });
 
         return response()->json([
             'success' => true,

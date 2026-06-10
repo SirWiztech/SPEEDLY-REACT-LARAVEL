@@ -21,6 +21,10 @@ return new class extends Migration
         Schema::table('client_profiles', fn (Blueprint $t) => $t->string('user_id', 36)->change());
         Schema::table('driver_profiles',  fn (Blueprint $t) => $t->string('user_id', 36)->change());
 
+        // Widen profile ID columns to fit UUIDs (36 chars)
+        Schema::table('client_profiles', fn (Blueprint $t) => $t->string('id', 36)->change());
+        Schema::table('driver_profiles',  fn (Blueprint $t) => $t->string('id', 36)->change());
+
         if (Schema::hasTable('password_resets')) {
             Schema::table('password_resets', function (Blueprint $t) {
                 if (!Schema::hasColumn('password_resets', 'used_at')) {
