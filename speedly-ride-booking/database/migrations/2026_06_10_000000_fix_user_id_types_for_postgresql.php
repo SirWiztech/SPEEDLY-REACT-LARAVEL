@@ -15,6 +15,8 @@ return new class extends Migration
         DB::statement('ALTER TABLE support_tickets DROP CONSTRAINT IF EXISTS support_tickets_user_id_foreign');
         DB::statement('ALTER TABLE wallet_transactions DROP CONSTRAINT IF EXISTS wallet_transactions_user_id_foreign');
         DB::statement('ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_user_id_foreign');
+        DB::statement('ALTER TABLE payment_gateway_transactions DROP CONSTRAINT IF EXISTS payment_gateway_transactions_user_id_foreign');
+        DB::statement('ALTER TABLE payment_sessions DROP CONSTRAINT IF EXISTS payment_sessions_user_id_foreign');
 
         Schema::table('client_profiles', fn (Blueprint $t) => $t->string('user_id', 36)->change());
         Schema::table('driver_profiles',  fn (Blueprint $t) => $t->string('user_id', 36)->change());
@@ -38,6 +40,14 @@ return new class extends Migration
 
         if (Schema::hasTable('notifications') && Schema::hasColumn('notifications', 'user_id')) {
             Schema::table('notifications', fn (Blueprint $t) => $t->string('user_id', 36)->change());
+        }
+
+        if (Schema::hasTable('payment_gateway_transactions') && Schema::hasColumn('payment_gateway_transactions', 'user_id')) {
+            Schema::table('payment_gateway_transactions', fn (Blueprint $t) => $t->string('user_id', 36)->change());
+        }
+
+        if (Schema::hasTable('payment_sessions') && Schema::hasColumn('payment_sessions', 'user_id')) {
+            Schema::table('payment_sessions', fn (Blueprint $t) => $t->string('user_id', 36)->change());
         }
 
         Schema::table('users', function (Blueprint $table) {
