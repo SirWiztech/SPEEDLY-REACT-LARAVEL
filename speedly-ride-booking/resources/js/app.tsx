@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { queryClient } from '@/lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ActiveRideProvider } from '@/contexts/ActiveRideContext';
@@ -18,16 +19,18 @@ createInertiaApp({
         return page;
     },
     setup({ el, App, props }) {
-        // @ts-ignore
-        import('react-dom/client').then(({ createRoot }) => {
-            createRoot(el).render(
-                <QueryClientProvider client={queryClient}>
-                    <ActiveRideProvider>
-                        <App {...props} />
-                    </ActiveRideProvider>
-                </QueryClientProvider>
-            );
-        });
+        const app = (
+            <QueryClientProvider client={queryClient}>
+                <ActiveRideProvider>
+                    <App {...props} />
+                </ActiveRideProvider>
+            </QueryClientProvider>
+        );
+        if (el.hasChildNodes()) {
+            hydrateRoot(el, app);
+        } else {
+            createRoot(el).render(app);
+        }
     },
     progress: {
         color: '#ff5e00',
