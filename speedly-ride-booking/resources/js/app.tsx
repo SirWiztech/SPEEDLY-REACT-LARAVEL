@@ -1,36 +1,21 @@
-import { createInertiaApp } from '@inertiajs/react';
-import { createRoot, hydrateRoot } from 'react-dom/client';
-import { queryClient } from '@/lib/queryClient';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { ActiveRideProvider } from '@/contexts/ActiveRideContext';
+import '../css/app.css';
 import '@/../css/Preloader.css';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Speedly';
+import { createInertiaApp } from '@inertiajs/react';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
-    resolve: (name) => {
-        const pages = import.meta.glob('./pages/**/*.tsx', { eager: false });
-        const page = pages[`./pages/${name}.tsx`];
-        if (!page) {
-            console.warn('Page not found:', name);
-            return import('./pages/Home');
-        }
-        return page;
-    },
+    title: (title) =>
+        title ? `${title} - Speedly` : 'Speedly',
+    resolve: (name) =>
+        resolvePageComponent(
+            `./pages/${name}.tsx`,
+            import.meta.glob('./pages/**/*.tsx'),
+        ),
     setup({ el, App, props }) {
-        const app = (
-            <QueryClientProvider client={queryClient}>
-                <ActiveRideProvider>
-                    <App {...props} />
-                </ActiveRideProvider>
-            </QueryClientProvider>
-        );
-        if (el.hasChildNodes()) {
-            hydrateRoot(el, app);
-        } else {
-            createRoot(el).render(app);
-        }
+        const { createRoot } = require('react-dom/client');
+        const root = createRoot(el);
+        root.render(<App {...props} />);
     },
     progress: {
         color: '#ff5e00',
