@@ -110,6 +110,8 @@ export const api = {
     support: (data: { category: string; subject: string; message: string; priority: string }) =>
       apiFetch('/client/support', { method: 'POST', body: JSON.stringify(data) }),
     supportTickets: () => apiFetch('/client/support/tickets'),
+    withdraw: (data: { amount: number; bank_name: string; account_number: string; account_name: string }) =>
+      apiFetch('/client/wallet/withdraw', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // Driver

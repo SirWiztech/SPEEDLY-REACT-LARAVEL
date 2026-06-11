@@ -93,6 +93,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Client KYC
         Route::get('/kyc', [KYCController::class, 'getClientKyc']);
         Route::post('/kyc/upload', [KYCController::class, 'uploadClientKyc']);
+
+        // Client Withdrawal
+        Route::post('/wallet/withdraw', [WalletController::class, 'requestClientWithdrawal']);
     });
 
     /*
@@ -148,6 +151,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/withdrawals', [AdminController::class, 'withdrawals']);
         Route::post('/withdrawals/{id}/approve', [AdminController::class, 'approveWithdrawal']);
         Route::post('/withdrawals/{id}/reject', [AdminController::class, 'rejectWithdrawal']);
+
+        // Client Withdrawal management
+        Route::get('/client-withdrawals', [AdminController::class, 'clientWithdrawals']);
+        Route::post('/client-withdrawals/{id}/approve', [AdminController::class, 'approveClientWithdrawal']);
+        Route::post('/client-withdrawals/{id}/reject', [AdminController::class, 'rejectClientWithdrawal']);
         Route::post('/settings', [AdminController::class, 'saveSettings']);
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::get('/users/{id}', [AdminController::class, 'getUser']);

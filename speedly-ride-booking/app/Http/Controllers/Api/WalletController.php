@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Models\ClientProfile;
+use App\Models\ClientWithdrawal;
 use App\Models\DriverProfile;
 use App\Models\DriverWithdrawal;
 use App\Models\DriverBankDetail;
@@ -532,6 +534,81 @@ class WalletController extends Controller
             DB::rollBack();
             \Illuminate\Support\Facades\Log::error('Withdrawal DB error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to process withdrawal', 'data' => null]);
+        }
+    }
+
+    public function requestClientWithdrawal(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1000',
+            'bank_name' => 'required|string|max:100',
+            'account_number' => 'required|string|max:20',
+            'account_name' => 'required|string|max:255',
+        ]);
+
+        $user = $request->user();
+        $clientProfile = ClientProfile::where('user_id', $user->id)->first();
+
+        if (!$clientProfile) {
+            return response()->json(['success' => false, 'message' => 'Client profile not found', 'data' => null], 404);
+        }
+
+        $creditTypes = ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'];
+        $debitTypes = ['withdrawal', 'ride_payment', 'debit'];
+        $credits = WalletTransaction::where('user_id', $user->id)
+            ->whereIn('transaction_type', $creditTypes)
+            ->where('status', 'completed')->sum('amount');
+        $debits = WalletTransaction::where('user_id', $user->id)
+            ->whereIn('transaction_type', $debitTypes)
+            ->where('status', 'completed')->sum('amount');
+        $balance = $credits - $debits;
+
+        $amount = $validated['amount'];
+        if ($amount > $balance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Insufficient balance. Available: ₦' . number_format($balance, 2),
+                'data' => null,
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $balanceAfter = $balance - $amount;
+
+            ClientWithdrawal::create([
+                'client_id' => $clientProfile->id,
+                'amount' => $amount,
+                'bank_name' => $validated['bank_name'],
+                'account_number' => $validated['account_number'],
+                'account_name' => $validated['account_name'],
+                'status' => 'pending',
+            ]);
+
+            WalletTransaction::create([
+                'id' => Str::random(32),
+                'user_id' => $user->id,
+                'transaction_type' => 'withdrawal',
+                'amount' => $amount,
+                'balance_before' => $balance,
+                'balance_after' => $balanceAfter,
+                'reference' => 'CWTH-' . strtoupper(Str::random(10)),
+                'status' => 'pending',
+                'category' => 'withdrawal',
+                'description' => 'Withdrawal to ' . $validated['bank_name'] . ' (' . $validated['account_number'] . ')',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Withdrawal request submitted. It will be processed within 24-48 hours.',
+                'data' => ['amount' => $amount, 'balance_after' => $balanceAfter],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Client withdrawal error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to submit withdrawal', 'data' => null], 500);
         }
     }
 }

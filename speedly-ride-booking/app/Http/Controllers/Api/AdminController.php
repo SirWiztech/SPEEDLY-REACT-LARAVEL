@@ -10,6 +10,7 @@ use App\Models\DriverVehicle;
 use App\Models\ClientProfile;
 use App\Models\Ride;
 use App\Models\WalletTransaction;
+use App\Models\ClientWithdrawal;
 use App\Models\DriverWithdrawal;
 use App\Models\DriverApprovalQueue;
 use App\Models\AdminActivityLog;
@@ -396,6 +397,138 @@ class AdminController extends Controller
             'message' => 'Withdrawal rejected successfully',
             'data' => $withdrawal
         ]);
+    }
+
+    public function clientWithdrawals(Request $request)
+    {
+        $query = ClientWithdrawal::with(['client.user'])->orderBy('created_at', 'desc');
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $withdrawals = $query->paginate(15);
+        $withdrawals->getCollection()->transform(function ($w) {
+            return [
+                'id' => $w->id,
+                'amount' => (float) $w->amount,
+                'bank_name' => $w->bank_name,
+                'account_number' => $w->account_number,
+                'account_name' => $w->account_name,
+                'status' => $w->status,
+                'created_at' => $w->created_at,
+                'client' => [
+                    'id' => $w->client->id,
+                    'name' => $w->client->user->full_name ?? 'Unknown',
+                    'email' => $w->client->user->email ?? '',
+                ],
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client withdrawals retrieved',
+            'data' => $withdrawals,
+        ]);
+    }
+
+    public function approveClientWithdrawal(Request $request, $id)
+    {
+        $withdrawal = ClientWithdrawal::findOrFail($id);
+
+        if ($withdrawal->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'Not pending', 'data' => null]);
+        }
+
+        $user = $withdrawal->client->user;
+        $balanceBefore = $this->computeBalance($user->id);
+        $balanceAfter = $balanceBefore - $withdrawal->amount;
+
+        WalletTransaction::create([
+            'id' => Str::random(32),
+            'user_id' => $user->id,
+            'transaction_type' => 'withdrawal',
+            'amount' => $withdrawal->amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
+            'description' => 'Withdrawal to ' . $withdrawal->bank_name . ' (' . $withdrawal->account_number . ')',
+            'status' => 'completed',
+            'category' => 'withdrawal',
+        ]);
+
+        $withdrawal->update([
+            'status' => 'completed',
+            'processed_by' => $request->user()->id,
+            'processed_at' => now(),
+        ]);
+
+        Notification::create([
+            'id' => Str::random(32),
+            'user_id' => $user->id,
+            'title' => 'Withdrawal Approved',
+            'message' => "Your withdrawal of ₦{$withdrawal->amount} has been approved.",
+            'type' => 'withdrawal_approved',
+            'is_read' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client withdrawal approved',
+            'data' => $withdrawal,
+        ]);
+    }
+
+    public function rejectClientWithdrawal(Request $request, $id)
+    {
+        $request->validate(['reason' => 'required|string']);
+        $withdrawal = ClientWithdrawal::findOrFail($id);
+
+        if ($withdrawal->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'Not pending', 'data' => null]);
+        }
+
+        $user = $withdrawal->client->user;
+        $balanceBefore = $this->computeBalance($user->id);
+        $balanceAfter = $balanceBefore + $withdrawal->amount;
+
+        $withdrawal->update([
+            'status' => 'rejected',
+            'rejection_reason' => $request->reason,
+            'processed_at' => now(),
+        ]);
+
+        WalletTransaction::create([
+            'id' => Str::random(32),
+            'user_id' => $user->id,
+            'transaction_type' => 'credit',
+            'amount' => $withdrawal->amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
+            'description' => 'Withdrawal reversal - ' . $request->reason,
+            'status' => 'completed',
+        ]);
+
+        Notification::create([
+            'id' => Str::random(32),
+            'user_id' => $user->id,
+            'title' => 'Withdrawal Rejected',
+            'message' => "Your withdrawal of ₦{$withdrawal->amount} was rejected. Reason: {$request->reason}",
+            'type' => 'withdrawal_rejected',
+            'is_read' => false,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Client withdrawal rejected', 'data' => $withdrawal]);
+    }
+
+    private function computeBalance($userId): float
+    {
+        $credits = WalletTransaction::where('user_id', $userId)
+            ->whereIn('transaction_type', ['deposit', 'bonus', 'referral', 'ride_refund', 'credit'])
+            ->where('status', 'completed')->sum('amount');
+        $debits = WalletTransaction::where('user_id', $userId)
+            ->whereIn('transaction_type', ['withdrawal', 'ride_payment', 'debit'])
+            ->where('status', 'completed')->sum('amount');
+        return (float) ($credits - $debits);
     }
 
     public function saveSettings(Request $request)

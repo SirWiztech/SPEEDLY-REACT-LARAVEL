@@ -104,7 +104,7 @@ const ClientWallet: React.FC = () => {
                 }
                 return { amount: parseFloat(amount) };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 processPayment(result.value.amount);
             }
@@ -214,19 +214,36 @@ const ClientWallet: React.FC = () => {
                 }
                 return { amount, bank, account, name };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Withdrawal Request Submitted',
-                    html: `
-                        <p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${result.value.amount.toLocaleString()}</strong></p>
-                        <p>Bank: ${result.value.bank}</p>
-                        <p>Account: ${result.value.account} (${result.value.name})</p>
-                        <p style="margin-top: 15px; font-size: 13px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
-                    `,
-                    confirmButtonColor: '#ff5e00'
-                });
+                Swal.fire({ title: 'Submitting...', text: 'Processing your withdrawal request', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const res = await api.client.withdraw({
+                        amount: result.value.amount,
+                        bank_name: result.value.bank,
+                        account_number: result.value.account,
+                        account_name: result.value.name,
+                    });
+                    Swal.close();
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Withdrawal Request Submitted',
+                            html: `
+                                <p>Amount: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${result.value.amount.toLocaleString()}</strong></p>
+                                <p>Bank: ${result.value.bank}</p>
+                                <p>Account: ${result.value.account} (${result.value.name})</p>
+                                <p style="margin-top: 15px; font-size: 13px; color: #666;">Your withdrawal will be processed within 24-48 hours.</p>
+                            `,
+                            confirmButtonColor: '#ff5e00'
+                        }).then(() => fetchWalletData());
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Withdrawal Failed', text: res.message || 'Something went wrong', confirmButtonColor: '#ff5e00' });
+                    }
+                } catch (err: any) {
+                    Swal.close();
+                    Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed to submit withdrawal', confirmButtonColor: '#ff5e00' });
+                }
             }
         });
     };
@@ -268,7 +285,7 @@ const ClientWallet: React.FC = () => {
                 }
                 return { type, bank, name, number, isDefault };
             }
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
                     icon: 'success',
