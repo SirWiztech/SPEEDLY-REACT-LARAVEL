@@ -11,7 +11,7 @@ class EnsureUserIsDriver
     public function handle(Request $request, Closure $next): Response
     {
         if (!$request->user() || $request->user()->role !== 'driver') {
-            return response()->json(['success' => false, 'message' => 'Driver access required'], 403);
+            return redirect()->route('login');
         }
 
         return $next($request);
