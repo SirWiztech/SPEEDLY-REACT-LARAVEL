@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ClientProfile extends Model
 {
     protected $fillable = [
+        'id',
         'user_id', 'membership_tier', 'total_rides',
         'average_rating', 'total_reviews',
         'notification_preferences', 'dark_mode',

@@ -3,24 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class DriverProfile extends Model
 {
-    public $incrementing = false;
-    protected $keyType = 'string';
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (empty($model->{$model->getKeyName()})) {
-                $model->{$model->getKeyName()} = Str::uuid()->getHex();
-            }
-        });
-    }
-
     protected $fillable = [
+        'id',
         'user_id', 'license_number', 'license_expiry',
         'driver_status', 'verification_status', 'is_available',
         'current_latitude', 'current_longitude', 'last_location_update',
