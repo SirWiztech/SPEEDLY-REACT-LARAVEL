@@ -51,6 +51,7 @@ const ClientLocationMobile: React.FC = () => {
     const [showPlaces, setShowPlaces] = useState<boolean>(false);
     const [showPermissionPrompt, setShowPermissionPrompt] = useState<boolean>(false);
     const [isTracking, setIsTracking] = useState<boolean>(false);
+    const [gpsCardCollapsed, setGpsCardCollapsed] = useState<boolean>(false);
 
     const watchIdRef = useRef<number | null>(null);
     const mapRef = useRef<HTMLDivElement>(null);
@@ -468,54 +469,9 @@ const ClientLocationMobile: React.FC = () => {
                     width: 100% !important;
                 }
                 
-                /* Ensure proper scrollable content */
                 .mobile-location-content {
                     flex: 1 !important;
                     overflow-y: visible !important;
-                }
-                
-                /* Map container - FIXED HEIGHT with proper spacing */
-                .mobile-map-container {
-                    position: relative !important;
-                    margin: 0 !important;
-                    overflow: hidden !important;
-                    border: none !important;
-                    width: 100% !important;
-                    height: 55vh !important;
-                    min-height: 350px !important;
-                    max-height: 500px !important;
-                    flex-shrink: 0 !important;
-                }
-                
-                .mobile-map {
-                    width: 100% !important;
-                    height: 100% !important;
-                }
-                
-                /* Cards - full width with proper margins */
-                .mobile-location-card,
-                .mobile-permission-prompt,
-                .mobile-enable-location-btn-container {
-                    width: 100% !important;
-                    margin: 0 !important;
-                    border-radius: 0 !important;
-                }
-                
-                .mobile-location-card {
-                    padding: 20px !important;
-                    margin-bottom: 0 !important;
-                    background: white !important;
-                    border-bottom: 1px solid #f0f0f0 !important;
-                }
-                
-                /* GPS Status Card - make it compact but visible */
-                .mobile-location-card {
-                    flex-shrink: 0 !important;
-                }
-                
-                /* Ensure map is not overlapped */
-                .mobile-map-container {
-                    flex-shrink: 0 !important;
                 }
                 
                 /* Fix for iOS Safari viewport */
@@ -523,34 +479,13 @@ const ClientLocationMobile: React.FC = () => {
                     .mobile-location-view {
                         height: -webkit-fill-available !important;
                     }
-                    .mobile-map-container {
-                        height: 50vh !important;
-                    }
-                }
-                
-                /* Landscape mode adjustments */
-                @media (orientation: landscape) and (max-height: 500px) {
-                    .mobile-map-container {
-                        height: 45vh !important;
-                        min-height: 250px !important;
-                    }
-                    .mobile-location-card {
-                        padding: 12px 20px !important;
-                    }
-                    .mobile-coordinate-row,
-                    .mobile-movement-stats {
-                        gap: 8px !important;
-                    }
                 }
                 
                 /* Small phones */
                 @media (max-width: 380px) {
                     .mobile-map-container {
-                        height: 50vh !important;
+                        height: 60vh !important;
                         min-height: 300px !important;
-                    }
-                    .mobile-location-card {
-                        padding: 16px !important;
                     }
                 }
             `}</style>
@@ -591,8 +526,8 @@ const ClientLocationMobile: React.FC = () => {
 
                     {/* GPS Status Card - Always visible when tracking is active or permission granted */}
                     {(hasPermission || isTracking) && (
-                        <div className="mobile-location-card">
-                            <div className="mobile-location-header-row">
+                        <div className={`mobile-location-card ${gpsCardCollapsed ? 'collapsed' : ''}`}>
+                            <div className="mobile-location-header-row" onClick={() => setGpsCardCollapsed(!gpsCardCollapsed)}>
                                 <div className="mobile-location-title">
                                     <span className={`mobile-gps-pulse ${hasPermission && isTracking ? 'active' : 'inactive'}`}></span>
                                     <span className="mobile-gps-state">{gpsStatus}</span>
@@ -600,7 +535,11 @@ const ClientLocationMobile: React.FC = () => {
                                 <span className="mobile-gps-badge">
                                     <i className="fas fa-satellite-dish"></i> GPS Live
                                 </span>
+                                <i className={`fas fa-chevron-${gpsCardCollapsed ? 'down' : 'up'} mobile-collapse-icon`}></i>
                             </div>
+
+                            {!gpsCardCollapsed && (
+                            <>
 
                             {/* Stop/Start GPS Button */}
                             {hasPermission && (
@@ -667,6 +606,7 @@ const ClientLocationMobile: React.FC = () => {
                                     <span className="stat-unit">m</span>
                                 </div>
                             </div>
+                            )}
                         </div>
                     )}
 

@@ -151,13 +151,20 @@
     cursor: pointer;
 }
 
-/* GPS Status Card */
+/* GPS Status Card — floating overlay on top of map */
 .mobile-location-card {
     background: white;
-    border-radius: 24px;
-    padding: 20px;
-    margin: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-radius: 20px;
+    padding: 12px 14px;
+    margin: 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 100px;
+    left: 10px;
+    right: 10px;
+    z-index: 12;
+    max-height: 35vh;
+    overflow-y: auto;
 }
 
 .mobile-location-header-row {
@@ -166,7 +173,8 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
 }
 
 .mobile-location-title {
@@ -366,15 +374,17 @@
     opacity: 0.7;
 }
 
-/* Map Container */
+/* Map Container — full screen behind the card */
 .mobile-map-container {
     position: relative;
-    margin: 0 0 16px 0;
+    margin: 0;
     overflow: hidden;
     border: none;
-    height: 45vh;
-    min-height: 300px;
+    height: 70vh;
+    min-height: 350px;
     width: 100%;
+    flex-shrink: 0;
+    z-index: 1;
 }
 
 .mobile-map {

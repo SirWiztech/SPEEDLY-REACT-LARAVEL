@@ -2244,15 +2244,16 @@ html { scroll-behavior: smooth; }
     .nav-logo {
         flex-shrink: 1 !important;
         min-width: 0 !important;
+        gap: 6px !important;
     }
     
     .nav-logo img {
-        width: 40px !important;
-        height: 40px !important;
+        width: 36px !important;
+        height: 36px !important;
     }
     
     .logo-text {
-        font-size: 0.9rem !important;
+        font-size: 0.85rem !important;
         white-space: nowrap !important;
     }
     
@@ -2260,6 +2261,15 @@ html { scroll-behavior: smooth; }
         padding: 8px 12px !important;
         font-size: 12px !important;
         white-space: nowrap !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .auth-btn-text-full {
+        display: inline;
+    }
+    
+    .auth-btn-text-short {
+        display: none;
     }
     
     .mobile-menu-btn {
@@ -2273,6 +2283,37 @@ html { scroll-behavior: smooth; }
     .nav-actions {
         display: flex !important;
         flex-shrink: 0 !important;
+    }
+}
+
+/* Extra small phones — switch to short button text */
+@media (max-width: 400px) {
+    .navbar {
+        padding: 6px 8px !important;
+        gap: 4px !important;
+    }
+    
+    .nav-logo img {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    .logo-text {
+        font-size: 0.75rem !important;
+    }
+    
+    .auth-btn {
+        padding: 6px 10px !important;
+        font-size: 11px !important;
+        min-height: 36px !important;
+    }
+    
+    .auth-btn-text-full {
+        display: none !important;
+    }
+    
+    .auth-btn-text-short {
+        display: inline !important;
     }
 }
 
