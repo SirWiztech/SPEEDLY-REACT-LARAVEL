@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
+            \App\Http\Middleware\TrustProxies::class,
             \App\Http\Middleware\CacheControl::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
@@ -40,5 +41,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                $message = app()->environment('production')
+                    ? $e->getMessage()
+                    : $e->getMessage() . ' (file: ' . $e->getFile() . ':' . $e->getLine() . ')';
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 500);
+            }
+        });
     })->create();
