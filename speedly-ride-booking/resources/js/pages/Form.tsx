@@ -37,6 +37,18 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
     const [isLoginLoading, setIsLoginLoading] = useState(false);
     const [isRegisterLoading, setIsRegisterLoading] = useState(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
+
+    // Handle Google OAuth callback — the backend redirects here with ?token=...&role=...
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const role = params.get('role');
+        if (token) {
+            setToken(token);
+            if (role === 'driver') window.location.href = '/driverdashboard';
+            else window.location.href = '/clientdashboard';
+        }
+    }, []);
     
     // Login state
     const [loginData, setLoginData] = useState<LoginData>({
