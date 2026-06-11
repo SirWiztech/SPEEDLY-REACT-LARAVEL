@@ -1114,30 +1114,31 @@ const ClientBookRideMobile: React.FC = () => {
                                 <i className="fas fa-crosshairs"></i>
                             </button>
 
-                            {/* Location Cards */}
-                            {showPickupCard && (
-                                <div className="mobile-location-card pickup-card">
-                                    <div className="mobile-location-card-label">
-                                        <i className="fas fa-circle"></i> PICKUP LOCATION
-                                    </div>
-                                    <div className="mobile-location-card-address">{booking.pickup.address}</div>
-                                    <div className="mobile-location-card-actions">
-                                        <button className="clear-btn" onClick={() => clearLocation('pickup')}>Clear</button>
-                                        <button className="confirm-btn" onClick={() => confirmLocation('pickup')}>Confirm</button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {showDestCard && (
-                                <div className="mobile-location-card dest-card">
-                                    <div className="mobile-location-card-label">
-                                        <i className="fas fa-map-marker-alt"></i> DESTINATION
-                                    </div>
-                                    <div className="mobile-location-card-address">{booking.destination.address}</div>
-                                    <div className="mobile-location-card-actions">
-                                        <button className="clear-btn" onClick={() => clearLocation('destination')}>Clear</button>
-                                        <button className="confirm-btn" onClick={() => confirmLocation('destination')}>Confirm</button>
-                                    </div>
+                            {/* Location Cards Stack */}
+                            {(showPickupCard || showDestCard) && (
+                                <div className="mobile-location-cards-stack">
+                                    {showPickupCard && (
+                                        <div className="mobile-location-card pickup-card">
+                                            <div className="mobile-location-card-label">
+                                                <i className="fas fa-circle" style={{color: '#4CAF50'}}></i> FROM
+                                            </div>
+                                            <div className="mobile-location-card-address">{booking.pickup.address}</div>
+                                            <div className="mobile-location-card-actions">
+                                                <button className="clear-btn" onClick={() => clearLocation('pickup')}>Clear</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {showDestCard && (
+                                        <div className="mobile-location-card dest-card">
+                                            <div className="mobile-location-card-label">
+                                                <i className="fas fa-map-marker-alt" style={{color: '#F44336'}}></i> TO
+                                            </div>
+                                            <div className="mobile-location-card-address">{booking.destination.address}</div>
+                                            <div className="mobile-location-card-actions">
+                                                <button className="clear-btn" onClick={() => clearLocation('destination')}>Clear</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
