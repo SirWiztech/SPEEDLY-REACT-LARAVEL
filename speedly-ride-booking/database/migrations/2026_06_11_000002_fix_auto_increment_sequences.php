@@ -7,7 +7,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Drop all FKs first
+        // Drop all FKs
         $fks = [
             'client_profiles'     => ['client_profiles_user_id_foreign'],
             'driver_profiles'     => ['driver_profiles_user_id_foreign'],
@@ -35,39 +35,94 @@ return new class extends Migration
             }
         }
 
-        // Wipe junk data from partial prior inserts
-        DB::table('password_resets')->delete();
-        DB::table('driver_profiles')->delete();
-        DB::table('client_profiles')->delete();
-        DB::table('users')->delete();
+        // Truncate all dependent tables first
+        DB::statement('DROP TABLE IF EXISTS password_resets CASCADE');
+        DB::statement('DROP TABLE IF EXISTS driver_profiles CASCADE');
+        DB::statement('DROP TABLE IF EXISTS client_profiles CASCADE');
+        DB::statement('DROP TABLE IF EXISTS users CASCADE');
 
-        // Convert users.id from VARCHAR back to BIGINT auto-increment
-        DB::statement('ALTER TABLE users ALTER COLUMN id DROP DEFAULT');
-        DB::statement('DROP SEQUENCE IF EXISTS users_id_seq CASCADE');
-        DB::statement("ALTER TABLE users ALTER COLUMN id SET DATA TYPE BIGINT USING (COALESCE(NULLIF(id, '')::BIGINT, 0))");
-        DB::statement('CREATE SEQUENCE users_id_seq OWNED BY users.id');
-        DB::statement("SELECT setval('users_id_seq', 1)");
-        DB::statement("ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq')");
+        // Recreate users with native BIGSERIAL
+        DB::statement("
+            CREATE TABLE users (
+                id BIGSERIAL PRIMARY KEY,
+                name VARCHAR(255),
+                full_name VARCHAR(255),
+                username VARCHAR(255),
+                email VARCHAR(255) UNIQUE NOT NULL,
+                email_verified_at TIMESTAMP NULL,
+                password VARCHAR(255) NOT NULL,
+                phone_number VARCHAR(255) NULL,
+                role VARCHAR(255) NULL,
+                profile_picture_url TEXT NULL,
+                avatar TEXT NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                is_verified BOOLEAN DEFAULT FALSE,
+                last_login TIMESTAMP NULL,
+                google_id VARCHAR(255) NULL,
+                facebook_id VARCHAR(255) NULL,
+                remember_token VARCHAR(100) NULL,
+                two_factor_secret TEXT NULL,
+                two_factor_recovery_codes TEXT NULL,
+                two_factor_confirmed_at TIMESTAMP NULL,
+                created_at TIMESTAMP NULL,
+                updated_at TIMESTAMP NULL
+            )
+        ");
 
-        // Convert client_profiles.id from VARCHAR to BIGINT auto-increment
-        DB::statement('ALTER TABLE client_profiles ALTER COLUMN id DROP DEFAULT');
-        DB::statement('DROP SEQUENCE IF EXISTS client_profiles_id_seq CASCADE');
-        DB::statement("ALTER TABLE client_profiles ALTER COLUMN id SET DATA TYPE BIGINT USING (COALESCE(NULLIF(id, '')::BIGINT, 0))");
-        DB::statement('CREATE SEQUENCE client_profiles_id_seq OWNED BY client_profiles.id');
-        DB::statement("SELECT setval('client_profiles_id_seq', 1)");
-        DB::statement("ALTER TABLE client_profiles ALTER COLUMN id SET DEFAULT nextval('client_profiles_id_seq')");
+        // Recreate client_profiles
+        DB::statement("
+            CREATE TABLE client_profiles (
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                membership_tier VARCHAR(255) DEFAULT 'basic',
+                total_rides INTEGER DEFAULT 0,
+                average_rating DECIMAL(3,2) DEFAULT 0,
+                total_reviews INTEGER DEFAULT 0,
+                notification_preferences TEXT NULL,
+                dark_mode BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP NULL,
+                updated_at TIMESTAMP NULL,
+                CONSTRAINT client_profiles_user_id_foreign FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        ");
 
-        // Convert driver_profiles.id from VARCHAR to BIGINT auto-increment
-        DB::statement('ALTER TABLE driver_profiles ALTER COLUMN id DROP DEFAULT');
-        DB::statement('DROP SEQUENCE IF EXISTS driver_profiles_id_seq CASCADE');
-        DB::statement("ALTER TABLE driver_profiles ALTER COLUMN id SET DATA TYPE BIGINT USING (COALESCE(NULLIF(id, '')::BIGINT, 0))");
-        DB::statement('CREATE SEQUENCE driver_profiles_id_seq OWNED BY driver_profiles.id');
-        DB::statement("SELECT setval('driver_profiles_id_seq', 1)");
-        DB::statement("ALTER TABLE driver_profiles ALTER COLUMN id SET DEFAULT nextval('driver_profiles_id_seq')");
+        // Recreate driver_profiles
+        DB::statement("
+            CREATE TABLE driver_profiles (
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                license_number VARCHAR(255) DEFAULT '',
+                license_expiry DATE NULL,
+                driver_status VARCHAR(255) DEFAULT 'offline',
+                verification_status VARCHAR(255) DEFAULT 'pending',
+                is_available BOOLEAN DEFAULT FALSE,
+                current_latitude DOUBLE PRECISION NULL,
+                current_longitude DOUBLE PRECISION NULL,
+                last_location_update TIMESTAMP NULL,
+                completed_rides INTEGER DEFAULT 0,
+                average_rating DECIMAL(3,2) DEFAULT 0,
+                total_reviews INTEGER DEFAULT 0,
+                total_earnings DECIMAL(12,2) DEFAULT 0,
+                date_of_birth DATE NULL,
+                gender VARCHAR(50) NULL,
+                notification_preferences TEXT NULL,
+                created_at TIMESTAMP NULL,
+                updated_at TIMESTAMP NULL,
+                CONSTRAINT driver_profiles_user_id_foreign FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        ");
 
-        // Re-create essential FKs
-        DB::statement('ALTER TABLE client_profiles ADD CONSTRAINT client_profiles_user_id_foreign FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE');
-        DB::statement('ALTER TABLE driver_profiles ADD CONSTRAINT driver_profiles_user_id_foreign FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE');
+        // Recreate password_resets
+        DB::statement("
+            CREATE TABLE password_resets (
+                id VARCHAR(36) PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                token VARCHAR(255) NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used_at TIMESTAMP NULL,
+                created_at TIMESTAMP NULL
+            )
+        ");
     }
 
     public function down(): void
