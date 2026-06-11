@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { router } from '@inertiajs/react';
 import '../../css/form.css';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
 import api, { setToken } from '../services/api';
@@ -195,9 +194,9 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
                 setTimeout(() => {
                     if (onLoginSuccess) onLoginSuccess();
                     const role = data.data.user.role;
-                    if (role === 'client') router.visit('/clientdashboard');
-                    else if (role === 'driver') router.visit('/driverdashboard');
-                    else router.visit('/home');
+                    if (role === 'client') window.location.href = '/clientdashboard';
+                    else if (role === 'driver') window.location.href = '/driverdashboard';
+                    else window.location.href = '/home';
                 }, 1500);
             } else {
                 showToast('error', 'Login Failed', data.message || 'Invalid credentials');
