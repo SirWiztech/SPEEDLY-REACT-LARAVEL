@@ -3,6 +3,9 @@ import '@/../css/Preloader.css';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import React from 'react';
+import CookieConsent from '@/components/CookieConsent';
+import GlobalChatBubble from '@/components/GlobalChatBubble';
 
 createInertiaApp({
     title: (title) =>
@@ -15,7 +18,13 @@ createInertiaApp({
     setup({ el, App, props }) {
         const { createRoot } = require('react-dom/client');
         const root = createRoot(el);
-        root.render(<App {...props} />);
+        root.render(
+            <React.Fragment>
+                <App {...props} />
+                <CookieConsent />
+                <GlobalChatBubble />
+            </React.Fragment>
+        );
     },
     progress: {
         color: '#ff5e00',

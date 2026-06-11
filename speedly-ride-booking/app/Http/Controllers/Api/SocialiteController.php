@@ -59,8 +59,8 @@ class SocialiteController extends Controller
         }
 
         Auth::guard('web')->login($user);
-        $user->createToken('auth_token');
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-        return redirect()->to($user->role === 'driver' ? '/driverdashboard' : '/clientdashboard');
+        return redirect()->away('/form?token=' . urlencode($token) . '&role=' . $user->role);
     }
 }
