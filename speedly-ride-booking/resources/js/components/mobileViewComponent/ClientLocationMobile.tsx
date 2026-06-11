@@ -606,6 +606,7 @@ const ClientLocationMobile: React.FC = () => {
                                     <span className="stat-unit">m</span>
                                 </div>
                             </div>
+                            </>
                             )}
                         </div>
                     )}
