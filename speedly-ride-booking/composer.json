@@ -18,7 +18,8 @@
         "laravel/socialite": "*",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
-        "pusher/pusher-php-server": "*"
+        "pusher/pusher-php-server": "*",
+        "resend/resend-laravel": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
