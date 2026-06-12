@@ -44,14 +44,17 @@ const ClientWalletMobile: React.FC = () => {
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {
         try {
-            const [walletData, transactionData] = await Promise.all([
+            const [walletData, transactionData, meData] = await Promise.all([
                 api.client.wallet(),
-                api.client.transactions()
+                api.client.transactions(),
+                api.auth.me(),
             ]);
 
+            if (meData?.success || meData?.data) {
+                setUserData(meData.data || meData.user || null);
+            }
             if (walletData.success && walletData.data) {
                 const w = walletData.data;
-                setUserData(w.user || null);
                 setWalletBalance(w.balance || 0);
                 setRideCount(w.ride_count || 0);
                 setPaymentMethods(w.payment_methods || []);
