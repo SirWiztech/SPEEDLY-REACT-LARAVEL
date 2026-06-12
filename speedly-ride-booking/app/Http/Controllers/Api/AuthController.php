@@ -77,7 +77,14 @@ class AuthController extends Controller
             try {
                 Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
             } catch (\Exception $e) {
-                // Log email failure but don't block registration
+                \Illuminate\Support\Facades\Log::error('OTP email failed: ' . $e->getMessage());
+                if (!app()->environment('production')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Email failed: ' . $e->getMessage(),
+                        'data' => null,
+                    ], 500);
+                }
             }
 
             return $user;
