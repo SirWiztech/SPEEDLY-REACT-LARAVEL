@@ -540,7 +540,7 @@ class WalletController extends Controller
     public function requestClientWithdrawal(Request $request)
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:1000',
+            'amount' => 'required|numeric|min:100',
             'bank_name' => 'required|string|max:100',
             'account_number' => 'required|string|max:20',
             'account_name' => 'required|string|max:255',
@@ -574,8 +574,6 @@ class WalletController extends Controller
 
         DB::beginTransaction();
         try {
-            $balanceAfter = $balance - $amount;
-
             ClientWithdrawal::create([
                 'client_id' => $clientProfile->id,
                 'amount' => $amount,
@@ -585,25 +583,14 @@ class WalletController extends Controller
                 'status' => 'pending',
             ]);
 
-            WalletTransaction::create([
-                'id' => Str::random(32),
-                'user_id' => $user->id,
-                'transaction_type' => 'withdrawal',
-                'amount' => $amount,
-                'balance_before' => $balance,
-                'balance_after' => $balanceAfter,
-                'reference' => 'CWTH-' . strtoupper(Str::random(10)),
-                'status' => 'pending',
-                'category' => 'withdrawal',
-                'description' => 'Withdrawal to ' . $validated['bank_name'] . ' (' . $validated['account_number'] . ')',
-            ]);
+            // No wallet deduction yet — only on admin approval
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Withdrawal request submitted. It will be processed within 24-48 hours.',
-                'data' => ['amount' => $amount, 'balance_after' => $balanceAfter],
+                'data' => ['amount' => $amount],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

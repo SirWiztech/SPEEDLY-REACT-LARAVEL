@@ -78,6 +78,10 @@ const ClientBookRideMobile: React.FC = () => {
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
     const searchTimeoutRef = useRef<number | null>(null);
+    const modeRef = useRef<'pickup' | 'destination'>('pickup');
+
+    // Keep modeRef in sync with mode state
+    useEffect(() => { modeRef.current = mode; }, [mode]);
 
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -172,15 +176,16 @@ const ClientBookRideMobile: React.FC = () => {
         return { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, placeId: '' };
     };
 
-    // Handle map click
+    // Handle map click — uses ref to always read current mode
     const handleMapClick = useCallback(async (lat: number, lng: number) => {
         const { address, placeId } = await reverseGeocode(lat, lng);
-        if (mode === 'pickup') {
+        const currentMode = modeRef.current;
+        if (currentMode === 'pickup') {
             updatePickupLocation(lat, lng, address, placeId);
         } else {
             updateDestinationLocation(lat, lng, address, placeId);
         }
-    }, [mode]);
+    }, [updatePickupLocation, updateDestinationLocation]);
 
     // Update pickup location
     const updatePickupLocation = useCallback((lat: number, lng: number, address: string, placeId: string | null) => {

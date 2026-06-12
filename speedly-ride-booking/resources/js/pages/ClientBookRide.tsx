@@ -49,6 +49,9 @@ const ClientBookRide: React.FC = () => {
     const actionsRef = useRef<any>({});
     const initTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const modeRef = useRef<'pickup' | 'destination'>('pickup');
+
+    useEffect(() => { modeRef.current = mode; }, [mode]);
 
     const preloaderLoading = usePreloader(300);
     const isMobile = useMobile();
@@ -125,9 +128,10 @@ const ClientBookRide: React.FC = () => {
 
     const handleMapClick = useCallback(async (lat: number, lng: number) => {
         const { address, placeId } = await reverseGeocode(lat, lng);
-        if (mode === 'pickup') updatePickupLocation(lat, lng, address, placeId);
+        const currentMode = modeRef.current;
+        if (currentMode === 'pickup') updatePickupLocation(lat, lng, address, placeId);
         else updateDestinationLocation(lat, lng, address, placeId);
-    }, [mode]);
+    }, [reverseGeocode, updatePickupLocation, updateDestinationLocation]);
 
     const updatePickupLocation = useCallback((lat: number, lng: number, address: string, placeId: string | null) => {
         try {

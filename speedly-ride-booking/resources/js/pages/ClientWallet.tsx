@@ -111,8 +111,15 @@ const ClientWallet: React.FC = () => {
         });
     };
 
-    // Process payment with KoraPay
     const processPayment = async (amount: number) => {
+        const name = userData?.fullname || userData?.full_name || '';
+        const email = userData?.email || '';
+
+        if (!email) {
+            Swal.fire({ icon: 'error', title: 'Account Error', text: 'User profile not loaded. Please refresh.', confirmButtonColor: '#ff5e00' });
+            return;
+        }
+        
         Swal.fire({
             title: 'Processing...',
             text: 'Initializing payment gateway',
@@ -123,7 +130,7 @@ const ClientWallet: React.FC = () => {
         });
 
         try {
-            const res = await api.payment.initiate({ amount, email: userData?.email || '', name: userData?.fullname || userData?.full_name || '' });
+            const res = await api.payment.initiate({ amount, email, name });
             Swal.close();
 
             const checkoutUrl = res.data?.payment_url || res.data?.checkout_url || res.checkout_url;
@@ -152,13 +159,12 @@ const ClientWallet: React.FC = () => {
         }
     };
 
-    // Withdraw funds
     const withdrawFunds = () => {
-        if (walletBalance < 1000) {
+        if (walletBalance < 100) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Insufficient Balance',
-                text: 'Minimum withdrawal amount is ₦1,000',
+                text: 'Minimum withdrawal amount is ₦100',
                 confirmButtonColor: '#ff5e00'
             });
             return;
@@ -167,20 +173,28 @@ const ClientWallet: React.FC = () => {
         Swal.fire({
             title: 'Withdraw Funds',
             html: `
-                <p style="margin-bottom: 15px;">Available balance: <strong style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${walletBalance.toLocaleString()}</strong></p>
-                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="1000" max="${walletBalance}" step="100">
+                <p style="margin-bottom: 15px;">Available: <strong>₦${walletBalance.toLocaleString()}</strong></p>
+                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${walletBalance}" step="100">
                 <select id="bank-name" class="swal2-input">
                     <option value="">Select Bank</option>
                     <option value="Access Bank">Access Bank</option>
                     <option value="GTBank">GTBank</option>
                     <option value="First Bank">First Bank</option>
                     <option value="UBA">UBA</option>
-                    <option value="Zenith">Zenith Bank</option>
+                    <option value="Zenith Bank">Zenith Bank</option>
+                    <option value="Kuda Bank">Kuda Bank</option>
+                    <option value="OPay">OPay</option>
+                    <option value="PalmPay">PalmPay</option>
                 </select>
+                <div style="margin-top: 8px;">
+                    <button type="button" id="verify-account-btn" style="background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:13px;width:100%;padding:10px;">
+                        <i class="fas fa-check-circle"></i> Verify Account Name
+                    </button>
+                </div>
                 <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
-                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
-                <div style="margin-top: 10px; text-align: left; font-size: 13px; color: #666;">
-                    <p><i class="fas fa-clock" style="color: #ff5e00;"></i> Withdrawals are processed within 24-48 hours</p>
+                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name (auto-verified)" readonly style="background:#f9f9f9;">
+                <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                    <p><i class="fas fa-clock" style="color: #ff5e00;"></i> Withdrawals are processed within 24-48 hours after admin approval</p>
                 </div>
             `,
             showCancelButton: true,
@@ -192,8 +206,8 @@ const ClientWallet: React.FC = () => {
                 const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
                 const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
 
-                if (!amount || amount < 1000) {
-                    Swal.showValidationMessage('Minimum withdrawal is ₦1,000');
+                if (!amount || amount < 100) {
+                    Swal.showValidationMessage('Minimum withdrawal is ₦100');
                     return false;
                 }
                 if (amount > walletBalance) {
@@ -213,6 +227,38 @@ const ClientWallet: React.FC = () => {
                     return false;
                 }
                 return { amount, bank, account, name };
+            },
+            didOpen: () => {
+                const verifyBtn = document.getElementById('verify-account-btn');
+                if (verifyBtn) {
+                    verifyBtn.addEventListener('click', async () => {
+                        const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
+                        const accountInput = document.getElementById('account-number') as HTMLInputElement;
+                        const nameInput = document.getElementById('account-name') as HTMLInputElement;
+                        const bankName = bankSelect?.value;
+                        const accountNum = accountInput?.value;
+
+                        if (!bankName) { Swal.showValidationMessage('Select a bank first'); return; }
+                        if (!accountNum || accountNum.length !== 10 || !/^\d+$/.test(accountNum)) { Swal.showValidationMessage('Enter a valid 10-digit account number'); return; }
+
+                        try {
+                            const res = await api.payment.verifyAccount({ bank_code: bankName, account_number: accountNum });
+                            if (res.account_name) {
+                                nameInput.value = res.account_name;
+                                verifyBtn.textContent = '✓ Account Verified';
+                                verifyBtn.style.background = '#e8f5e9';
+                                verifyBtn.style.borderColor = '#4CAF50';
+                                verifyBtn.style.color = '#4CAF50';
+                            } else {
+                                Swal.showValidationMessage('Could not verify account. Enter name manually.');
+                                nameInput.removeAttribute('readonly');
+                            }
+                        } catch {
+                            Swal.showValidationMessage('Verification failed. Enter name manually.');
+                            nameInput.removeAttribute('readonly');
+                        }
+                    });
+                }
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
