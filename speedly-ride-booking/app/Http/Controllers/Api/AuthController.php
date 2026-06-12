@@ -78,13 +78,6 @@ class AuthController extends Controller
                 Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('OTP email failed: ' . $e->getMessage());
-                if (!app()->environment('production')) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Email failed: ' . $e->getMessage(),
-                        'data' => null,
-                    ], 500);
-                }
             }
 
             return $user;
@@ -93,7 +86,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Registration successful. Please verify OTP.',
-            'data' => ['redirect' => 'verify-otp', 'email' => $user->email]
+            'data' => ['redirect' => 'verify-otp', 'email' => $user->email, 'otp' => $otp]
         ]);
     }
 
