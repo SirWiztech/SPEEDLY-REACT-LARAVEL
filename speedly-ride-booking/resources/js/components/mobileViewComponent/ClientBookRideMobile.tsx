@@ -79,6 +79,8 @@ const ClientBookRideMobile: React.FC = () => {
     const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
     const searchTimeoutRef = useRef<number | null>(null);
     const modeRef = useRef<'pickup' | 'destination'>('pickup');
+    const updatePickupRef = useRef<(lat: number, lng: number, address: string, placeId: string | null) => void>(() => {});
+    const updateDestRef = useRef<(lat: number, lng: number, address: string, placeId: string | null) => void>(() => {});
 
     // Keep modeRef in sync with mode state
     useEffect(() => { modeRef.current = mode; }, [mode]);
@@ -130,6 +132,10 @@ const ClientBookRideMobile: React.FC = () => {
             setLoading(false);
         }
     }, []);
+    
+    // Wire refs after callbacks are defined (avoids circular hoisting)
+    updatePickupRef.current = updatePickupLocation;
+    updateDestRef.current = updateDestinationLocation;
 
     // Fetch saved locations
     const fetchSavedLocations = useCallback(async () => {
@@ -176,16 +182,16 @@ const ClientBookRideMobile: React.FC = () => {
         return { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, placeId: '' };
     };
 
-    // Handle map click — uses ref to always read current mode
+    // Handle map click — uses refs to avoid stale closure / hoisting issues
     const handleMapClick = useCallback(async (lat: number, lng: number) => {
         const { address, placeId } = await reverseGeocode(lat, lng);
         const currentMode = modeRef.current;
         if (currentMode === 'pickup') {
-            updatePickupLocation(lat, lng, address, placeId);
+            updatePickupRef.current(lat, lng, address, placeId);
         } else {
-            updateDestinationLocation(lat, lng, address, placeId);
+            updateDestRef.current(lat, lng, address, placeId);
         }
-    }, [updatePickupLocation, updateDestinationLocation]);
+    }, []);
 
     // Update pickup location
     const updatePickupLocation = useCallback((lat: number, lng: number, address: string, placeId: string | null) => {
