@@ -576,26 +576,36 @@ class DriverController extends Controller
         $lng = $request->lng;
         $radiusKm = $request->radius_km ?? 50;
 
-        $drivers = DriverProfile::whereIn('driver_status', ['online', 'on_ride'])
-            ->where('verification_status', 'approved')
-            ->whereNotNull('current_latitude')
-            ->whereNotNull('current_longitude')
+        $drivers = DriverProfile::where('verification_status', '!=', 'rejected')
             ->whereHas('user')
-            ->selectRaw("
-                *,
-                (6371 * acos(cos(radians(?)) * cos(radians(current_latitude)) * cos(radians(current_longitude) - radians(?)) + sin(radians(?)) * sin(radians(current_latitude)))) AS distance
-            ", [$lat, $lng, $lat])
-            ->orderByRaw("CASE WHEN driver_status = 'online' THEN 0 ELSE 1 END")
-            ->orderBy('distance')
             ->with('user')
             ->with('vehicle')
-            ->get();
+            ->get()
+            ->each(function ($driver) use ($lat, $lng) {
+                $driver->distance = $driver->current_latitude && $driver->current_longitude
+                    ? $this->haversineDistance($lat, $lng, $driver->current_latitude, $driver->current_longitude)
+                    : 999;
+            })
+            ->sortBy('distance')
+            ->values();
 
         return response()->json([
             'success' => true,
             'message' => 'Nearby drivers retrieved successfully',
             'data' => $drivers
         ]);
+    }
+
+    private function haversineDistance($lat1, $lng1, $lat2, $lng2)
+    {
+        $earthRadius = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLng / 2) * sin($dLng / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return round($earthRadius * $c, 1);
     }
 
     public function updateVehicle(Request $request)
