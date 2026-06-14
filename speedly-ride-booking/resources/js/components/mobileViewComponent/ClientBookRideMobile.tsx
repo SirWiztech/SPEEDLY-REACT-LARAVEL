@@ -75,15 +75,6 @@ const ClientBookRideMobile: React.FC = () => {
     const [currentLng, setCurrentLng] = useState<string>('--');
     const [mapInitError, setMapInitError] = useState<boolean>(false);
     const [retryCount, setRetryCount] = useState<number>(0);
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
-    const searchTimeoutRef = useRef<number | null>(null);
-    const modeRef = useRef<'pickup' | 'destination'>('pickup');
-    const updatePickupRef = useRef<(lat: number, lng: number, address: string, placeId: string | null) => void>(() => {});
-    const updateDestRef = useRef<(lat: number, lng: number, address: string, placeId: string | null) => void>(() => {});
-
-    // Keep modeRef in sync with mode state
-    useEffect(() => { modeRef.current = mode; }, [mode]);
 
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -91,6 +82,7 @@ const ClientBookRideMobile: React.FC = () => {
     const destMarkerRef = useRef<google.maps.Marker | null>(null);
     const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
     const searchBoxRef = useRef<HTMLInputElement>(null);
+    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
     const watchIdRef = useRef<number | null>(null);
     const mapInitRef = useRef(false);
     const actionsRef = useRef<any>({});
@@ -132,10 +124,6 @@ const ClientBookRideMobile: React.FC = () => {
             setLoading(false);
         }
     }, []);
-    
-    // Wire refs after callbacks are defined (avoids circular hoisting)
-    updatePickupRef.current = updatePickupLocation;
-    updateDestRef.current = updateDestinationLocation;
 
     // Fetch saved locations
     const fetchSavedLocations = useCallback(async () => {
@@ -182,16 +170,15 @@ const ClientBookRideMobile: React.FC = () => {
         return { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, placeId: '' };
     };
 
-    // Handle map click — uses refs to avoid stale closure / hoisting issues
+    // Handle map click
     const handleMapClick = useCallback(async (lat: number, lng: number) => {
         const { address, placeId } = await reverseGeocode(lat, lng);
-        const currentMode = modeRef.current;
-        if (currentMode === 'pickup') {
-            updatePickupRef.current(lat, lng, address, placeId);
+        if (mode === 'pickup') {
+            updatePickupLocation(lat, lng, address, placeId);
         } else {
-            updateDestRef.current(lat, lng, address, placeId);
+            updateDestinationLocation(lat, lng, address, placeId);
         }
-    }, []);
+    }, [mode]);
 
     // Update pickup location
     const updatePickupLocation = useCallback((lat: number, lng: number, address: string, placeId: string | null) => {
@@ -425,22 +412,6 @@ const ClientBookRideMobile: React.FC = () => {
         }
     }, [booking.pickup.address, booking.destination.address]);
 
-    // Select a suggestion from local search
-    const selectSuggestion = useCallback((s: any) => {
-        if (s.lat && s.lng && mapInstanceRef.current) {
-            mapInstanceRef.current.setCenter({ lat: s.lat, lng: s.lng });
-            mapInstanceRef.current.setZoom(16);
-            const address = s.full_address || s.label || s.name;
-            if (mode === 'pickup') {
-                updatePickupLocation(s.lat, s.lng, address, String(s.id));
-            } else {
-                updateDestinationLocation(s.lat, s.lng, address, String(s.id));
-            }
-        }
-        setShowSuggestions(false);
-        if (searchBoxRef.current) searchBoxRef.current.value = s.label || s.name || '';
-    }, [mode, updatePickupLocation, updateDestinationLocation]);
-
     // Start watching position
     const startWatchingPosition = useCallback(() => {
         if (!navigator.geolocation) return;
@@ -520,10 +491,10 @@ const ClientBookRideMobile: React.FC = () => {
                 zoomControl: true
             });
 
-            // Add click listener
+            // Add click listener (uses actionsRef to always get latest mode/handler)
             mapInstanceRef.current.addListener('click', (e: google.maps.MapMouseEvent) => {
-                if (e.latLng) {
-                    handleMapClick(e.latLng.lat(), e.latLng.lng());
+                if (e.latLng && actionsRef.current.handleMapClick) {
+                    actionsRef.current.handleMapClick(e.latLng.lat(), e.latLng.lng());
                 }
             });
 
@@ -536,28 +507,32 @@ const ClientBookRideMobile: React.FC = () => {
                 }
             });
 
-            // Setup local search — calls our backend /location/suggestions (places table)
+            // Setup search box
             if (searchBoxRef.current) {
-                const input = searchBoxRef.current;
-                input.setAttribute('autocomplete', 'off');
-                input.addEventListener('input', () => {
-                    const query = input.value.trim();
-                    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-                    if (query.length < 2) { setShowSuggestions(false); return; }
-                    searchTimeoutRef.current = window.setTimeout(async () => {
-                        try {
-                            const data = await api.location.suggestions(query);
-                            if (data.success && data.data?.suggestions?.length) {
-                                setSuggestions(data.data.suggestions);
-                                setShowSuggestions(true);
-                            } else {
-                                setShowSuggestions(false);
-                            }
-                        } catch { setShowSuggestions(false); }
-                    }, 300);
+                autocompleteRef.current = new google.maps.places.Autocomplete(searchBoxRef.current, {
+                    componentRestrictions: { country: 'ng' },
+                    fields: ['place_id', 'geometry', 'formatted_address', 'name']
                 });
-                input.addEventListener('blur', () => {
-                    setTimeout(() => setShowSuggestions(false), 200);
+                
+                autocompleteRef.current.addListener('place_changed', () => {
+                    const place = autocompleteRef.current?.getPlace();
+                    if (place?.geometry?.location) {
+                        const lat = place.geometry.location.lat();
+                        const lng = place.geometry.location.lng();
+                        const address = place.formatted_address || '';
+                        
+                        mapInstanceRef.current?.setCenter({ lat, lng });
+                        mapInstanceRef.current?.setZoom(16);
+                        
+                        const currentMode = actionsRef.current.mode || 'pickup';
+                        if (currentMode === 'pickup') {
+                            actionsRef.current.updatePickupLocation(lat, lng, address, place.place_id);
+                        } else {
+                            actionsRef.current.updateDestinationLocation(lat, lng, address, place.place_id);
+                        }
+                        
+                        if (searchBoxRef.current) searchBoxRef.current.value = '';
+                    }
                 });
             }
 
@@ -669,6 +644,9 @@ const ClientBookRideMobile: React.FC = () => {
             return () => clearTimeout(timer);
         }
     }, [loading, mapLoaded, mapInitError, initMap]);
+
+    // Keep actionsRef synced with latest handlers so map listeners always get current state
+    useEffect(() => { actionsRef.current = { mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition }; });
 
     // Use saved location
     const useSavedLocation = useCallback((location: SavedLocation) => {
@@ -1100,23 +1078,6 @@ const ClientBookRideMobile: React.FC = () => {
                                 <div className="mobile-search-box">
                                     <i className="fas fa-search"></i>
                                     <input type="text" ref={searchBoxRef} placeholder="Search for a location..." />
-                                    {showSuggestions && suggestions.length > 0 && (
-                                        <div className="mobile-suggestions-dropdown">
-                                            {suggestions.map((s: any, idx: number) => (
-                                                <div
-                                                    key={s.id || idx}
-                                                    className="mobile-suggestion-item"
-                                                    onMouseDown={() => selectSuggestion(s)}
-                                                >
-                                                    <i className="fas fa-map-marker-alt"></i>
-                                                    <div>
-                                                        <span className="mobile-suggestion-name">{s.name}</span>
-                                                        <span className="mobile-suggestion-detail">{s.full_address || (s.state ? s.state + ', Nigeria' : '')}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
@@ -1125,31 +1086,30 @@ const ClientBookRideMobile: React.FC = () => {
                                 <i className="fas fa-crosshairs"></i>
                             </button>
 
-                            {/* Location Cards Stack */}
-                            {(showPickupCard || showDestCard) && (
-                                <div className="mobile-location-cards-stack">
-                                    {showPickupCard && (
-                                        <div className="mobile-location-card pickup-card">
-                                            <div className="mobile-location-card-label">
-                                                <i className="fas fa-circle" style={{color: '#4CAF50'}}></i> FROM
-                                            </div>
-                                            <div className="mobile-location-card-address">{booking.pickup.address}</div>
-                                            <div className="mobile-location-card-actions">
-                                                <button className="clear-btn" onClick={() => clearLocation('pickup')}>Clear</button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {showDestCard && (
-                                        <div className="mobile-location-card dest-card">
-                                            <div className="mobile-location-card-label">
-                                                <i className="fas fa-map-marker-alt" style={{color: '#F44336'}}></i> TO
-                                            </div>
-                                            <div className="mobile-location-card-address">{booking.destination.address}</div>
-                                            <div className="mobile-location-card-actions">
-                                                <button className="clear-btn" onClick={() => clearLocation('destination')}>Clear</button>
-                                            </div>
-                                        </div>
-                                    )}
+                            {/* Location Cards */}
+                            {showPickupCard && (
+                                <div className="mobile-location-card pickup-card">
+                                    <div className="mobile-location-card-label">
+                                        <i className="fas fa-circle"></i> PICKUP LOCATION
+                                    </div>
+                                    <div className="mobile-location-card-address">{booking.pickup.address}</div>
+                                    <div className="mobile-location-card-actions">
+                                        <button className="clear-btn" onClick={() => clearLocation('pickup')}>Clear</button>
+                                        <button className="confirm-btn" onClick={() => confirmLocation('pickup')}>Confirm</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {showDestCard && (
+                                <div className="mobile-location-card dest-card">
+                                    <div className="mobile-location-card-label">
+                                        <i className="fas fa-map-marker-alt"></i> DESTINATION
+                                    </div>
+                                    <div className="mobile-location-card-address">{booking.destination.address}</div>
+                                    <div className="mobile-location-card-actions">
+                                        <button className="clear-btn" onClick={() => clearLocation('destination')}>Clear</button>
+                                        <button className="confirm-btn" onClick={() => confirmLocation('destination')}>Confirm</button>
+                                    </div>
                                 </div>
                             )}
                         </div>

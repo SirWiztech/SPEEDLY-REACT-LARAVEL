@@ -112,8 +112,12 @@ const ClientWallet: React.FC = () => {
     };
 
     const processPayment = async (amount: number) => {
-        const name = userData?.fullname || userData?.full_name || '';
-        const email = userData?.email || '';
+        let name = userData?.fullname || userData?.full_name || '';
+        let email = userData?.email || '';
+
+        if (!email) {
+            try { const me = await api.auth.me(); if (me.success && me.data) { email = me.data.email || ''; name = me.data.full_name || me.data.fullname || ''; } } catch {}
+        }
 
         if (!email) {
             Swal.fire({ icon: 'error', title: 'Account Error', text: 'User profile not loaded. Please refresh.', confirmButtonColor: '#ff5e00' });
