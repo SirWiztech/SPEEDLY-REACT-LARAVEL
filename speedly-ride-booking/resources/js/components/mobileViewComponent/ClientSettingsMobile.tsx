@@ -805,10 +805,10 @@ const ClientSettingsMobile: React.FC = () => {
                             </button>
                         </div>
                     </div>
-
-                    {/* Bottom Navigation */}
-                    <ClientNavMobile />
                 </div>
+
+                {/* Bottom Navigation — outside scrollable view so fixed-position works */}
+                <ClientNavMobile />
             </div>
         </>
     );
