@@ -683,11 +683,13 @@ const ClientBookRideMobile: React.FC = () => {
             icon: 'info',
             title: 'Private Ride',
             text: 'This driver will be privately notified of your ride.',
-            timer: 3000,
+            timer: 2000,
             showConfirmButton: false,
             position: 'top',
             toast: true
         });
+        // Auto-advance to payment step
+        setTimeout(() => { setStep(4); }, 500);
     }, []);
 
     // Skip driver selection
@@ -699,11 +701,13 @@ const ClientBookRideMobile: React.FC = () => {
             icon: 'info',
             title: 'Public Ride',
             text: 'Your ride will be visible to all nearby drivers.',
-            timer: 3000,
+            timer: 2000,
             showConfirmButton: false,
             position: 'top',
             toast: true
         });
+        // Auto-advance to payment step
+        setTimeout(() => { setStep(4); }, 500);
     }, []);
 
     // Select payment
@@ -787,9 +791,10 @@ const ClientBookRideMobile: React.FC = () => {
                     icon: 'success',
                     title: 'Ride Booked!',
                     html: `<div><p><strong>Ride #${rideData?.ride_number || ''}</strong></p><p>${message}</p><p>Wallet Balance: ₦${walletBalance.toLocaleString()}</p></div>`,
-                    confirmButtonColor: '#ff5e00'
+                    confirmButtonColor: '#ff5e00',
+                    confirmButtonText: 'View Receipt'
                 }).then(() => {
-                    router.visit('/clientridehistory');
+                    router.visit(`/generatereceipt?rideId=${rideData?.id || ''}`);
                 });
             } else if (data.insufficient_balance) {
                 Swal.fire({
@@ -1290,6 +1295,8 @@ const ClientBookRideMobile: React.FC = () => {
                         <span>{getButtonText()}</span>
                     </button>
                 </div>
+
+                <br /><br />
 
                 {/* Bottom Navigation */}
                 <ClientNavMobile />
