@@ -220,14 +220,6 @@ const ClientBookRideMobile: React.FC = () => {
         // Auto-switch to destination mode after pickup is set
         if (lat !== 0 && lng !== 0 && !booking.destination.lat) {
             setMode('destination');
-            Swal.fire({
-                icon: 'success',
-                title: 'Pickup Set!',
-                text: 'Now tap on the map to set your destination',
-                timer: 1500,
-                showConfirmButton: false,
-                position: 'top'
-            });
         }
     }, [booking.destination.lat]);
 
@@ -349,16 +341,6 @@ const ClientBookRideMobile: React.FC = () => {
         if (booking.pickup.lat && booking.pickup.lng && booking.destination.lat && booking.destination.lng) {
             drawRoute();
             calculateFare();
-            
-            // Show success message for destination
-            Swal.fire({
-                icon: 'success',
-                title: 'Destination Set!',
-                text: 'Locations confirmed. Continue to select your ride plan.',
-                timer: 1500,
-                showConfirmButton: false,
-                position: 'top'
-            });
         }
     }, [booking.pickup.lat, booking.pickup.lng, booking.destination.lat, booking.destination.lng, drawRoute, calculateFare]);
 
@@ -688,6 +670,8 @@ const ClientBookRideMobile: React.FC = () => {
     const selectPlan = useCallback((plan: string) => {
         setSelectedPlan(plan);
         setBooking(prev => ({ ...prev, plan }));
+        // Auto-advance to driver step after picking plan (like desktop)
+        setTimeout(() => { setStep(3); }, 400);
     }, []);
 
     // Select driver

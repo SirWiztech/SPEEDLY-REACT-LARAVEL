@@ -1036,9 +1036,10 @@ html, body {
     background: white;
     border-top: 1px solid #f0f0f0;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-    z-index: 90;
+    z-index: 102;
     width: 100%;
     margin: 0;
+    padding: 16px 20px 80px 20px;
 }
 
 .mobile-back-btn {
