@@ -461,6 +461,128 @@ html, body {
     gap: 6px;
 }
 
+/* New panel-style location cards (below map) */
+.mobile-selected-locations {
+    padding: 12px 15px;
+    background: #fff;
+}
+
+.mobile-selected-locations .mobile-section-subtitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mobile-location-cards-list {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 12px;
+}
+
+.mobile-location-panel-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    transition: border-color 0.2s;
+}
+
+.mobile-location-panel-card.filled {
+    border-color: #ff5e00;
+    background: #fff;
+}
+
+.mobile-location-panel-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 60px;
+    flex-shrink: 0;
+}
+
+.mobile-location-panel-address {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mobile-location-panel-clear {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.mobile-location-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2px 0;
+    margin-left: 24px;
+}
+
+.connector-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.connector-dot.start { background: #4CAF50; }
+.connector-dot.end { background: #F44336; }
+
+.connector-line {
+    width: 2px;
+    height: 18px;
+    background: #ddd;
+}
+
+.mobile-continue-btn.primary {
+    width: 100%;
+    padding: 14px;
+    background: #ff5e00;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.mobile-continue-btn.primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.mobile-continue-btn.primary:not(:disabled):active {
+    background: #e05500;
+}
+
 /* Responsive — tighter on smallest screens */
 @media (max-width: 380px) {
     .mobile-location-card {

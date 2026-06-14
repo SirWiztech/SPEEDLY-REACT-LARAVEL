@@ -1049,23 +1049,15 @@ const ClientBookRideMobile: React.FC = () => {
                 {/* Step 1: Location Selection */}
                 {step === 1 && (
                     <div className="mobile-booking-step-content">
-                        <h2 className="mobile-section-title">
-                            <i className="fas fa-map-marker-alt"></i> Tap on Map to Select Locations
-                        </h2>
-                        <p className="mobile-section-subtitle">
-                            <span className="pickup-mode-text">● Pickup mode</span> / 
-                            <span className="dest-mode-text"> ● Destination mode</span>
-                        </p>
-
-                        {/* Map Container - Ensure it has dimensions */}
+                        {/* Map Container */}
                         <div className="mobile-map-picker-container">
                             <div 
                                 ref={mapRef} 
                                 className="mobile-map" 
-                                style={{ minHeight: '300px', height: '400px', width: '100%' }}
+                                style={{ minHeight: '350px', height: '50vh', width: '100%' }}
                             ></div>
 
-                            {/* Map Controls */}
+                            {/* Map Controls Overlay */}
                             <div className="mobile-map-overlay">
                                 <div className="mobile-mode-selector">
                                     <button className={`mobile-mode-btn pickup ${mode === 'pickup' ? 'active' : ''}`} onClick={() => setMode('pickup')}>
@@ -1081,37 +1073,56 @@ const ClientBookRideMobile: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Center Button */}
                             <button className="mobile-center-location-btn" onClick={centerOnUser}>
                                 <i className="fas fa-crosshairs"></i>
                             </button>
+                        </div>
 
-                            {/* Location Cards */}
-                            {showPickupCard && (
-                                <div className="mobile-location-card pickup-card">
-                                    <div className="mobile-location-card-label">
-                                        <i className="fas fa-circle"></i> PICKUP LOCATION
+                        {/* Selected Locations Panel (below map, desktop-style cards) */}
+                        <div className="mobile-selected-locations">
+                            <h3 className="mobile-section-subtitle">
+                                <i className="fas fa-map-marker-alt"></i> Selected Locations
+                            </h3>
+                            <div className="mobile-location-cards-list">
+                                <div className={`mobile-location-panel-card pickup ${booking.pickup.lat ? 'filled' : ''}`}>
+                                    <div className="mobile-location-panel-label">
+                                        <i className="fas fa-circle" style={{ color: '#4CAF50' }}></i> PICKUP
                                     </div>
-                                    <div className="mobile-location-card-address">{booking.pickup.address}</div>
-                                    <div className="mobile-location-card-actions">
-                                        <button className="clear-btn" onClick={() => clearLocation('pickup')}>Clear</button>
-                                        <button className="confirm-btn" onClick={() => confirmLocation('pickup')}>Confirm</button>
+                                    <div className="mobile-location-panel-address">
+                                        {booking.pickup.address || 'Tap the map or search to set pickup'}
                                     </div>
+                                    {booking.pickup.lat && (
+                                        <button className="mobile-location-panel-clear" onClick={() => clearLocation('pickup')}>
+                                            <i className="fas fa-times"></i>
+                                        </button>
+                                    )}
                                 </div>
-                            )}
-
-                            {showDestCard && (
-                                <div className="mobile-location-card dest-card">
-                                    <div className="mobile-location-card-label">
-                                        <i className="fas fa-map-marker-alt"></i> DESTINATION
-                                    </div>
-                                    <div className="mobile-location-card-address">{booking.destination.address}</div>
-                                    <div className="mobile-location-card-actions">
-                                        <button className="clear-btn" onClick={() => clearLocation('destination')}>Clear</button>
-                                        <button className="confirm-btn" onClick={() => confirmLocation('destination')}>Confirm</button>
-                                    </div>
+                                <div className="mobile-location-connector">
+                                    <div className="connector-dot start"></div>
+                                    <div className="connector-line"></div>
+                                    <div className="connector-dot end"></div>
                                 </div>
-                            )}
+                                <div className={`mobile-location-panel-card destination ${booking.destination.lat ? 'filled' : ''}`}>
+                                    <div className="mobile-location-panel-label">
+                                        <i className="fas fa-map-marker-alt" style={{ color: '#F44336' }}></i> DESTINATION
+                                    </div>
+                                    <div className="mobile-location-panel-address">
+                                        {booking.destination.address || 'Tap the map or search to set destination'}
+                                    </div>
+                                    {booking.destination.lat && (
+                                        <button className="mobile-location-panel-clear" onClick={() => clearLocation('destination')}>
+                                            <i className="fas fa-times"></i>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <button 
+                                className="mobile-continue-btn primary" 
+                                onClick={nextStep}
+                                disabled={!(booking.pickup.lat && booking.destination.lat)}
+                            >
+                                <i className="fas fa-arrow-right"></i> CONTINUE
+                            </button>
                         </div>
 
                         {/* Saved Locations */}
@@ -1123,7 +1134,6 @@ const ClientBookRideMobile: React.FC = () => {
                                         <div key={idx} className="mobile-saved-location-chip" onClick={() => useSavedLocation(loc)}>
                                             <i className="fas fa-map-pin"></i>
                                             <div className="name">{loc.address.substring(0, 20)}</div>
-                                            <div className="address">{loc.address.substring(0, 20)}...</div>
                                         </div>
                                     ))}
                                 </div>
