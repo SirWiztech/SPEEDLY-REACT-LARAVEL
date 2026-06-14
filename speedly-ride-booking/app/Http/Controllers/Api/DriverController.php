@@ -576,7 +576,7 @@ class DriverController extends Controller
         $lng = $request->lng;
         $radiusKm = $request->radius_km ?? 50;
 
-        $drivers = DriverProfile::where('verification_status', '!=', 'rejected')
+        $drivers = DriverProfile::whereIn('driver_status', ['online', 'on_ride'])
             ->whereHas('user')
             ->with('user')
             ->with('vehicle')
