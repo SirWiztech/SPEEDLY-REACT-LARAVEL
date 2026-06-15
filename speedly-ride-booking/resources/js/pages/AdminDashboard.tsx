@@ -352,6 +352,17 @@ const AdminDashboard: React.FC = () => {
         }
     }, []);
 
+    const fetchFullUsers = useCallback(async () => {
+        try {
+            const data = await api.admin.users();
+            if (data.success) {
+                setUsers(data.data?.data || data.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching full users:', error);
+        }
+    }, []);
+
     const fetchFullRides = useCallback(async (params?: { status?: string; page?: number }) => {
         try {
             const data = await api.admin.rides({ ...params, page: params?.page || 1, per_page: 15 });
