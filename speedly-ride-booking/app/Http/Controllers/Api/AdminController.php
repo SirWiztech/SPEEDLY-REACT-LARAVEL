@@ -630,6 +630,40 @@ class AdminController extends Controller
         ]);
     }
 
+    public function users(Request $request)
+    {
+        $query = User::where('role', 'client');
+
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'LIKE', '%' . $search . '%')
+                  ->orWhere('email', 'LIKE', '%' . $search . '%');
+            });
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        $users->getCollection()->transform(function ($u) {
+            return [
+                'id' => $u->id,
+                'full_name' => $u->full_name ?? $u->name,
+                'email' => $u->email,
+                'phone_number' => $u->phone_number ?? '',
+                'role' => $u->role,
+                'is_verified' => (bool) $u->is_verified,
+                'is_active' => (bool) $u->is_active,
+                'created_at' => $u->created_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Users retrieved successfully',
+            'data' => $users,
+        ]);
+    }
+
     public function drivers(Request $request)
     {
         $query = User::where('role', 'driver')->with(['driverProfile.vehicle']);

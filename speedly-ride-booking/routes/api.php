@@ -159,6 +159,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/settings', [AdminController::class, 'saveSettings']);
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::get('/users/{id}', [AdminController::class, 'getUser']);
+        Route::get('/users', [AdminController::class, 'users']);
         Route::post('/users/{id}/toggle-active', [AdminController::class, 'toggleUserActive']);
         Route::get('/drivers', [AdminController::class, 'drivers']);
         Route::get('/rides', [AdminController::class, 'rides']);

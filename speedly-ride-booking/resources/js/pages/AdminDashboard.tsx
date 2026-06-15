@@ -477,6 +477,12 @@ const AdminDashboard: React.FC = () => {
     }, [activePage, loading]);
 
     useEffect(() => {
+        if (activePage === 'users' && !loading) {
+            fetchFullUsers();
+        }
+    }, [activePage, loading]);
+
+    useEffect(() => {
         if (activePage === 'rides' && !loading) {
             fetchFullRides();
         }

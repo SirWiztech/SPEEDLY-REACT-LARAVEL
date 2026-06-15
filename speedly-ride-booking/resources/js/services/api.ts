@@ -235,6 +235,12 @@ export const api = {
     saveSettings: (data: Record<string, string | number>) =>
       apiFetch('/admin/settings', { method: 'POST', body: JSON.stringify(data) }),
     getUser: (id: string) => apiFetch(`/admin/users/${id}`),
+    users: (params?: { search?: string; page?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.search) qs.set('search', params.search);
+      if (params?.page) qs.set('page', String(params.page));
+      return apiFetch(`/admin/users?${qs}`);
+    },
     toggleUserActive: (id: string) =>
       apiFetch(`/admin/users/${id}/toggle-active`, { method: 'POST' }),
     rides: (params?: { status?: string; search?: string; page?: number; per_page?: number }) => {
