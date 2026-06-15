@@ -593,6 +593,17 @@ const DriverSettingsMobile: React.FC = () => {
                                 <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
 
+                            <div className="settings-item" onClick={() => router.visit('/driverkyc')} style={{ borderLeft: '3px solid #ff5e00' }}>
+                                <div className="item-info">
+                                    <div className="item-icon" style={{ background: '#fff5f0', color: '#ff5e00' }}><i className="fas fa-shield-alt"></i></div>
+                                    <div className="item-details">
+                                        <h3>KYC Verification</h3>
+                                        <p>{verificationStatus === 'approved' ? '✓ Verified' : verificationStatus === 'rejected' ? '✗ Rejected' : 'Upload documents to get verified'}</p>
+                                    </div>
+                                </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
                             <div className="settings-item" onClick={saveLicense}>
                                 <div className="item-info">
                                     <div className="item-icon"><i className="fas fa-id-card"></i></div>
