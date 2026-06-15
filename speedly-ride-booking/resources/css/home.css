@@ -2315,15 +2315,6 @@ html { scroll-behavior: smooth; }
     .auth-btn-text-short {
         display: inline !important;
     }
-    }
-    
-    .auth-btn-text-full {
-        display: none !important;
-    }
-    
-    .auth-btn-text-short {
-        display: inline !important;
-    }
 }
 
 /* Mobile Menu Fix - No Overflow */
