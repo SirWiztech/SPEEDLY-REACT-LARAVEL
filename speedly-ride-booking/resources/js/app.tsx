@@ -6,6 +6,10 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import React from 'react';
 import CookieConsent from '@/components/CookieConsent';
 import GlobalChatBubble from '@/components/GlobalChatBubble';
+import { registerPWA } from '@/pwa';
+
+// Register PWA service worker on first load
+registerPWA();
 
 createInertiaApp({
     title: (title) =>
