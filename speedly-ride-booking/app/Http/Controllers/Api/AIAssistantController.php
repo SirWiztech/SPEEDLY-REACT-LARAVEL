@@ -17,14 +17,14 @@ class AIAssistantController extends Controller
 
         $apiKey = config('services.gemini.key');
         if (empty($apiKey)) {
+            \Illuminate\Support\Facades\Log::error('[Speedly AI] GEMINI_API_KEY is not set in config/services.php or .env');
             return response()->json([
-                'text' => 'AI service not configured. Please set GEMINI_API_KEY in .env.',
-            ]);
+                'text' => 'AI not configured. Please add GEMINI_API_KEY to the server environment.',
+            ], 503);
         }
 
         $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}";
 
-        // Convert conversation history to Gemini format (model, not assistant)
         $contents = collect($request->messages)->map(function ($msg) {
             return [
                 'role'  => $msg['role'] === 'assistant' ? 'model' : 'user',
@@ -32,24 +32,45 @@ class AIAssistantController extends Controller
             ];
         })->values()->toArray();
 
-        $response = Http::timeout(30)->post($url, [
-            'systemInstruction' => [
-                'parts' => [['text' => $this->getSystemPrompt()]],
-            ],
-            'contents'          => $contents,
-            'generationConfig'  => [
-                'maxOutputTokens' => 1024,
-                'temperature'     => 0.7,
-            ],
-        ]);
+        try {
+            $response = Http::timeout(30)->withOptions(['verify' => false])->post($url, [
+                'systemInstruction' => [
+                    'parts' => [['text' => $this->getSystemPrompt()]],
+                ],
+                'contents'          => $contents,
+                'generationConfig'  => [
+                    'maxOutputTokens' => 1024,
+                    'temperature'     => 0.7,
+                ],
+            ]);
 
-        $data = $response->json();
+            if (!$response->successful()) {
+                \Illuminate\Support\Facades\Log::error('[Speedly AI] Gemini API returned status ' . $response->status(), [
+                    'body' => $response->body(),
+                ]);
+                return response()->json([
+                    'text' => 'AI error (HTTP ' . $response->status() . '): ' . substr($response->body(), 0, 300),
+                ], 502);
+            }
 
-        $aiText = $data['candidates'][0]['content']['parts'][0]['text']
-                  ?? "Sorry, I couldn't process that. Please try again.";
+            $data = $response->json();
 
-        return response()->json(['text' => $aiText]);
-    }
+            $aiText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+            if (!$aiText) {
+                \Illuminate\Support\Facades\Log::error('[Speedly AI] Unexpected Gemini response structure', ['data' => $data]);
+                return response()->json([
+                    'text' => 'AI returned unexpected format. Raw: ' . json_encode($data),
+                ], 502);
+            }
+
+            return response()->json(['text' => $aiText]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[Speedly AI] Exception: ' . $e->getMessage());
+            return response()->json([
+                'text' => 'AI connection error: ' . $e->getMessage(),
+            ], 502);
+        }
 
     private function getSystemPrompt(): string
     {

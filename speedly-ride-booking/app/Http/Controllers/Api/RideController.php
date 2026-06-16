@@ -246,9 +246,14 @@ class RideController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('[Ride Book] Exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user'  => $user->id,
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to book ride. Please try again.',
+                'message' => 'Booking error: ' . $e->getMessage(),
             ], 500);
         }
     }
