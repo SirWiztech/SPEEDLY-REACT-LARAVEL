@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import { api } from '../services/api';
+import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
@@ -136,6 +136,33 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
             'Thank you for riding with Speedly!'
         ].join('\n');
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    const releaseFunds = async () => {
+        if (!ride) return;
+        const result = await Swal.fire({
+            title: 'Release Funds?',
+            html: `<p>This will release ₦${formatCurrency(ride.total_fare)} to the driver.</p><p style="font-size:13px;color:#888">This action cannot be undone.</p>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Yes, Release',
+            cancelButtonText: 'Cancel'
+        });
+        if (!result.isConfirmed) return;
+        Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const response = await api.rides.releaseFunds(ride.id);
+            Swal.close();
+            if (response.success) {
+                Swal.fire({ icon: 'success', title: 'Funds Released!', text: `₦${formatCurrency(ride.total_fare)} has been released to ${ride.driver_name || 'the driver'}.`, confirmButtonColor: '#ff5e00' }).then(() => window.location.reload());
+            } else {
+                Swal.fire({ icon: 'error', title: 'Failed', text: response.message || 'Could not release funds.', confirmButtonColor: '#ff5e00' });
+            }
+        } catch (err: any) {
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed to release funds.', confirmButtonColor: '#ff5e00' });
+        }
     };
 
     const formatCurrency = (amount: number) =>
@@ -392,6 +419,9 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                 display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20,
                 flexWrap: 'wrap', padding: '0 12px'
             }}>
+                {ride.status === 'awaiting_release' && ride.release_token && (
+                    <button className="action-btn release" onClick={releaseFunds} style={{ background: '#4CAF50', color: 'white', fontWeight: 700 }}>🔓 Release Funds</button>
+                )}
                 <button className="action-btn download" onClick={downloadImage}>📥 Download</button>
                 <button className="action-btn print" onClick={() => window.print()}>🖨 Print</button>
                 <button className="action-btn share" onClick={shareWhatsApp}>💬 Share</button>
