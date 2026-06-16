@@ -46,6 +46,8 @@ const ClientAIAssistantMobile: React.FC = () => {
     const [isTyping, setIsTyping] = useState<boolean>(false);
     const [showTopics, setShowTopics] = useState<boolean>(true);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+    const [isBooking, setIsBooking] = useState(false);
 
     const chatBodyRef = useRef<HTMLDivElement>(null);
 
@@ -200,52 +202,63 @@ const ClientAIAssistantMobile: React.FC = () => {
         }
     };
 
-    // Get AI response
-    const getAIResponse = (question: string): string => {
-        const q = question.toLowerCase();
-        
-        if (q.includes('book') || q.includes('ride')) {
-            return 'To book a ride:\n\n1. Go to your dashboard\n2. Tap "Book Ride"\n3. Set pickup & destination\n4. Choose vehicle type\n5. Confirm & pay';
-        }
-        if (q.includes('wallet') || q.includes('add money') || q.includes('deposit')) {
-            return 'To add funds:\n\n1. Go to Wallet\n2. Tap "Add to Wallet"\n3. Enter amount\n4. Pay via KoraPay\n\nMinimum: ₦100';
-        }
-        if (q.includes('cancel')) {
-            return 'To cancel a ride:\n\n1. Open active ride\n2. Tap "Cancel Ride"\n3. Select reason\n\n⚠️ Free within 2 minutes';
-        }
-        if (q.includes('support') || q.includes('help')) {
-            return 'Need support?\n\n📧 Email: speedlyentreprise01@gmail.com\n📞 Phone: +234 800 000 0000';
-        }
-        return 'I\'m here to help! Try asking about:\n\n• Booking rides\n• Wallet & payments\n• Safety guidelines\n• Troubleshooting';
+    // ========== Voice Output ==========
+    const speak = (text: string) => {
+        if (!('speechSynthesis' in window)) return;
+        const clean = text.replace(/[^\w\s,.'!?\-]/g, '').replace(/\n+/g, '. ').replace(/\s+/g, ' ').trim();
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.lang = 'en-NG'; utterance.rate = 0.92; utterance.pitch = 1.05; utterance.volume = 1;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+        if (preferred) utterance.voice = preferred;
+        window.speechSynthesis.speak(utterance);
     };
 
-    // Send message
-    const sendMessage = () => {
-        if (!inputValue.trim()) return;
+    // ========== Handle BOOK_RIDE command ==========
+    const handleBookingCommand = async (aiText: string) => {
+        try {
+            setIsBooking(true);
+            const jsonMatch = aiText.match(/BOOK_RIDE:(\{.*\})/);
+            if (!jsonMatch) throw new Error('Invalid booking format');
+            const bookingData = JSON.parse(jsonMatch[1]);
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: `Booking your ${bookingData.ride_type} ride...\n\nPickup: ${bookingData.pickup}\nDestination: ${bookingData.destination}`, isUser: false, timestamp: new Date() }]);
+            const result = await api.rides.book({ pickup_location: bookingData.pickup, dropoff_location: bookingData.destination, pickup_lat: 0, pickup_lng: 0, dropoff_lat: 0, dropoff_lng: 0, ride_type: bookingData.ride_type });
+            if (result.success) {
+                const successMsg = `Your ${bookingData.ride_type} ride has been booked!\n\nA driver will be assigned to you shortly.\nYou can track your ride from the dashboard.`;
+                setMessages(prev => [...prev, { id: Date.now().toString(), text: successMsg, isUser: false, timestamp: new Date() }]);
+                speak(successMsg);
+                setConversationHistory([]);
+                setTimeout(() => router.visit('/clientridehistory'), 2500);
+            } else {
+                setMessages(prev => [...prev, { id: Date.now().toString(), text: result.message || 'Booking failed. Please try again.', isUser: false, timestamp: new Date() }]);
+            }
+        } catch (err: any) {
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: err?.response?.data?.message || 'Booking failed. Please try again.', isUser: false, timestamp: new Date() }]);
+        } finally { setIsBooking(false); }
+    };
 
-        const userMessage: Message = {
-            id: Date.now().toString(),
-            text: inputValue,
-            isUser: true,
-            timestamp: new Date()
-        };
-
-        setMessages(prev => [...prev, userMessage]);
+    // ========== Send Message via Gemini API ==========
+    const sendMessage = async () => {
+        if (!inputValue.trim() || isBooking) return;
+        const userText = inputValue.trim();
         setInputValue('');
+        const userMsg: Message = { id: Date.now().toString(), text: userText, isUser: true, timestamp: new Date() };
+        setMessages(prev => [...prev, userMsg]);
         setShowTopics(false);
         setIsTyping(true);
-
-        setTimeout(() => {
-            const response = getAIResponse(inputValue);
-            const aiMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                text: response,
-                isUser: false,
-                timestamp: new Date()
-            };
-            setMessages(prev => [...prev, aiMessage]);
-            setIsTyping(false);
-        }, 1500);
+        const updatedHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
+        try {
+            const response = await api.ai.chat(updatedHistory);
+            const aiText: string = response.data?.text || response.text || "Sorry, I couldn't process that.";
+            if (aiText.includes('BOOK_RIDE:')) { await handleBookingCommand(aiText); }
+            else {
+                setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: aiText, isUser: false, timestamp: new Date() }]);
+                setConversationHistory([...updatedHistory, { role: 'assistant', content: aiText }]);
+                speak(aiText);
+            }
+        } catch { setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error. Please try again.', isUser: false, timestamp: new Date() }]); }
+        finally { setIsTyping(false); }
     };
 
     // Show topic answer
@@ -431,7 +444,7 @@ const ClientAIAssistantMobile: React.FC = () => {
                     </div>
 
                     <div className="mobile-ai-quick-actions">
-                        <button className="mobile-ai-quick-btn" onClick={() => askQuickQuestion('How do I book a ride?')}>
+                        <button className="mobile-ai-quick-btn" onClick={() => { setInputValue('I want to book a ride'); setTimeout(() => sendMessage(), 100); }}>
                             <i className="fas fa-car"></i> Book Ride
                         </button>
                         <button className="mobile-ai-quick-btn" onClick={() => askQuickQuestion('How do I add money?')}>
@@ -446,13 +459,14 @@ const ClientAIAssistantMobile: React.FC = () => {
                         <input
                             type="text"
                             className="mobile-ai-chat-input"
-                            placeholder="Ask me anything..."
+                            placeholder={isBooking ? 'Booking your ride...' : 'Ask me anything...'}
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                            disabled={isBooking}
                         />
-                        <button className="mobile-ai-send-btn" onClick={sendMessage}>
-                            <i className="fas fa-paper-plane"></i>
+                        <button className="mobile-ai-send-btn" onClick={sendMessage} disabled={isBooking}>
+                            <i className={`fas ${isBooking ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
                         </button>
                     </div>
                 </div>

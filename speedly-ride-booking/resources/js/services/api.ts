@@ -320,6 +320,12 @@ payment: {
       return apiFetch('/location/details', { method: 'POST', body: JSON.stringify({ query: params.query }) });
     },
   },
+
+  // AI Chat
+  ai: {
+    chat: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
+      apiFetch('/ai/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+  },
 };
 
 export default api;

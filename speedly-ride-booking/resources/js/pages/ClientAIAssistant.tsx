@@ -50,6 +50,8 @@ const ClientAIAssistant: React.FC = () => {
     const [isTyping, setIsTyping] = useState<boolean>(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedTopicAnswer, setSelectedTopicAnswer] = useState<string | null>(null);
+    const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+    const [isBooking, setIsBooking] = useState(false);
 
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const topicsDataRef = useRef<Record<string, TopicCategory>>({});
@@ -235,58 +237,90 @@ const ClientAIAssistant: React.FC = () => {
         }
     };
 
-    // Get AI response based on question
-    const getAIResponse = (question: string): string => {
-        const q = question.toLowerCase();
-        
-        if (q.includes('book') || q.includes('ride')) {
-            return 'To book a ride:\n\n1. Go to your dashboard\n2. Tap "Book Ride"\n3. Set pickup & destination\n4. Choose vehicle type\n5. Confirm & pay\n\nNeed more help? I can show you detailed guides!';
-        }
-        if (q.includes('wallet') || q.includes('add money') || q.includes('deposit') || q.includes('fund')) {
-            return 'To add funds to your wallet:\n\n1. Go to Wallet\n2. Tap "Add to Wallet"\n3. Enter amount\n4. Pay via KoraPay\n5. Funds credited instantly!\n\nMinimum: ₦100 | Maximum: ₦500,000';
-        }
-        if (q.includes('cancel')) {
-            return 'To cancel a ride:\n\n1. Open active ride\n2. Tap "Cancel Ride"\n3. Select reason\n\n⚠️ Free within 2 minutes. After that, a small fee may apply.';
-        }
-        if (q.includes('support') || q.includes('help') || q.includes('contact')) {
-            return 'Need support? Here are your options:\n\n📱 Go to Support page in your dashboard\n💬 Open a support ticket\n📧 Email: speedlyentreprise01@gmail.com\n📞 Phone: +234 800 000 0000\n\nResponse time: within 24 hours';
-        }
-        if (q.includes('driver') && q.includes('withdraw')) {
-            return 'As a driver, to withdraw earnings:\n\n1. Go to Wallet\n2. Tap "Withdraw"\n3. Enter amount (min ₦1,000)\n4. Select/add bank details\n5. Submit request\n\nProcessed within 24-48 hours!';
-        }
-        if (q.includes('safety') || q.includes('emergency')) {
-            return 'Safety tips:\n\n✅ Verify driver details before ride\n✅ Share your trip with contacts\n✅ Rate drivers honestly\n✅ Report issues via Support\n\nFor emergencies, call 911 first!';
-        }
-        
-        return 'I\'m here to help! Try asking about:\n\n• Booking rides\n• Wallet & payments\n• Driver earnings (for drivers)\n• Safety guidelines\n• Troubleshooting\n\nOr browse the topics on the left!';
+    // ========== Voice Output (Web Speech API, no key needed) ==========
+    const speak = (text: string) => {
+        if (!('speechSynthesis' in window)) return;
+        const clean = text.replace(/[^\w\s,.'!?\-]/g, '').replace(/\n+/g, '. ').replace(/\s+/g, ' ').trim();
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.lang = 'en-NG';
+        utterance.rate = 0.92;
+        utterance.pitch = 1.05;
+        utterance.volume = 1;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+        if (preferred) utterance.voice = preferred;
+        window.speechSynthesis.speak(utterance);
     };
 
-    // Send message
-    const sendMessage = () => {
-        if (!inputValue.trim()) return;
+    // ========== Handle BOOK_RIDE command from Gemini ==========
+    const handleBookingCommand = async (aiText: string) => {
+        try {
+            setIsBooking(true);
+            const jsonMatch = aiText.match(/BOOK_RIDE:(\{.*\})/);
+            if (!jsonMatch) throw new Error('Invalid booking format');
+            const bookingData = JSON.parse(jsonMatch[1]);
 
-        const userMessage: Message = {
-            id: Date.now().toString(),
-            text: inputValue,
-            isUser: true,
-            timestamp: new Date()
-        };
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                text: `Booking your ${bookingData.ride_type} ride...\n\nPickup: ${bookingData.pickup}\nDestination: ${bookingData.destination}`,
+                isUser: false,
+                timestamp: new Date(),
+            }]);
 
-        setMessages(prev => [...prev, userMessage]);
+            const result = await api.rides.book({
+                pickup_location: bookingData.pickup,
+                dropoff_location: bookingData.destination,
+                pickup_lat: 0, pickup_lng: 0, dropoff_lat: 0, dropoff_lng: 0,
+                ride_type: bookingData.ride_type,
+            });
+
+            if (result.success) {
+                const successMsg = `Your ${bookingData.ride_type} ride has been booked!\n\nA driver will be assigned to you shortly.\nYou can track your ride from the dashboard.`;
+                setMessages(prev => [...prev, { id: Date.now().toString(), text: successMsg, isUser: false, timestamp: new Date() }]);
+                speak(successMsg);
+                setConversationHistory([]);
+                setTimeout(() => router.visit('/clientridehistory'), 2500);
+            } else {
+                setMessages(prev => [...prev, { id: Date.now().toString(), text: result.message || 'Booking failed. Please try again.', isUser: false, timestamp: new Date() }]);
+            }
+        } catch (err: any) {
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: err?.response?.data?.message || 'Booking failed. Please try again.', isUser: false, timestamp: new Date() }]);
+        } finally {
+            setIsBooking(false);
+        }
+    };
+
+    // ========== Send Message via Gemini API ==========
+    const sendMessage = async () => {
+        if (!inputValue.trim() || isBooking) return;
+
+        const userText = inputValue.trim();
         setInputValue('');
+
+        const userMsg: Message = { id: Date.now().toString(), text: userText, isUser: true, timestamp: new Date() };
+        setMessages(prev => [...prev, userMsg]);
         setIsTyping(true);
 
-        setTimeout(() => {
-            const response = getAIResponse(inputValue);
-            const aiMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                text: response,
-                isUser: false,
-                timestamp: new Date()
-            };
-            setMessages(prev => [...prev, aiMessage]);
+        const updatedHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
+
+        try {
+            const response = await api.ai.chat(updatedHistory);
+            const aiText: string = response.data?.text || response.text || "Sorry, I couldn't process that. Please try again.";
+
+            if (aiText.includes('BOOK_RIDE:')) {
+                await handleBookingCommand(aiText);
+            } else {
+                const aiMsg: Message = { id: (Date.now() + 1).toString(), text: aiText, isUser: false, timestamp: new Date() };
+                setMessages(prev => [...prev, aiMsg]);
+                setConversationHistory([...updatedHistory, { role: 'assistant', content: aiText }]);
+                speak(aiText);
+            }
+        } catch (err) {
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error. Please check your internet and try again.', isUser: false, timestamp: new Date() }]);
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     // Show topic answer
@@ -493,7 +527,7 @@ const ClientAIAssistant: React.FC = () => {
                         </div>
 
                         <div className="ai-quick-actions">
-                            <button className="ai-quick-btn" onClick={() => askQuickQuestion('How do I book a ride?')}>
+                            <button className="ai-quick-btn" onClick={() => { setInputValue('I want to book a ride'); setTimeout(() => sendMessage(), 100); }}>
                                 <i className="fas fa-car"></i> Book Ride
                             </button>
                             <button className="ai-quick-btn" onClick={() => askQuickQuestion('How do I add money?')}>
@@ -511,13 +545,14 @@ const ClientAIAssistant: React.FC = () => {
                             <input
                                 type="text"
                                 className="ai-chat-input"
-                                placeholder="Type your question here..."
+                                placeholder={isBooking ? 'Booking your ride...' : 'Type your question here...'}
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                                disabled={isBooking}
                             />
-                            <button className="ai-send-btn" onClick={sendMessage}>
-                                <i className="fas fa-paper-plane"></i>
+                            <button className="ai-send-btn" onClick={sendMessage} disabled={isBooking}>
+                                <i className={`fas ${isBooking ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
                             </button>
                         </div>
                     </div>

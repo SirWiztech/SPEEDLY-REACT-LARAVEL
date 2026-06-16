@@ -204,6 +204,13 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::get('/location/suggestions', [LocationController::class, 'getSuggestions']);
     Route::post('/location/details', [LocationController::class, 'getPlaceDetails']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI Assistant Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::post('/ai/chat', [\App\Http\Controllers\Api\AIAssistantController::class, 'chat']);
 });
 
 /*
