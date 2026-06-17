@@ -7,10 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 class WalletTransaction extends Model
 {
     const UPDATED_AT = null;
-    protected $primaryKey = 'id';
-    public $incrementing = false;
-    protected $keyType = 'string';
-
     protected $fillable = [
         'id', 'user_id', 'transaction_type', 'amount',
         'balance_before', 'balance_after', 'reference',

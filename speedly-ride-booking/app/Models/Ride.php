@@ -6,10 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Ride extends Model
 {
-    protected $primaryKey = 'id';
-    public $incrementing = false;
-    protected $keyType = 'string';
-
     protected $fillable = [
         'id', 'ride_number', 'client_id', 'driver_id',
         'pickup_address', 'pickup_latitude', 'pickup_longitude', 'pickup_place_id',
