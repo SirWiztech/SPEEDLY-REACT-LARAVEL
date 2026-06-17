@@ -14,7 +14,9 @@ class AIAssistantController extends Controller
     public function chat(Request $request): JsonResponse
     {
         $request->validate([
-            'messages' => 'required|array',
+            'messages' => 'required|array|min:1',
+            'messages.*.role' => 'required|string|in:user,assistant',
+            'messages.*.content' => 'required|string',
         ]);
 
         $result = $this->ai->chat($request->messages);

@@ -30,12 +30,17 @@ class AIService
 
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
 
-        $contents = collect($messages)->map(fn ($m) => [
-            'role'  => $m['role'] === 'assistant' ? 'model' : 'user',
-            'parts' => [['text' => $m['content']]],
-        ])->values()->toArray();
-
         try {
+            $contents = collect($messages)->map(function ($m) {
+                if (!isset($m['role'], $m['content'])) {
+                    throw new \InvalidArgumentException('Each message must have "role" and "content" keys.');
+                }
+                return [
+                    'role'  => $m['role'] === 'assistant' ? 'model' : 'user',
+                    'parts' => [['text' => $m['content']]],
+                ];
+            })->values()->toArray();
+
             $response = Http::timeout(30)
                 ->withOptions(['verify' => false])
                 ->post($url, [
@@ -57,7 +62,9 @@ class AIService
             }
 
             $data = $response->json();
-            $aiText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            $aiText = isset($data['candidates'][0]['content']['parts'][0]['text'])
+                ? $data['candidates'][0]['content']['parts'][0]['text']
+                : null;
 
             if (!$aiText) {
                 Log::error('[Speedly AI] Unexpected Gemini response structure', ['keys' => array_keys($data)]);
@@ -65,8 +72,11 @@ class AIService
             }
 
             return ['text' => $aiText];
-        } catch (\Exception $e) {
-            Log::error('[Speedly AI] Gemini exception: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('[Speedly AI] Gemini exception: ' . $e->getMessage(), [
+                'class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return ['text' => 'AI connection error: ' . $e->getMessage()];
         }
     }
