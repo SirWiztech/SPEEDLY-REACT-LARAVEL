@@ -252,9 +252,23 @@ const ClientBookRide: React.FC = () => {
             try {
                 const data = await api.rides.book({ pickup_location: booking.pickup.address, dropoff_location: booking.destination.address, pickup_lat: booking.pickup.lat || 0, pickup_lng: booking.pickup.lng || 0, dropoff_lat: booking.destination.lat || 0, dropoff_lng: booking.destination.lng || 0, ride_type: booking.plan, notes: booking.driverId ? `Driver: ${booking.driverId}` : undefined });
                 Swal.close();
-                if (data.success) Swal.fire({ icon: 'success', title: 'Ride Booked!', html: `<p>Ride #${data.data?.ride_number || ''}</p><p>Fare: ₦${booking.fare.toLocaleString()}</p>`, confirmButtonColor: '#ff5e00', confirmButtonText: 'View Receipt' }).then(() => router.visit(`/generatereceipt?rideId=${data.data?.id || ''}`));
-                else Swal.fire({ icon: 'error', title: 'Booking Failed', text: data.message, confirmButtonColor: '#ff5e00' });
-            } catch (e: any) { Swal.close(); Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed', confirmButtonColor: '#ff5e00' }); }
+                if (data.success) {
+                    const rideId = data.data?.id || '';
+                    console.log('[Book Ride] Success — rideId:', rideId, 'response:', data);
+                    if (rideId) {
+                        Swal.fire({ icon: 'success', title: 'Ride Booked!', html: `<p>Ride #${data.data?.ride_number || ''}</p><p>Fare: ₦${booking.fare.toLocaleString()}</p>`, confirmButtonColor: '#ff5e00', confirmButtonText: 'View Receipt' }).then(() => router.visit(`/generatereceipt?rideId=${rideId}`));
+                    } else {
+                        Swal.fire({ icon: 'warning', title: 'Ride Booked', text: 'Ride created but could not load receipt. Check your ride history.', confirmButtonColor: '#ff5e00' }).then(() => router.visit('/clientridehistory'));
+                    }
+                } else {
+                    console.error('[Book Ride] Failed:', data);
+                    Swal.fire({ icon: 'error', title: 'Booking Failed', text: data.message || 'Unknown error', confirmButtonColor: '#ff5e00' });
+                }
+            } catch (e: any) {
+                Swal.close();
+                console.error('[Book Ride] Exception:', e);
+                Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed to book ride', confirmButtonColor: '#ff5e00' });
+            }
         }
     };
     const checkNotifications = async () => { try { const d = await api.notifications.list(); Swal.fire({ icon: 'info', title: 'Notifications', text: `${(d.data?.data || []).length} new`, confirmButtonColor: '#ff5e00' }); } catch { Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new', confirmButtonColor: '#ff5e00' }); } };

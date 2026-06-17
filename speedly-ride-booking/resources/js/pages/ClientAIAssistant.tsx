@@ -316,8 +316,13 @@ const ClientAIAssistant: React.FC = () => {
                 setConversationHistory([...updatedHistory, { role: 'assistant', content: aiText }]);
                 speak(aiText);
             }
-        } catch (err) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error. Please check your internet and try again.', isUser: false, timestamp: new Date() }]);
+        } catch (err: any) {
+            console.error('[Speedly AI] Chat error:', err?.message || err);
+            if (err?.response) {
+                console.error('[Speedly AI] Response status:', err.response.status);
+                console.error('[Speedly AI] Response body:', err.response.data || err.response.body);
+            }
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error: ' + (err?.message || 'Please try again.'), isUser: false, timestamp: new Date() }]);
         } finally {
             setIsTyping(false);
         }

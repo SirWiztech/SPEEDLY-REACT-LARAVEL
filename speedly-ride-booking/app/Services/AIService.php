@@ -12,7 +12,7 @@ class AIService
 
     public function __construct()
     {
-        $this->model  = config('ai.model', 'gemini-1.5-flash');
+        $this->model  = config('ai.model', 'gemini-2.0-flash');
         $this->apiKey = config('services.gemini.key');
     }
 
@@ -56,7 +56,9 @@ class AIService
 
             if (!$response->successful()) {
                 Log::error('[Speedly AI] Gemini HTTP ' . $response->status(), [
-                    'body' => substr($response->body(), 0, 500),
+                    'url' => $url,
+                    'model' => $this->model,
+                    'body' => substr($response->body(), 0, 1000),
                 ]);
                 return ['text' => 'AI error (HTTP ' . $response->status() . '). Check Render logs for details.'];
             }

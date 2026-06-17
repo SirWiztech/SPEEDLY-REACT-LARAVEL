@@ -230,9 +230,24 @@ const ClientRideHistory: React.FC = () => {
                     <p style="margin-bottom: 10px; font-size: 14px; color: #2E7D32;">
                         <i class="fas fa-info-circle"></i> Ride completed. Release payment to the driver.
                     </p>
-                    <button onclick="window.releaseFundsFromModal('${ride.id}')" 
-                        style="padding: 12px 24px; background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">
-                        <i class="fas fa-money-bill-wave"></i> Release Funds (₦${fare})
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="window.releaseFundsFromModal('${ride.id}')" 
+                            style="padding: 12px 24px; background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                            <i class="fas fa-money-bill-wave"></i> Release Funds
+                        </button>
+                        <button onclick="window.viewReceipt('${ride.id}')"
+                            style="padding: 12px 24px; background: linear-gradient(135deg, #ff5e00, #ff8c3a); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                            <i class="fas fa-receipt"></i> View Receipt
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (ride.status === 'completed') {
+            html += `
+                <div style="background: #f0f7ff; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+                    <button onclick="window.viewReceipt('${ride.id}')"
+                        style="padding: 12px 24px; background: linear-gradient(135deg, #ff5e00, #ff8c3a); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                        <i class="fas fa-receipt"></i> View Receipt
                     </button>
                 </div>
             `;
@@ -475,9 +490,14 @@ const ClientRideHistory: React.FC = () => {
             }
         };
 
+        (window as any).viewReceipt = (rideId: string) => {
+            router.visit(`/generatereceipt?rideId=${rideId}`);
+        };
+
         return () => {
             delete (window as any).submitRatingFromModal;
             delete (window as any).releaseFundsFromModal;
+            delete (window as any).viewReceipt;
         };
     }, [selectedRating]);
 

@@ -131,6 +131,8 @@ class RideController extends Controller
 
     public function book(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('[Ride Book] Request received');
+
         $request->validate([
             'pickup_location' => 'required|string',
             'dropoff_location' => 'required|string',
@@ -142,23 +144,33 @@ class RideController extends Controller
         ]);
 
         $user = $request->user();
+        \Illuminate\Support\Facades\Log::info('[Ride Book] User', ['id' => $user->id, 'role' => $user->role]);
+
         $clientProfile = ClientProfile::where('user_id', $user->id)->first();
 
         if (!$clientProfile) {
+            \Illuminate\Support\Facades\Log::error('[Ride Book] Client profile not found for user_id=' . $user->id);
             return response()->json(['success' => false, 'message' => 'Client profile not found'], 404);
         }
+
+        \Illuminate\Support\Facades\Log::info('[Ride Book] Client profile', ['id' => $clientProfile->id]);
 
         $pickupLat = $request->pickup_lat;
         $pickupLng = $request->pickup_lng;
         $dropoffLat = $request->dropoff_lat;
         $dropoffLng = $request->dropoff_lng;
 
-        $distance = DB::selectOne("
-            SELECT (6371 * acos(
-                cos(radians(?)) * cos(radians(?)) * cos(radians(?) - radians(?)) +
-                sin(radians(?)) * sin(radians(?))
-            )) as distance
-        ", [$pickupLat, $dropoffLat, $dropoffLng, $pickupLng, $pickupLat, $dropoffLat])->distance;
+        try {
+            $distance = DB::selectOne("
+                SELECT (6371 * acos(
+                    cos(radians(?)) * cos(radians(?)) * cos(radians(?) - radians(?)) +
+                    sin(radians(?)) * sin(radians(?))
+                )) as distance
+            ", [$pickupLat, $dropoffLat, $dropoffLng, $pickupLng, $pickupLat, $dropoffLat])->distance;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[Ride Book] Distance calc failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed to calculate distance'], 500);
+        }
 
         $rideTypes = [
             'economy' => ['base_fare' => 500, 'per_km' => 150],
@@ -171,7 +183,19 @@ class RideController extends Controller
         $platformCommission = round($totalFare * 0.15, 2);
         $driverPayout = round($totalFare - $platformCommission, 2);
 
-        $balanceBefore = $this->getWalletBalance($user->id);
+        try {
+            $balanceBefore = $this->getWalletBalance($user->id);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[Ride Book] Wallet balance check failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed to check wallet balance'], 500);
+        }
+
+        \Illuminate\Support\Facades\Log::info('[Ride Book] Fare calculation', [
+            'distance' => round($distance, 2),
+            'total_fare' => $totalFare,
+            'balance_before' => $balanceBefore,
+            'user_id' => $user->id,
+        ]);
 
         if ($balanceBefore < $totalFare) {
             return response()->json([
@@ -189,6 +213,8 @@ class RideController extends Controller
         $balanceAfter = round($balanceBefore - $totalFare, 2);
         $reference = 'RIDE-' . strtoupper(Str::random(12));
         $rideId = Str::random(32);
+
+        \Illuminate\Support\Facades\Log::info('[Ride Book] Creating ride', ['rideId' => $rideId, 'user_id' => $user->id, 'client_id' => $clientProfile->id]);
 
         DB::beginTransaction();
         try {
@@ -244,10 +270,11 @@ class RideController extends Controller
                 'message' => 'Ride booked successfully',
                 'data' => $ride,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             \Illuminate\Support\Facades\Log::error('[Ride Book] Exception', [
                 'error' => $e->getMessage(),
+                'class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
                 'user'  => $user->id,
             ]);
@@ -484,7 +511,7 @@ class RideController extends Controller
             $clientBalanceAfter = $clientBalanceBefore + $ride->total_fare;
 
             WalletTransaction::create([
-                'id' => Str::uuid(),
+                'id' => Str::random(32),
                 'user_id' => $clientUser->id,
                 'transaction_type' => 'ride_refund',
                 'description' => "Refund for cancelled ride #{$ride->ride_number}",
@@ -563,7 +590,7 @@ class RideController extends Controller
         }
 
         DriverRating::create([
-            'id' => Str::uuid(),
+            'id' => Str::random(32),
             'ride_id' => $ride->id,
             'user_id' => $user->id,
             'driver_id' => $ride->driver_id,
@@ -619,7 +646,7 @@ class RideController extends Controller
             $clientBalanceAfter = $clientBalanceBefore - $ride->total_fare;
 
             WalletTransaction::create([
-                'id' => Str::uuid(),
+                'id' => Str::random(32),
                 'user_id' => $clientUser->id,
                 'transaction_type' => 'debit',
                 'description' => "Payment for ride {$ride->ride_number}",
@@ -638,7 +665,7 @@ class RideController extends Controller
             $driverBalanceAfter = $driverBalanceBefore + $driverEarning;
 
             WalletTransaction::create([
-                'id' => Str::uuid(),
+                'id' => Str::random(32),
                 'user_id' => $driverUser->id,
                 'transaction_type' => 'credit',
                 'description' => "Earning from ride {$ride->ride_number}",
@@ -788,7 +815,7 @@ class RideController extends Controller
         }
 
         ClientRating::create([
-            'id' => Str::uuid(),
+            'id' => Str::random(32),
             'ride_id' => $ride->id,
             'user_id' => $user->id,
             'client_id' => $ride->client_id,

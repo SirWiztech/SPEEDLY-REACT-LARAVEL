@@ -257,7 +257,10 @@ const ClientAIAssistantMobile: React.FC = () => {
                 setConversationHistory([...updatedHistory, { role: 'assistant', content: aiText }]);
                 speak(aiText);
             }
-        } catch { setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error. Please try again.', isUser: false, timestamp: new Date() }]); }
+        } catch (err: any) {
+            console.error('[Speedly AI Mobile] Chat error:', err?.message || err);
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error: ' + (err?.message || 'Please try again.'), isUser: false, timestamp: new Date() }]);
+        }
         finally { setIsTyping(false); }
     };
 

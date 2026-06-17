@@ -18,9 +18,20 @@ self.addEventListener('activate', function(event) {
     self.clients.claim();
 });
 
+// Skip non-HTTP(S) requests (chrome-extension://, etc.)
+function isCacheable(request) {
+    var url = request.url;
+    return url.startsWith('http://') || url.startsWith('https://');
+}
+
 self.addEventListener('fetch', function(event) {
     var request = event.request;
-    var url = new URL(request.url);
+    var url;
+
+    try { url = new URL(request.url); } catch(e) { return; }
+
+    // Only handle HTTP(S) requests
+    if (!isCacheable(request)) return;
 
     // API writes — queue offline
     if (url.pathname.startsWith('/api/') && ['POST','PUT','DELETE','PATCH'].indexOf(request.method) !== -1) {
