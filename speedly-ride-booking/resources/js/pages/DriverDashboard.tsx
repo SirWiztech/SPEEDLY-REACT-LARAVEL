@@ -106,6 +106,7 @@ const DriverDashboard: React.FC = () => {
     const pendingRidesCountRef = useRef<number>(0);
     const speechIntervalRef = useRef<number | null>(null);
     const activeRideRef = useRef<boolean>(false);
+    const driverStatusRef = useRef<string>('offline');
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
@@ -130,6 +131,7 @@ const DriverDashboard: React.FC = () => {
                     setDriverData(d);
                     setDriverStatus(d.driver_status || 'offline');
                     setVerificationStatus(d.verification_status || 'pending');
+                    driverStatusRef.current = d.driver_status || 'offline';
                 }
             }
 
@@ -213,6 +215,11 @@ const DriverDashboard: React.FC = () => {
     // Web speech helper — speak repeatedly with stop condition
     const newRideSpeechActiveRef = useRef(false);
 
+    // Debug log for speech
+    const logSpeech = (msg: string) => {
+        if (import.meta.env.DEV) console.log('[Driver Speech]', msg);
+    };
+
     const announceNewRide = useCallback((ride: Ride) => {
         if (!('speechSynthesis' in window)) return;
         if (newRideSpeechActiveRef.current) return;
@@ -283,6 +290,7 @@ const DriverDashboard: React.FC = () => {
         const previousStatus = driverStatus;
 
         setDriverStatus(newStatus);
+        driverStatusRef.current = newStatus;
 
         try {
             const data = await api.driver.toggleStatus({ status: newStatus });
@@ -337,6 +345,7 @@ const DriverDashboard: React.FC = () => {
 
                 if (data.success) {
                     activeRideRef.current = true;
+                    stopNewRideSpeech();
                     Swal.fire({
                         title: 'Success',
                         text: 'Ride accepted successfully!',
@@ -838,6 +847,8 @@ const DriverDashboard: React.FC = () => {
 
         // Periodic refresh every 10 seconds
         const interval = setInterval(() => {
+            const currentDriverStatus = driverStatusRef.current;
+
             Promise.allSettled([
                 api.driver.rides(5),
                 api.driver.pendingRides(),
@@ -849,6 +860,7 @@ const DriverDashboard: React.FC = () => {
                         const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
                         const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'ongoing');
                         setActiveRide(active || null);
+                        activeRideRef.current = !!active;
                         setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
                     }
                 }
@@ -859,10 +871,13 @@ const DriverDashboard: React.FC = () => {
                         const hadRideBefore = pendingRidesCountRef.current > 0;
                         const wasAccepted = hadRideBefore && activeRideRef.current;
 
+                        logSpeech(`Poll: status=${currentDriverStatus} pending=${pendingArray.length} hadBefore=${hadRideBefore}`);
+
                         setPendingRides(pendingArray);
                         pendingRidesCountRef.current = pendingArray.length;
 
-                        if (driverStatus === 'online' && pendingArray.length > 0 && !hadRideBefore) {
+                        if (currentDriverStatus === 'online' && pendingArray.length > 0 && !hadRideBefore) {
+                            logSpeech('New ride detected, triggering speech...');
                             const ride = pendingArray[0];
                             announceNewRide(ride);
                             Swal.fire({
@@ -876,6 +891,7 @@ const DriverDashboard: React.FC = () => {
 
                         // Stop speech if ride was accepted
                         if (wasAccepted && pendingArray.length === 0) {
+                            logSpeech('Ride accepted, stopping speech');
                             stopNewRideSpeech();
                         }
                     }

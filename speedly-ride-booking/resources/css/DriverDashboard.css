@@ -196,6 +196,23 @@
     border: 1px solid #f5f5f5;
 }
 
+/* Active/Pending Ride Cards — prevent border-radius clipping */
+.active-ride-card,
+.pending-ride-card {
+    overflow: visible;
+}
+
+/* Ride content padding to stay clear of border radius edges */
+.active-ride-card .ride-details,
+.pending-ride-card .ride-details {
+    padding: 0;
+}
+
+.active-ride-card .ride-actions,
+.pending-ride-card .ride-actions {
+    padding: 0 4px;
+}
+
 /* Earnings Card */
 .earnings-card {
     background: linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%);
