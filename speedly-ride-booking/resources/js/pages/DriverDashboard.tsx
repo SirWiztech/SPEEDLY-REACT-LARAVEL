@@ -585,6 +585,32 @@ const DriverDashboard: React.FC = () => {
         }
     };
 
+    // Manual token entry
+    const handleManualTokenEntry = async () => {
+        const { value: tokenInput } = await Swal.fire({
+            title: 'Enter Release Token',
+            html: `
+                <p style="font-size:13px;color:#666;margin-bottom:12px">Paste the full token string from the client's receipt:</p>
+                <input id="manual-token-input" class="swal2-input" placeholder="SPEEDLY_RELEASE:rideId:..." style="width:100%;font-family:monospace;font-size:12px;">
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Submit',
+            cancelButtonText: 'Cancel',
+            preConfirm: () => {
+                const input = (document.getElementById('manual-token-input') as HTMLInputElement)?.value?.trim();
+                if (!input) { Swal.showValidationMessage('Please enter a token'); return false; }
+                const match = input.match(/SPEEDLY_RELEASE:(.+):(.+)/);
+                if (!match) { Swal.showValidationMessage('Invalid token format. Expected: SPEEDLY_RELEASE:rideId:releaseToken'); return false; }
+                return { rideId: match[1], token: match[2] };
+            }
+        });
+
+        if (tokenInput?.rideId && tokenInput?.token) {
+            await handleQrRelease(tokenInput.rideId, tokenInput.token);
+        }
+    };
+
     // QR release handler
     const handleQrRelease = async (rideId: string, token: string) => {
         setShowQrScanner(false);
@@ -1125,6 +1151,10 @@ const DriverDashboard: React.FC = () => {
                             <button className="quick-action-btn" onClick={() => setShowQrScanner(true)}>
                                 <i className="fas fa-qrcode"></i>
                                 <span>Scan QR</span>
+                            </button>
+                            <button className="quick-action-btn" onClick={handleManualTokenEntry}>
+                                <i className="fas fa-key"></i>
+                                <span>Enter Token</span>
                             </button>
                             <button className="quick-action-btn" onClick={showDetailedStats}>
                                 <i className="fas fa-chart-bar"></i>

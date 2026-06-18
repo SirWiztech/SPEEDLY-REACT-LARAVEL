@@ -68,6 +68,7 @@ const ClientDashboardMobile: React.FC = () => {
     const [awaitingReleaseRides, setAwaitingReleaseRides] = useState<any[]>([]);
     const lastAwaitingIdsRef = useRef<Set<string>>(new Set());
     const speechIntervalRef = useRef<number | null>(null);
+    const speechActiveRef = useRef(false);
 
     const notificationIntervalRef = useRef<number | null>(null);
 
@@ -172,31 +173,58 @@ const ClientDashboardMobile: React.FC = () => {
                         pickup_address: r.pickup_address || '', destination_address: r.destination_address || '',
                         total_fare: r.total_fare || 0, driver_name: r.driver_name || 'Driver',
                     }));
-                const newIds = awaiting.filter(r => !lastAwaitingIdsRef.current.has(r.id));
-                if (newIds.length > 0 && awaiting.length > 0) {
-                    setAwaitingReleaseRides(awaiting);
-                    lastAwaitingIdsRef.current = new Set(awaiting.map(r => r.id));
-                    const userName = userData?.fullname || userData?.full_name || 'User';
-                    const firstName = userName.split(' ')[0];
-                    const ride = awaiting[0];
-                    const text = `Hello ${firstName}, ${ride.driver_name} completed your ride ${ride.ride_number}. Please release the payment.`;
-                    let count = 0;
-                    window.speechSynthesis?.cancel();
-                    const speakOnce = () => {
-                        const el = document.querySelector('[data-mobile-awaiting-release]');
-                        if (!el || count >= 5) {
-                            if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
-                            return;
-                        }
-                        const u = new SpeechSynthesisUtterance(text);
-                        u.lang = 'en-NG'; u.rate = 0.9;
-                        u.onend = () => count++;
-                        window.speechSynthesis.speak(u);
-                    };
-                    speakOnce();
-                    speechIntervalRef.current = window.setInterval(speakOnce, 4000) as any;
+
+                if (awaiting.length > 0) {
+                    const seen = lastAwaitingIdsRef.current;
+                    const newRides = awaiting.filter(r => !seen.has(r.id));
+
+                    if (newRides.length > 0 && !speechActiveRef.current) {
+                        speechActiveRef.current = true;
+                        setAwaitingReleaseRides(awaiting);
+                        lastAwaitingIdsRef.current = new Set(awaiting.map(r => r.id));
+
+                        const userName = userData?.fullname || userData?.full_name || 'User';
+                        const firstName = userName.split(' ')[0];
+                        const ride = newRides[0];
+                        const driverName = ride.driver_name || 'the driver';
+                        const fareText = Number(ride.total_fare).toLocaleString();
+                        const speechText = `Hello ${firstName}. ${driverName} has completed your ride. Please release the ${fareText} naira payment.`;
+
+                        let count = 0;
+                        window.speechSynthesis?.cancel();
+                        if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+
+                        const speakOnce = () => {
+                            if (count >= 5) {
+                                speechActiveRef.current = false;
+                                if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+                                return;
+                            }
+                            if (!document.querySelector('[data-mobile-awaiting-release]')) {
+                                speechActiveRef.current = false;
+                                if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+                                return;
+                            }
+                            window.speechSynthesis.cancel();
+                            const utterance = new SpeechSynthesisUtterance(speechText);
+                            utterance.lang = 'en-NG'; utterance.rate = 0.9; utterance.pitch = 1.05; utterance.volume = 1;
+                            const voices = window.speechSynthesis.getVoices();
+                            const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+                            if (preferred) utterance.voice = preferred;
+                            utterance.onend = () => { count++; };
+                            window.speechSynthesis.speak(utterance);
+                        };
+
+                        speakOnce();
+                        speechIntervalRef.current = window.setInterval(speakOnce, 4000) as any;
+                    } else {
+                        setAwaitingReleaseRides(awaiting);
+                    }
                 } else {
-                    setAwaitingReleaseRides(awaiting);
+                    setAwaitingReleaseRides([]);
+                    speechActiveRef.current = false;
+                    if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+                    window.speechSynthesis?.cancel();
                 }
             }
         } catch {}
@@ -402,6 +430,28 @@ const ClientDashboardMobile: React.FC = () => {
 
     const tierColor = userData?.membership_tier ? tierColors[userData.membership_tier] : '#6c757d';
 
+    const releaseFunds = async (rideId: string) => {
+        window.speechSynthesis?.cancel();
+        if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+        const result = await Swal.fire({
+            title: 'Release Payment?', text: 'Transfer fare to the driver.', icon: 'question',
+            showCancelButton: true, confirmButtonColor: '#4CAF50',
+            confirmButtonText: 'Yes, Release', cancelButtonText: 'Cancel'
+        });
+        if (!result.isConfirmed) return;
+        Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const data = await api.rides.releaseFunds(rideId);
+            Swal.close();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Funds Released!', confirmButtonColor: '#ff5e00' });
+                setAwaitingReleaseRides([]);
+            } else {
+                Swal.fire({ icon: 'error', title: 'Failed', text: data.message, confirmButtonColor: '#ff5e00' });
+            }
+        } catch (err: any) { Swal.close(); Swal.fire({ icon: 'error', title: 'Error', text: err?.message, confirmButtonColor: '#ff5e00' }); }
+    };
+
 
     return (
         <div className="mobile-dashboard-container">
@@ -424,6 +474,36 @@ const ClientDashboardMobile: React.FC = () => {
                         )}
                     </button>
                 </div>
+
+                {/* Release Funds Card */}
+                {awaitingReleaseRides.length > 0 && (
+                    <div className="mobile-mx-4 mobile-mt-4" data-mobile-awaiting-release>
+                        <h2 className="mobile-text-lg mobile-font-bold mobile-mb-3 mobile-flex mobile-items-center mobile-gap-2">
+                            <i className="fas fa-hand-holding-usd" style={{ color: '#ff5e00' }}></i> Release Payment
+                        </h2>
+                        {awaitingReleaseRides.map((ride: any) => (
+                            <div key={ride.id} style={{
+                                background: 'linear-gradient(135deg, #fff3e0, #fff)',
+                                border: '2px dashed #ff5e00', borderRadius: 12, padding: 16, marginBottom: 12
+                            }}>
+                                <p style={{ fontSize: 11, color: '#666' }}>Ride #{ride.ride_number}</p>
+                                <p style={{ fontWeight: 600 }}>{ride.pickup_address} → {ride.destination_address}</p>
+                                <p style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Driver: {ride.driver_name || 'Assigned'}</p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                                    <span style={{ fontSize: 20, fontWeight: 800, color: '#ff5e00' }}>
+                                        ₦{Number(ride.total_fare).toLocaleString()}
+                                    </span>
+                                    <button onClick={() => releaseFunds(ride.id)} style={{
+                                        background: '#4CAF50', color: '#fff', border: 'none',
+                                        borderRadius: 8, padding: '10px 20px', fontWeight: 600, fontSize: 14
+                                    }}>
+                                        <i className="fas fa-check-circle" style={{ marginRight: 6 }}></i> Release Funds
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Stats Cards */}
                 <div className="mobile-grid mobile-grid-cols-2 mobile-gap-4 mobile-mx-4 mobile-mt-4">

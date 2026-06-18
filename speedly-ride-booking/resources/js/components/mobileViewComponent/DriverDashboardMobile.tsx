@@ -988,6 +988,36 @@ const DriverDashboardMobile: React.FC = () => {
                         <div className="action-icon"><i className="fas fa-chart-line"></i></div>
                         <span>Earnings</span>
                     </button>
+                    <button className="mobile-action-btn" onClick={() => {
+                        Swal.fire({
+                            title: 'Enter Release Token',
+                            html: `<input id="manual-token-input" class="swal2-input" placeholder="SPEEDLY_RELEASE:rideId:..." style="width:100%;font-family:monospace;font-size:12px">`,
+                            showCancelButton: true,
+                            confirmButtonColor: '#ff5e00',
+                            confirmButtonText: 'Submit',
+                            cancelButtonText: 'Cancel',
+                            preConfirm: () => {
+                                const input = (document.getElementById('manual-token-input') as HTMLInputElement)?.value?.trim();
+                                if (!input) { Swal.showValidationMessage('Enter a token'); return false; }
+                                const match = input.match(/SPEEDLY_RELEASE:(.+):(.+)/);
+                                if (!match) { Swal.showValidationMessage('Invalid format'); return false; }
+                                return { rideId: match[1], token: match[2] };
+                            }
+                        }).then(async (result) => {
+                            if (result.value?.rideId && result.value?.token) {
+                                Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                                try {
+                                    const data = await api.rides.qrRelease(result.value.rideId, result.value.token);
+                                    Swal.close();
+                                    if (data.success) Swal.fire({ icon: 'success', title: 'Funds Released!', confirmButtonColor: '#ff5e00' });
+                                    else Swal.fire({ icon: 'error', title: 'Failed', text: data.message, confirmButtonColor: '#ff5e00' });
+                                } catch (e: any) { Swal.close(); Swal.fire({ icon: 'error', title: 'Error', text: e?.message, confirmButtonColor: '#ff5e00' }); }
+                            }
+                        });
+                    }}>
+                        <div className="action-icon"><i className="fas fa-key"></i></div>
+                        <span>Enter Token</span>
+                    </button>
                     <button className="mobile-action-btn" onClick={() => router.visit('/support')}>
                         <div className="action-icon"><i className="fas fa-headset"></i></div>
                         <span>Support</span>

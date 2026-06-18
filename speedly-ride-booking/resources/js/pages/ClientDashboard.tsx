@@ -95,10 +95,10 @@ const ClientDashboard: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState<number>(0);
     const [reviewText, setReviewText] = useState<string>('');
     const [awaitingReleaseRides, setAwaitingReleaseRides] = useState<AwaitingReleaseRide[]>([]);
-    const [lastAwaitingIds, setLastAwaitingIds] = useState<Set<string>>(new Set());
-    const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const lastAwaitingIdsRef = useRef<Set<string>>(new Set());
     const speechIntervalRef = useRef<number | null>(null);
     const pollingIntervalRef = useRef<number | null>(null);
+    const speechActiveRef = useRef(false);
 
     const notificationIntervalRef = useRef<number | null>(null);
     const isMobile = useMobile();
@@ -215,6 +215,7 @@ const ClientDashboard: React.FC = () => {
                         driver_name: r.driver_name || 'Driver',
                     }));
                 setAwaitingReleaseRides(awaiting);
+                lastAwaitingIdsRef.current = new Set(awaiting.map(r => r.id));
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -223,67 +224,7 @@ const ClientDashboard: React.FC = () => {
         }
     }, []);
 
-    // Web speech helper
-    const speak = (text: string, repeatCount: number = 1): SpeechSynthesisUtterance | null => {
-        if (!('speechSynthesis' in window)) return null;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-NG';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.05;
-        utterance.volume = 1;
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
-        if (preferred) utterance.voice = preferred;
-        window.speechSynthesis.speak(utterance);
-        return utterance;
-    };
-
-    // Speak a phrase repeatedly with a stop signal
-    const speakRepeatedly = (
-        text: string,
-        maxCount: number,
-        stopCondition: () => boolean,
-        intervalMs: number = 3000
-    ) => {
-        if (!('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel();
-        if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
-
-        let count = 0;
-        const speakOnce = () => {
-            if (stopCondition() || count >= maxCount) {
-                if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
-                speechIntervalRef.current = null;
-                return;
-            }
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-NG';
-            utterance.rate = 0.9;
-            utterance.pitch = 1.05;
-            utterance.volume = 1;
-            const voices = window.speechSynthesis.getVoices();
-            const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
-            if (preferred) utterance.voice = preferred;
-            utterance.onend = () => { count++; };
-            window.speechSynthesis.speak(utterance);
-        };
-
-        speakOnce();
-        speechIntervalRef.current = window.setInterval(speakOnce, intervalMs);
-    };
-
-    // Cancel all speech
-    const cancelSpeech = () => {
-        if (speechIntervalRef.current) {
-            clearInterval(speechIntervalRef.current);
-            speechIntervalRef.current = null;
-        }
-        window.speechSynthesis?.cancel();
-    };
-
-    // Poll for awaiting release rides + web speech
+    // Check for payment status from URL params
     const pollAwaitingRelease = useCallback(async () => {
         try {
             const historyData = await api.client.rideHistory({ status: 'awaiting_release' });
@@ -300,45 +241,74 @@ const ClientDashboard: React.FC = () => {
                     }));
 
                 if (awaiting.length > 0) {
-                    const newIds = awaiting.filter(r => !lastAwaitingIds.has(r.id));
-                    if (newIds.length > 0) {
+                    const seen = lastAwaitingIdsRef.current;
+                    const newRides = awaiting.filter(r => !seen.has(r.id));
+
+                    if (newRides.length > 0 && !speechActiveRef.current) {
+                        speechActiveRef.current = true;
                         setAwaitingReleaseRides(awaiting);
-                        const newIdsSet = new Set(awaiting.map(r => r.id));
-                        setLastAwaitingIds(newIdsSet);
+                        lastAwaitingIdsRef.current = new Set(awaiting.map(r => r.id));
 
                         const userName = userData?.fullname || userData?.full_name || 'User';
                         const firstName = userName.split(' ')[0];
-                        const ride = newIds[0];
-                        const speechText = `Hello ${firstName}, ${ride.driver_name} has completed your ride ${ride.ride_number}. Please release the ${ride.total_fare.toLocaleString()} naira payment. Release now.`;
+                        const ride = newRides[0];
+                        const driverName = ride.driver_name || 'the driver';
+                        const fareText = Number(ride.total_fare).toLocaleString();
+                        const speechText = `Hello ${firstName}. ${driverName} has completed your ride. Please release the ${fareText} naira payment.`;
 
-                        speakRepeatedly(
-                            speechText,
-                            5,
-                            () => {
-                                const released = !document.querySelector('[data-awaiting-release]');
-                                return released !== false;
-                            },
-                            4000
-                        );
+                        let count = 0;
+                        window.speechSynthesis?.cancel();
+                        if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+
+                        const speakOnce = () => {
+                            if (count >= 5) {
+                                speechActiveRef.current = false;
+                                if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+                                return;
+                            }
+                            if (!document.querySelector('[data-awaiting-release]')) {
+                                speechActiveRef.current = false;
+                                if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+                                return;
+                            }
+                            window.speechSynthesis.cancel();
+                            const utterance = new SpeechSynthesisUtterance(speechText);
+                            utterance.lang = 'en-NG';
+                            utterance.rate = 0.9;
+                            utterance.pitch = 1.05;
+                            utterance.volume = 1;
+                            const voices = window.speechSynthesis.getVoices();
+                            const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+                            if (preferred) utterance.voice = preferred;
+                            utterance.onend = () => { count++; };
+                            window.speechSynthesis.speak(utterance);
+                        };
+
+                        speakOnce();
+                        speechIntervalRef.current = window.setInterval(speakOnce, 4000);
                     } else {
                         setAwaitingReleaseRides(awaiting);
                     }
                 } else {
                     setAwaitingReleaseRides([]);
-                    cancelSpeech();
+                    speechActiveRef.current = false;
+                    if (speechIntervalRef.current) { clearInterval(speechIntervalRef.current); speechIntervalRef.current = null; }
+                    window.speechSynthesis?.cancel();
                 }
             }
         } catch (error) {
             // Silent fail
         }
-    }, [lastAwaitingIds, userData]);
+    }, [userData]);
 
     // Start polling
     useEffect(() => {
+        pollAwaitingRelease();
         pollingIntervalRef.current = window.setInterval(pollAwaitingRelease, 5000);
         return () => {
             if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-            cancelSpeech();
+            if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+            window.speechSynthesis?.cancel();
         };
     }, [pollAwaitingRelease]);
 
