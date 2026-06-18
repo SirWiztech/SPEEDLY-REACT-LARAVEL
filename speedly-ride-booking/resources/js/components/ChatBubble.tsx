@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatWindow from './ChatWindow';
 
 interface ChatBubbleProps {
@@ -20,19 +20,19 @@ async function chatJson(url: string) {
 const ChatBubble: React.FC<ChatBubbleProps> = ({ rideId, otherPartyName, currentRole }) => {
     const [open, setOpen] = useState(false);
     const [unread, setUnread] = useState(0);
+    const lastCountRef = useRef(0);
 
     useEffect(() => {
-        let lastCount = 0;
         const check = async () => {
             try {
                 const json = await chatJson(`/rides/${rideId}/chat`);
                 const data = json?.data || json || [];
                 const list = Array.isArray(data) ? data : [];
-                if (list.length > lastCount) {
-                    const incoming = list.slice(lastCount);
+                if (list.length > lastCountRef.current) {
+                    const incoming = list.slice(lastCountRef.current);
                     const fromOther = incoming.filter((m: any) => m.sender_role !== currentRole).length;
                     if (!open && fromOther > 0) setUnread(prev => prev + fromOther);
-                    lastCount = list.length;
+                    lastCountRef.current = list.length;
                 }
             } catch {}
         };
@@ -44,21 +44,26 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ rideId, otherPartyName, current
     return (
         <>
             <button onClick={() => { setOpen(true); setUnread(0); }} style={{
-                position: 'fixed', bottom: 20, right: 20, zIndex: 9998,
-                width: 56, height: 56, borderRadius: 28,
-                background: 'linear-gradient(135deg, #ff5e00, #ff8c3a)',
+                position: 'fixed', bottom: 24, right: 24, zIndex: 9998,
+                width: 60, height: 60, borderRadius: 30,
+                background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)',
                 color: '#fff', border: 'none', cursor: 'pointer',
-                fontSize: 22, boxShadow: '0 4px 16px rgba(255,94,0,0.4)',
+                fontSize: 24, boxShadow: '0 6px 24px rgba(255,94,0,0.35)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 animation: 'ccPulse 2s infinite',
-            }}>
-                💬
+                transition: 'transform 0.2s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+                <span style={{ lineHeight: 1 }}>💬</span>
                 {unread > 0 && <span style={{
                     position: 'absolute', top: -4, right: -4,
-                    background: '#ff3b30', color: '#fff', borderRadius: 10,
-                    width: 22, height: 22, fontSize: 11, fontWeight: 700,
+                    background: '#ff3b30', color: '#fff', borderRadius: 12,
+                    minWidth: 24, height: 24, fontSize: 11, fontWeight: 700,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{unread}</span>}
+                    padding: '0 4px', boxShadow: '0 2px 6px rgba(255,59,48,0.4)',
+                }}>{unread > 99 ? '99+' : unread}</span>}
             </button>
             {open && (
                 <ChatWindow
@@ -70,8 +75,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ rideId, otherPartyName, current
             )}
             <style>{`
                 @keyframes ccPulse {
-                    0%, 100% { box-shadow: 0 4px 16px rgba(255,94,0,0.4); }
-                    50% { box-shadow: 0 4px 24px rgba(255,94,0,0.7); }
+                    0%, 100% { box-shadow: 0 6px 24px rgba(255,94,0,0.35); }
+                    50% { box-shadow: 0 6px 32px rgba(255,94,0,0.6); }
                 }
             `}</style>
         </>
