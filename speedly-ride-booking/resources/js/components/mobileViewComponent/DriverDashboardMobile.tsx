@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import DriverNavMobile from '../../components/navbars/DriverNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
+import DriverQRScanner from '../../components/DriverQRScanner';
 import '../../../css/DriverDashboardMobile.css';
 
 // Types
@@ -100,6 +101,7 @@ const DriverDashboardMobile: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [apiError, setApiError] = useState<string | null>(null);
     const [countdown, setCountdown] = useState<number>(30);
+    const [showQrScanner, setShowQrScanner] = useState(false);
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -984,6 +986,10 @@ const DriverDashboardMobile: React.FC = () => {
                         <div className="action-icon"><i className="fas fa-calendar-check"></i></div>
                         <span>History</span>
                     </button>
+                    <button className="mobile-action-btn" onClick={() => setShowQrScanner(true)}>
+                        <div className="action-icon"><i className="fas fa-qrcode"></i></div>
+                        <span>Scan QR</span>
+                    </button>
                     <button className="mobile-action-btn" onClick={showDetailedStats}>
                         <div className="action-icon"><i className="fas fa-chart-line"></i></div>
                         <span>Earnings</span>
@@ -1061,6 +1067,29 @@ const DriverDashboardMobile: React.FC = () => {
                 {/* Bottom Navigation */}
                 <DriverNavMobile />
             </div>
+
+            {showQrScanner && (
+                <DriverQRScanner
+                    onClose={() => setShowQrScanner(false)}
+                    onRelease={async (rideId: string, token: string) => {
+                        setShowQrScanner(false);
+                        Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                        try {
+                            const data = await api.rides.qrRelease(rideId, token);
+                            Swal.close();
+                            if (data.success) {
+                                Swal.fire({ icon: 'success', title: 'Funds Released!', text: data.message, confirmButtonColor: '#ff5e00' });
+                                fetchDashboardData();
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Failed', text: data.message || 'Invalid QR code', confirmButtonColor: '#ff5e00' });
+                            }
+                        } catch (e: any) {
+                            Swal.close();
+                            Swal.fire({ icon: 'error', title: 'Error', text: e?.message, confirmButtonColor: '#ff5e00' });
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };
