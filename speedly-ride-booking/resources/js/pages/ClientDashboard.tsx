@@ -95,6 +95,10 @@ const ClientDashboard: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState<number>(0);
     const [reviewText, setReviewText] = useState<string>('');
     const [awaitingReleaseRides, setAwaitingReleaseRides] = useState<AwaitingReleaseRide[]>([]);
+    const [lastAwaitingIds, setLastAwaitingIds] = useState<Set<string>>(new Set());
+    const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const speechIntervalRef = useRef<number | null>(null);
+    const pollingIntervalRef = useRef<number | null>(null);
 
     const notificationIntervalRef = useRef<number | null>(null);
     const isMobile = useMobile();
@@ -218,6 +222,125 @@ const ClientDashboard: React.FC = () => {
             setLoading(false);
         }
     }, []);
+
+    // Web speech helper
+    const speak = (text: string, repeatCount: number = 1): SpeechSynthesisUtterance | null => {
+        if (!('speechSynthesis' in window)) return null;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-NG';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.05;
+        utterance.volume = 1;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+        if (preferred) utterance.voice = preferred;
+        window.speechSynthesis.speak(utterance);
+        return utterance;
+    };
+
+    // Speak a phrase repeatedly with a stop signal
+    const speakRepeatedly = (
+        text: string,
+        maxCount: number,
+        stopCondition: () => boolean,
+        intervalMs: number = 3000
+    ) => {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+
+        let count = 0;
+        const speakOnce = () => {
+            if (stopCondition() || count >= maxCount) {
+                if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+                speechIntervalRef.current = null;
+                return;
+            }
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-NG';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.05;
+            utterance.volume = 1;
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+            if (preferred) utterance.voice = preferred;
+            utterance.onend = () => { count++; };
+            window.speechSynthesis.speak(utterance);
+        };
+
+        speakOnce();
+        speechIntervalRef.current = window.setInterval(speakOnce, intervalMs);
+    };
+
+    // Cancel all speech
+    const cancelSpeech = () => {
+        if (speechIntervalRef.current) {
+            clearInterval(speechIntervalRef.current);
+            speechIntervalRef.current = null;
+        }
+        window.speechSynthesis?.cancel();
+    };
+
+    // Poll for awaiting release rides + web speech
+    const pollAwaitingRelease = useCallback(async () => {
+        try {
+            const historyData = await api.client.rideHistory({ status: 'awaiting_release' });
+            if (historyData?.success && historyData.data?.rides) {
+                const awaiting = historyData.data.rides
+                    .filter((r: any) => r.status === 'awaiting_release')
+                    .map((r: any) => ({
+                        id: r.id,
+                        ride_number: r.ride_number || '',
+                        pickup_address: r.pickup_address || '',
+                        destination_address: r.destination_address || '',
+                        total_fare: r.total_fare || 0,
+                        driver_name: r.driver_name || 'Driver',
+                    }));
+
+                if (awaiting.length > 0) {
+                    const newIds = awaiting.filter(r => !lastAwaitingIds.has(r.id));
+                    if (newIds.length > 0) {
+                        setAwaitingReleaseRides(awaiting);
+                        const newIdsSet = new Set(awaiting.map(r => r.id));
+                        setLastAwaitingIds(newIdsSet);
+
+                        const userName = userData?.fullname || userData?.full_name || 'User';
+                        const firstName = userName.split(' ')[0];
+                        const ride = newIds[0];
+                        const speechText = `Hello ${firstName}, ${ride.driver_name} has completed your ride ${ride.ride_number}. Please release the ${ride.total_fare.toLocaleString()} naira payment. Release now.`;
+
+                        speakRepeatedly(
+                            speechText,
+                            5,
+                            () => {
+                                const released = !document.querySelector('[data-awaiting-release]');
+                                return released !== false;
+                            },
+                            4000
+                        );
+                    } else {
+                        setAwaitingReleaseRides(awaiting);
+                    }
+                } else {
+                    setAwaitingReleaseRides([]);
+                    cancelSpeech();
+                }
+            }
+        } catch (error) {
+            // Silent fail
+        }
+    }, [lastAwaitingIds, userData]);
+
+    // Start polling
+    useEffect(() => {
+        pollingIntervalRef.current = window.setInterval(pollAwaitingRelease, 5000);
+        return () => {
+            if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+            cancelSpeech();
+        };
+    }, [pollAwaitingRelease]);
 
     // Check for payment status from URL params
     const checkPaymentStatus = useCallback(async () => {
@@ -645,6 +768,7 @@ const ClientDashboard: React.FC = () => {
 
     // Release funds
     const releaseFunds = async (rideId: string) => {
+        cancelSpeech(); // Stop speaking immediately
         const result = await Swal.fire({
             title: 'Release Payment?',
             text: 'This will transfer the fare to the driver. This action cannot be undone.',
@@ -836,7 +960,7 @@ const ClientDashboard: React.FC = () => {
 
                     {/* Release Funds Card */}
                     {awaitingReleaseRides.length > 0 && (
-                        <div className="mt-8">
+                        <div className="mt-8" data-awaiting-release>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                                 <i className="fas fa-hand-holding-usd text-[#ff5e00]"></i> Release Payment
                             </h2>

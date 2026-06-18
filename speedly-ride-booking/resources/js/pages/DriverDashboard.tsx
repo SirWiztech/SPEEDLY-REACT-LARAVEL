@@ -104,6 +104,8 @@ const DriverDashboard: React.FC = () => {
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const pendingRidesCountRef = useRef<number>(0);
+    const speechIntervalRef = useRef<number | null>(null);
+    const activeRideRef = useRef<boolean>(false);
     const preloaderLoading = usePreloader(1000);
     const isMobile = useMobile();
 
@@ -208,6 +210,63 @@ const DriverDashboard: React.FC = () => {
         }
     }, []);
 
+    // Web speech helper — speak repeatedly with stop condition
+    const newRideSpeechActiveRef = useRef(false);
+
+    const announceNewRide = useCallback((ride: Ride) => {
+        if (!('speechSynthesis' in window)) return;
+        if (newRideSpeechActiveRef.current) return;
+        newRideSpeechActiveRef.current = true;
+
+        const clientName = ride.client_name || 'passenger';
+        const text = `Hello. A new ride is available from ${clientName}. Pickup at ${ride.pickup_address}. Please accept the ride.`;
+        let count = 0;
+        const maxCount = 5;
+
+        const speakOnce = () => {
+            if (count >= maxCount) {
+                newRideSpeechActiveRef.current = false;
+                if (speechIntervalRef.current) {
+                    clearInterval(speechIntervalRef.current);
+                    speechIntervalRef.current = null;
+                }
+                return;
+            }
+            const activeRideEl = document.querySelector('[data-active-ride]');
+            if (activeRideEl) {
+                newRideSpeechActiveRef.current = false;
+                if (speechIntervalRef.current) {
+                    clearInterval(speechIntervalRef.current);
+                    speechIntervalRef.current = null;
+                }
+                return;
+            }
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-NG';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.05;
+            utterance.volume = 1;
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+            if (preferred) utterance.voice = preferred;
+            utterance.onend = () => { count++; };
+            window.speechSynthesis.speak(utterance);
+        };
+
+        speakOnce();
+        speechIntervalRef.current = window.setInterval(speakOnce, 3500);
+    }, []);
+
+    const stopNewRideSpeech = () => {
+        newRideSpeechActiveRef.current = false;
+        if (speechIntervalRef.current) {
+            clearInterval(speechIntervalRef.current);
+            speechIntervalRef.current = null;
+        }
+        window.speechSynthesis?.cancel();
+    };
+
     // Toggle driver status — one click
     const toggleDriverStatus = async () => {
         if (verificationStatus !== 'approved') {
@@ -261,6 +320,7 @@ const DriverDashboard: React.FC = () => {
 
     // Accept ride
     const acceptRide = async (rideId: string) => {
+        stopNewRideSpeech();
         const result = await Swal.fire({
             title: 'Accept Ride?',
             text: 'Are you sure you want to accept this ride?',
@@ -276,6 +336,7 @@ const DriverDashboard: React.FC = () => {
                 const data = await api.rides.accept(rideId);
 
                 if (data.success) {
+                    activeRideRef.current = true;
                     Swal.fire({
                         title: 'Success',
                         text: 'Ride accepted successfully!',
@@ -427,6 +488,8 @@ const DriverDashboard: React.FC = () => {
                 }
 
                 if (data.success) {
+                    activeRideRef.current = false;
+                    stopNewRideSpeech();
                     Swal.fire({
                         title: 'Ride Marked Complete!',
                         html: `
@@ -768,9 +831,14 @@ const DriverDashboard: React.FC = () => {
                     if (pendingData.success && pendingData.data) {
                         const pendingArray = Array.isArray(pendingData.data) ? pendingData.data : [];
                         const hadRideBefore = pendingRidesCountRef.current > 0;
+                        const wasAccepted = hadRideBefore && activeRideRef.current;
+
                         setPendingRides(pendingArray);
                         pendingRidesCountRef.current = pendingArray.length;
+
                         if (driverStatus === 'online' && pendingArray.length > 0 && !hadRideBefore) {
+                            const ride = pendingArray[0];
+                            announceNewRide(ride);
                             Swal.fire({
                                 title: 'New Ride Request!',
                                 text: `${pendingArray.length} ride(s) available`,
@@ -778,6 +846,11 @@ const DriverDashboard: React.FC = () => {
                                 timer: 4000,
                                 showConfirmButton: false
                             });
+                        }
+
+                        // Stop speech if ride was accepted
+                        if (wasAccepted && pendingArray.length === 0) {
+                            stopNewRideSpeech();
                         }
                     }
                 }
@@ -911,7 +984,7 @@ const DriverDashboard: React.FC = () => {
 
                     {/* Active/Pending Ride */}
                     {activeRide && (
-                        <div className="driver-card active-ride-card">
+                        <div className="driver-card active-ride-card" data-active-ride>
                             <div className="ride-header active">
                                 <span><i className="fas fa-check-circle"></i> ACTIVE RIDE IN PROGRESS</span>
                                 <span className="live-badge">● Live</span>

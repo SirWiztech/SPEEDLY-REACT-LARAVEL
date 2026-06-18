@@ -353,6 +353,29 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                         </div>
                     </div>
 
+                    {/* Release Token Section — visible in download */}
+                    {ride.release_token && (
+                        <div style={{
+                            background: '#fffbe6', borderRadius: 12, padding: 16, marginBottom: 16,
+                            border: '2px solid #ffd700', textAlign: 'center'
+                        }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#b8860b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                🔑 RELEASE TOKEN
+                            </div>
+                            <div style={{
+                                fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: '#333',
+                                background: '#fff', padding: '10px 14px', borderRadius: 8,
+                                border: '1px dashed #ffd700', marginBottom: 6,
+                                wordBreak: 'break-all'
+                            }} data-receipt-token>
+                                SPEEDLY_RELEASE:{ride.id}:{ride.release_token}
+                            </div>
+                            <p style={{ fontSize: 10, color: '#888', margin: 0 }}>
+                                Enter this token on the driver's app or scan the QR below to release funds
+                            </p>
+                        </div>
+                    )}
+
                     {/* QR Code Section */}
                     <div style={{
                         background: 'linear-gradient(135deg, #fff, #fff3ed)',

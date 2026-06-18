@@ -65,6 +65,9 @@ const ClientDashboardMobile: React.FC = () => {
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedRating, setSelectedRating] = useState<number>(0);
+    const [awaitingReleaseRides, setAwaitingReleaseRides] = useState<any[]>([]);
+    const lastAwaitingIdsRef = useRef<Set<string>>(new Set());
+    const speechIntervalRef = useRef<number | null>(null);
 
     const notificationIntervalRef = useRef<number | null>(null);
 
@@ -155,6 +158,58 @@ const ClientDashboardMobile: React.FC = () => {
             setLoading(false);
         }
     }, []);
+
+    // Poll for awaiting release rides + web speech alert
+    const pollAwaitingReleaseMobile = useCallback(async () => {
+        if (!userData) return;
+        try {
+            const historyData = await api.client.rideHistory({ status: 'awaiting_release' });
+            if (historyData?.success && historyData.data?.rides) {
+                const awaiting = historyData.data.rides
+                    .filter((r: any) => r.status === 'awaiting_release')
+                    .map((r: any) => ({
+                        id: r.id, ride_number: r.ride_number || '',
+                        pickup_address: r.pickup_address || '', destination_address: r.destination_address || '',
+                        total_fare: r.total_fare || 0, driver_name: r.driver_name || 'Driver',
+                    }));
+                const newIds = awaiting.filter(r => !lastAwaitingIdsRef.current.has(r.id));
+                if (newIds.length > 0 && awaiting.length > 0) {
+                    setAwaitingReleaseRides(awaiting);
+                    lastAwaitingIdsRef.current = new Set(awaiting.map(r => r.id));
+                    const userName = userData?.fullname || userData?.full_name || 'User';
+                    const firstName = userName.split(' ')[0];
+                    const ride = awaiting[0];
+                    const text = `Hello ${firstName}, ${ride.driver_name} completed your ride ${ride.ride_number}. Please release the payment.`;
+                    let count = 0;
+                    window.speechSynthesis?.cancel();
+                    const speakOnce = () => {
+                        const el = document.querySelector('[data-mobile-awaiting-release]');
+                        if (!el || count >= 5) {
+                            if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+                            return;
+                        }
+                        const u = new SpeechSynthesisUtterance(text);
+                        u.lang = 'en-NG'; u.rate = 0.9;
+                        u.onend = () => count++;
+                        window.speechSynthesis.speak(u);
+                    };
+                    speakOnce();
+                    speechIntervalRef.current = window.setInterval(speakOnce, 4000) as any;
+                } else {
+                    setAwaitingReleaseRides(awaiting);
+                }
+            }
+        } catch {}
+    }, [userData]);
+
+    useEffect(() => {
+        const id = window.setInterval(pollAwaitingReleaseMobile, 5000);
+        return () => {
+            clearInterval(id);
+            if (speechIntervalRef.current) clearInterval(speechIntervalRef.current);
+            window.speechSynthesis?.cancel();
+        };
+    }, [pollAwaitingReleaseMobile]);
 
     // Check for payment status from URL params
     const checkPaymentStatus = useCallback(() => {
