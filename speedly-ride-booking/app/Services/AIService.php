@@ -12,7 +12,7 @@ class AIService
 
     public function __construct()
     {
-        $this->model  = config('ai.model', 'gemini-2.0-flash');
+        $this->model  = config('ai.model', 'gemini-1.5-flash');
         $this->apiKey = config('services.gemini.key');
     }
 
@@ -55,12 +55,18 @@ class AIService
                 ]);
 
             if (!$response->successful()) {
-                Log::error('[Speedly AI] Gemini HTTP ' . $response->status(), [
+                $status = $response->status();
+                Log::error('[Speedly AI] Gemini HTTP ' . $status, [
                     'url' => $url,
                     'model' => $this->model,
                     'body' => substr($response->body(), 0, 1000),
                 ]);
-                return ['text' => 'AI error (HTTP ' . $response->status() . '). Check Render logs for details.'];
+
+                if ($status === 429) {
+                    return ['text' => 'AI is busy right now (rate limited). Please wait a moment and try again.'];
+                }
+
+                return ['text' => 'AI error (HTTP ' . $status . '). Check Render logs for details.'];
             }
 
             $data = $response->json();

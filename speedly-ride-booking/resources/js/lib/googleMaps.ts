@@ -8,11 +8,6 @@ export function loadGoogleMapsApi(): Promise<void> {
   if (scriptLoaded) return Promise.resolve();
   if (loadPromise) return loadPromise;
 
-  // Don't load if no API key configured
-  if (!GOOGLE_MAPS_API_KEY) {
-    return Promise.reject(new Error('Google Maps API key not configured'));
-  }
-
   const existing = document.querySelector('script#google-maps-api');
   if (existing) {
     scriptLoaded = true;
