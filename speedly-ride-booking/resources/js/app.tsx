@@ -12,8 +12,10 @@ import { registerPWA } from '@/pwa';
 registerPWA();
 
 createInertiaApp({
-    title: (title) =>
-        title ? `${title} - Speedly` : 'Speedly',
+    title: (title, pageProps) => {
+        const seoTitle = pageProps?.seo?.title;
+        return seoTitle || (title ? `${title} - Speedly` : 'Speedly');
+    },
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.tsx`,

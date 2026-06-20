@@ -11,3 +11,10 @@ Broadcast::channel('chat.{rideId}', function ($user, $rideId) {
 
     return $isClient || $isDriver;
 });
+
+Broadcast::channel('driver.{driverId}', function ($user, $driverId) {
+    return \App\Models\DriverProfile::where('user_id', $user->id)
+        ->where('id', $driverId)
+        ->whereIn('driver_status', ['online', 'available'])
+        ->exists();
+});

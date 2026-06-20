@@ -677,31 +677,6 @@ const DriverSettingsMobile: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Driving Preferences */}
-                        <div className="settings-section">
-                            <div className="section-header">
-                                <i className="fas fa-sliders-h"></i>
-                                <h2>Driving Preferences</h2>
-                            </div>
-                            
-                            <div className="settings-item" onClick={() => {
-                                Swal.fire({
-                                    title: 'Work Schedule',
-                                    html: `<p class="text-center text-gray-500">Coming soon</p>`,
-                                    confirmButtonColor: '#ff5e00'
-                                });
-                            }}>
-                                <div className="item-info">
-                                    <div className="item-icon"><i className="fas fa-clock"></i></div>
-                                    <div className="item-details">
-                                        <h3>Work Schedule</h3>
-                                        <p>Set your available hours</p>
-                                    </div>
-                                </div>
-                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
-                            </div>
-                        </div>
-
                         {/* Notifications */}
                         <div className="settings-section">
                             <div className="section-header">

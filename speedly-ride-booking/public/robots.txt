@@ -1,2 +1,5 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin-login
+Disallow: /forgot-admin-password
+Disallow: /payment/callback

@@ -6,6 +6,19 @@ use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
+| SEO Routes
+|--------------------------------------------------------------------------
+*/
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index']);
+Route::get('/robots.txt', function () {
+    $sitemapUrl = url('/sitemap.xml');
+    return response("User-agent: *\nAllow: /\nDisallow: /admin-login\nDisallow: /forgot-admin-password\nDisallow: /payment/callback\n\nSitemap: {$sitemapUrl}\n", 200, [
+        'Content-Type' => 'text/plain',
+    ]);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Public Routes (No Auth)
 |--------------------------------------------------------------------------
 */

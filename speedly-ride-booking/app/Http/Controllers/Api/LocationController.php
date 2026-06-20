@@ -8,6 +8,7 @@ use App\Models\DriverProfile;
 use App\Models\Ride;
 use App\Models\ClientProfile;
 use App\Models\Place;
+use App\Models\UserSavedLocation;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 
@@ -57,10 +58,17 @@ class LocationController extends Controller
             }
         }
 
+        $userSavedLocations = UserSavedLocation::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return response()->json([
             'success' => true,
             'message' => 'Saved locations retrieved successfully',
-            'data' => ['saved_locations' => $locations]
+            'data' => [
+                'saved_locations' => $locations,
+                'user_saved_locations' => $userSavedLocations,
+            ]
         ]);
     }
 
@@ -219,6 +227,69 @@ class LocationController extends Controller
             'success' => false,
             'message' => 'Place not found',
             'data' => null,
+        ]);
+    }
+
+    public function saveUserLocation(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'address' => 'required|string|max:255',
+            'type' => 'required|in:home,work,favorite,other',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
+
+        $location = UserSavedLocation::create([
+            'user_id' => $request->user()->id,
+            'name' => $request->name,
+            'address' => $request->address,
+            'type' => $request->type,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Location saved successfully',
+            'data' => $location,
+        ]);
+    }
+
+    public function updateUserLocation(Request $request, $id)
+    {
+        $location = UserSavedLocation::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'address' => 'required|string|max:255',
+            'type' => 'required|in:home,work,favorite,other',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
+
+        $location->update($request->only(['name', 'address', 'type', 'latitude', 'longitude']));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Location updated successfully',
+            'data' => $location,
+        ]);
+    }
+
+    public function deleteUserLocation(Request $request, $id)
+    {
+        $location = UserSavedLocation::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $location->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Location deleted successfully',
         ]);
     }
 }

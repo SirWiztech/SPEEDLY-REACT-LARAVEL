@@ -53,6 +53,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
     const [copied, setCopied] = useState(false);
+    const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
     const preloaderLoading = usePreloader(800);
     const isMobile = useMobile();
@@ -64,6 +65,18 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                 const response = await api.rides.receipt(rideId);
                 const payload = response.data || response;
                 if (response.success && payload.ride) {
+                    const rideStatus = payload.ride.status;
+                    const cancelledStatuses = ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'];
+                    const inProgressStatuses = ['pending', 'accepted', 'ongoing'];
+
+                    if (cancelledStatuses.includes(rideStatus)) {
+                        setError('Receipt not available for cancelled rides.');
+                        return;
+                    }
+                    if (inProgressStatuses.includes(rideStatus)) {
+                        setError('Receipt will be available once the ride is completed and payment is confirmed.');
+                        return;
+                    }
                     setRide(payload.ride);
                     setPayment(payload.payment || null);
                     setFareBreakdown(payload.fare_breakdown || null);
@@ -78,6 +91,32 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
         };
         fetchRideData();
     }, [rideId]);
+
+    // Generate QR code locally
+    useEffect(() => {
+        if (!ride?.release_token) return;
+        let cancelled = false;
+        import('qrcode').then((QRCode) => {
+            const content = `SPEEDLY_RELEASE:${ride.id}:${ride.release_token}`;
+            QRCode.toDataURL(content, {
+                width: 300,
+                margin: 1,
+                color: { dark: '#ff5e00', light: '#ffffff' },
+            }).then((url: string) => {
+                if (!cancelled) setQrDataUrl(url);
+            }).catch(() => {
+                // Fallback to external API
+                const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(content)}&bgcolor=fff&color=ff5e00`;
+                if (!cancelled) setQrDataUrl(fallbackUrl);
+            });
+        }).catch(() => {
+            // QR lib failed, use external API
+            const content = `SPEEDLY_RELEASE:${ride.id}:${ride.release_token}`;
+            const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(content)}&bgcolor=fff&color=ff5e00`;
+            if (!cancelled) setQrDataUrl(fallbackUrl);
+        });
+        return () => { cancelled = true; };
+    }, [ride?.release_token, ride?.id]);
 
     const downloadImage = async () => {
         const element = document.getElementById('receipt-content');
@@ -385,11 +424,17 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#ff5e00', marginBottom: 12 }}>
                             📱 SCAN TO RELEASE FUNDS
                         </div>
-                        <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}&bgcolor=fff&color=ff5e00`}
-                            alt="Release QR"
-                            style={{ width: 150, height: 150, borderRadius: 8 }}
-                        />
+                        {qrDataUrl ? (
+                            <img
+                                src={qrDataUrl}
+                                alt="Release QR"
+                                style={{ width: 200, height: 200, borderRadius: 8 }}
+                            />
+                        ) : (
+                            <div style={{ width: 200, height: 200, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                                <span style={{ color: '#ccc', fontSize: 12 }}>Generating QR...</span>
+                            </div>
+                        )}
                         <p style={{ fontSize: 11, color: '#999', margin: '8px 0 12px' }}>
                             {ride.release_token
                                 ? 'Driver can scan this QR code to release funds instantly'

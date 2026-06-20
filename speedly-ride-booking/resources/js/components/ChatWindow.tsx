@@ -34,8 +34,11 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
     const [loading, setLoading] = useState(true);
     const [minimized, setMinimized] = useState(false);
     const [wsConnected, setWsConnected] = useState(false);
+    const [reconnectAttempt, setReconnectAttempt] = useState(0);
     const bottomRef = useRef<HTMLDivElement>(null);
     const echoRef = useRef<any>(null);
+    const reconnectTimerRef = useRef<NodeJS.Timeout>();
+    const heartbeatRef = useRef<NodeJS.Timeout>();
 
     const scrollDown = () => {
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -56,12 +59,13 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
 
     useEffect(() => {
         let cleanup = () => {};
+        let cancelled = false;
+        const maxReconnectDelay = 30000;
+
         const setupReverb = async () => {
             try {
                 const wsHost = window.location.hostname;
-                const wsPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
-                const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-                const isProd = wsScheme === 'wss';
+                const isProd = window.location.protocol === 'https:';
 
                 const Pusher = (await import('pusher-js')).default;
                 const Echo = (await import('laravel-echo')).default;
@@ -81,10 +85,31 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
                 echo.connector.socket.on('connect', () => {
                     console.log('[Chat] WebSocket connected');
                     setWsConnected(true);
+                    setReconnectAttempt(0);
+                    // Clear any pending reconnect timer
+                    if (reconnectTimerRef.current) {
+                        clearTimeout(reconnectTimerRef.current);
+                        reconnectTimerRef.current = undefined;
+                    }
                 });
                 echo.connector.socket.on('disconnect', () => {
                     console.log('[Chat] WebSocket disconnected');
                     setWsConnected(false);
+                    if (!cancelled) {
+                        // Exponential backoff reconnect
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), maxReconnectDelay);
+                        console.log(`[Chat] Reconnecting in ${delay}ms (attempt ${reconnectAttempt + 1})`);
+                        reconnectTimerRef.current = setTimeout(() => {
+                            if (!cancelled) {
+                                setReconnectAttempt(prev => prev + 1);
+                                echo.disconnect();
+                                setupReverb();
+                            }
+                        }, delay);
+                    }
+                });
+                echo.connector.socket.on('error', () => {
+                    console.warn('[Chat] WebSocket error');
                 });
 
                 const channel = echo.channel('chat.' + rideId);
@@ -97,15 +122,28 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
                     scrollDown();
                 });
 
+                // Heartbeat ping every 25 seconds to keep connection alive
+                heartbeatRef.current = setInterval(() => {
+                    if (echo.connector?.socket?.connected) {
+                        chatFetch(`/rides/${rideId}/chat?count=1`).catch(() => {});
+                    }
+                }, 25000);
+
                 echoRef.current = echo;
-                cleanup = () => { try { echo.disconnect(); } catch {} };
+                cleanup = () => {
+                    cancelled = true;
+                    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+                    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+                    try { echo.disconnect(); } catch {}
+                };
             } catch (e) {
                 console.warn('[Chat] Reverb setup failed, falling back to polling', e);
+                cleanup = () => { cancelled = true; };
             }
         };
         setupReverb();
         return () => cleanup();
-    }, [rideId]);
+    }, [rideId, reconnectAttempt]);
 
     useEffect(() => { loadMessages().then(() => setLoading(false)); }, [rideId]);
 

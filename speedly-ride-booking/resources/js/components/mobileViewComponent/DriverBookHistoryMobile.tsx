@@ -88,8 +88,18 @@ const DriverBookHistoryMobile: React.FC = () => {
         }
     }, []);
 
-    const viewRideDetails = (rideId: string) => {
-        router.visit(`/generatereceipt?rideId=${rideId}`);
+    const viewRideDetails = (rideId: string, status: string) => {
+        const completedStatuses = ['completed', 'awaiting_release'];
+        if (completedStatuses.includes(status)) {
+            router.visit(`/generatereceipt?rideId=${rideId}`);
+        } else {
+            Swal.fire({
+                title: 'Ride Details',
+                text: 'Receipt will be available once the ride is completed and payment is confirmed.',
+                icon: 'info',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
     };
 
     const checkNotifications = async () => {
@@ -202,7 +212,7 @@ const DriverBookHistoryMobile: React.FC = () => {
                         <div className="rides-list">
                             {acceptedRides.length > 0 ? (
                                 acceptedRides.map((ride) => (
-                                    <div key={ride.id} className="ride-card" onClick={() => viewRideDetails(ride.id)}>
+                                    <div key={ride.id} className="ride-card" onClick={() => viewRideDetails(ride.id, ride.status)}>
                                         <div className="card-header">
                                             <div className="date-time">
                                                 <span className="date">{ride.formatted_date}</span>

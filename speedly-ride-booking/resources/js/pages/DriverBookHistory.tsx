@@ -123,8 +123,18 @@ const DriverBookHistory: React.FC = () => {
     }, []);
 
     // View ride details
-    const viewRideDetails = (rideId: string) => {
-        router.visit(`/generatereceipt?rideId=${rideId}`);
+    const viewRideDetails = (rideId: string, status: string) => {
+        const completedStatuses = ['completed', 'awaiting_release'];
+        if (completedStatuses.includes(status)) {
+            router.visit(`/generatereceipt?rideId=${rideId}`);
+        } else {
+            Swal.fire({
+                title: 'Ride Details',
+                text: 'Receipt will be available once the ride is completed and payment is confirmed.',
+                icon: 'info',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
     };
 
     // Check notifications
@@ -310,7 +320,7 @@ const DriverBookHistory: React.FC = () => {
                                 <tbody>
                                     {acceptedRides.length > 0 ? (
                                         acceptedRides.map((ride) => (
-                                            <tr key={ride.id} className="ride-row" onClick={() => viewRideDetails(ride.id)}>
+                                            <tr key={ride.id} className="ride-row" onClick={() => viewRideDetails(ride.id, ride.status)}>
                                                 <td>
                                                     <div className="ride-date">{ride.formatted_date}</div>
                                                     <div className="ride-time">{ride.formatted_time}</div>
@@ -353,7 +363,7 @@ const DriverBookHistory: React.FC = () => {
                                                     {ride.status === 'cancelled_by_driver' && <span className="status-badge cancelled">Cancelled by You</span>}
                                                 </td>
                                                 <td>
-                                                    <button className="view-details-btn" onClick={(e) => { e.stopPropagation(); viewRideDetails(ride.id); }}>
+                                                    <button className="view-details-btn" onClick={(e) => { e.stopPropagation(); viewRideDetails(ride.id, ride.status); }}>
                                                         View Details
                                                     </button>
                                                 </td>
@@ -396,7 +406,7 @@ const DriverBookHistory: React.FC = () => {
                                 <tbody>
                                     {declinedRides.length > 0 ? (
                                         declinedRides.map((ride) => (
-                                            <tr key={ride.id} className="ride-row declined" onClick={() => viewRideDetails(ride.id)}>
+                                            <tr key={ride.id} className="ride-row declined" onClick={() => viewRideDetails(ride.id, ride.status)}>
                                                 <td>
                                                     <div className="ride-date">{ride.formatted_date}</div>
                                                     <div className="ride-time">{ride.formatted_time}</div>
@@ -431,7 +441,7 @@ const DriverBookHistory: React.FC = () => {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <button className="view-details-btn secondary" onClick={(e) => { e.stopPropagation(); viewRideDetails(ride.id); }}>
+                                                    <button className="view-details-btn secondary" onClick={(e) => { e.stopPropagation(); viewRideDetails(ride.id, ride.status); }}>
                                                         View
                                                     </button>
                                                 </td>

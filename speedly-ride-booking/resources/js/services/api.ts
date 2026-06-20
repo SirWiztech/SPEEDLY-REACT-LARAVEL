@@ -107,6 +107,12 @@ export const api = {
     uploadKyc: (formData: FormData) =>
       apiFetch('/client/kyc/upload', { method: 'POST', body: formData }),
     locations: () => apiFetch('/client/locations'),
+    saveLocation: (data: { name: string; address: string; type: string; latitude?: number; longitude?: number }) =>
+      apiFetch('/client/locations/save', { method: 'POST', body: JSON.stringify(data) }),
+    updateLocation: (id: string, data: { name: string; address: string; type: string; latitude?: number; longitude?: number }) =>
+      apiFetch(`/client/locations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteLocation: (id: string) =>
+      apiFetch(`/client/locations/${id}`, { method: 'DELETE' }),
     support: (data: { category: string; subject: string; message: string; priority: string }) =>
       apiFetch('/client/support', { method: 'POST', body: JSON.stringify(data) }),
     supportTickets: () => apiFetch('/client/support/tickets'),

@@ -662,26 +662,43 @@ const DriverDashboard: React.FC = () => {
                     <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password" style="margin-top: 8px;">
                 </div>
                 <select id="bank-name" class="swal2-input" style="margin-top: 8px;">
-                    <option value="">Select Bank</option>
-                    <option value="Access Bank" data-code="044">Access Bank</option>
-                    <option value="GTBank" data-code="058">GTBank</option>
-                    <option value="First Bank of Nigeria" data-code="011">First Bank</option>
-                    <option value="UBA" data-code="033">UBA</option>
-                    <option value="Zenith Bank" data-code="057">Zenith Bank</option>
-                    <option value="Fidelity Bank" data-code="070">Fidelity Bank</option>
-                    <option value="Union Bank" data-code="032">Union Bank</option>
-                    <option value="Sterling Bank" data-code="232">Sterling Bank</option>
-                    <option value="Polaris Bank" data-code="076">Polaris Bank</option>
-                    <option value="Stanbic IBTC" data-code="221">Stanbic IBTC</option>
-                    <option value="Opay" data-code="999992">Opay</option>
-                    <option value="PalmPay" data-code="999991">PalmPay</option>
+                    <option value="">Loading banks...</option>
                 </select>
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number (10 digits)" maxlength="10" style="margin-top: 8px;">
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number (10 digits)" maxlength="10" style="margin-top: 8px;" inputmode="numeric">
                 <input type="text" id="account-name" class="swal2-input" placeholder="Account Name" style="margin-top: 8px;">
             `,
             showCancelButton: true,
             confirmButtonText: 'Withdraw',
             confirmButtonColor: '#ff5e00',
+            didOpen: () => {
+                import('../services/api').then(({ default: api }) => {
+                    api.payment.getBanks('NGN').then((res: any) => {
+                        const banks = res.data || [];
+                        const select = document.getElementById('bank-name') as HTMLSelectElement;
+                        if (select) {
+                            select.innerHTML = '<option value="">Select Bank</option>' +
+                                banks.map((b: any) => {
+                                    const name = b.name || b.bank_name;
+                                    const code = b.code || b.bank_code || '';
+                                    return `<option value="${name}" data-code="${code}">${name}</option>`;
+                                }).join('');
+                        }
+                    }).catch(() => {
+                        const fallback = [
+                            { name: 'Access Bank', code: '044' }, { name: 'GTBank', code: '058' },
+                            { name: 'First Bank of Nigeria', code: '011' }, { name: 'UBA', code: '033' },
+                            { name: 'Zenith Bank', code: '057' }, { name: 'Fidelity Bank', code: '070' },
+                            { name: 'Kuda Bank', code: '50211' }, { name: 'Opay', code: '999992' },
+                            { name: 'PalmPay', code: '999991' }, { name: 'Moniepoint', code: '50515' },
+                        ];
+                        const select = document.getElementById('bank-name') as HTMLSelectElement;
+                        if (select) {
+                            select.innerHTML = '<option value="">Select Bank</option>' +
+                                fallback.map(b => `<option value="${b.name}" data-code="${b.code}">${b.name}</option>`).join('');
+                        }
+                    });
+                });
+            },
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
                 const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
@@ -901,6 +918,56 @@ const DriverDashboard: React.FC = () => {
 
         return () => clearInterval(interval);
     }, [fetchDashboardData, driverStatus]);
+
+    // WebSocket listener for immediate ride alerts
+    useEffect(() => {
+        if (!driverData?.id) return;
+        let echo: any = null;
+        let cancelled = false;
+
+        const setup = async () => {
+            try {
+                const Pusher = (await import('pusher-js')).default;
+                const Echo = (await import('laravel-echo')).default;
+                const isProd = window.location.protocol === 'https:';
+
+                echo = new Echo({
+                    broadcaster: 'pusher',
+                    key: 'speedlykey',
+                    wsHost: isProd ? window.location.hostname : '127.0.0.1',
+                    wsPort: isProd ? 443 : 8080,
+                    wssPort: 443,
+                    forceTLS: isProd,
+                    encrypted: isProd,
+                    disableStats: true,
+                });
+
+                const channel = echo.private('driver.' + driverData.id);
+                channel.listen('.ride.available', (data: any) => {
+                    if (cancelled) return;
+                    if (driverStatusRef.current === 'online' && data.ride) {
+                        logSpeech('WS: New ride received via WebSocket!');
+                        announceNewRide(data.ride);
+                        Swal.fire({
+                            title: 'New Ride Request!',
+                            text: `${data.ride.client_name || 'A passenger'} is nearby`,
+                            icon: 'info',
+                            timer: 4000,
+                            showConfirmButton: false,
+                        });
+                    }
+                });
+            } catch (e) {
+                console.warn('[RideWS] Setup failed, using polling only', e);
+            }
+        };
+
+        setup();
+        return () => {
+            cancelled = true;
+            if (echo) try { echo.disconnect(); } catch {}
+        };
+    }, [driverData?.id, announceNewRide]);
 
 
     const firstName = (driverData?.fullname || driverData?.full_name)?.split(' ')[0] || 'Driver';
@@ -1160,7 +1227,7 @@ const DriverDashboard: React.FC = () => {
                                 <i className="fas fa-hand-holding-usd"></i>
                                 <span>Withdraw</span>
                             </button>
-                            <button className="quick-action-btn" onClick={() => router.visit('/support')}>
+                            <button className="quick-action-btn" onClick={() => router.visit('/driversupport')}>
                                 <i className="fas fa-headset"></i>
                                 <span>Support</span>
                             </button>
@@ -1187,7 +1254,7 @@ const DriverDashboard: React.FC = () => {
                     <div className="driver-card recent-trips-card">
                         <div className="recent-header">
                             <h2>📋 Recent Trips</h2>
-                            <button className="see-all-btn" onClick={() => router.visit('/ride-history')}>See all →</button>
+                            <button className="see-all-btn" onClick={() => router.visit('/driverbookhistory')}>See all →</button>
                         </div>
                         <div className="recent-trips-list">
                             {recentRides.length > 0 ? (

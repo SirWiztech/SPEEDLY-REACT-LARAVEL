@@ -1028,7 +1028,7 @@ const DriverDashboardMobile: React.FC = () => {
                         <div className="action-icon"><i className="fas fa-headset"></i></div>
                         <span>Support</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/driver-settings')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/driversettings')}>
                         <div className="action-icon"><i className="fas fa-cog"></i></div>
                         <span>Settings</span>
                     </button>
@@ -1094,4 +1094,4 @@ const DriverDashboardMobile: React.FC = () => {
     );
 };
 
-export default DriverDashboardMobile;
+export default DriverDashboardMobile;obile;

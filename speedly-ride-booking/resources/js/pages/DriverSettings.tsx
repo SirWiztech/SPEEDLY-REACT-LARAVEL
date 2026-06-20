@@ -617,19 +617,36 @@ const DriverSettings: React.FC = () => {
                                     title: 'Bank Details',
                                     html: `
                                         <select id="bank-name" class="swal2-input">
-                                            <option value="">Select Bank</option>
-                                            <option value="Access Bank">Access Bank</option>
-                                            <option value="GTBank">GTBank</option>
-                                            <option value="First Bank">First Bank</option>
-                                            <option value="UBA">UBA</option>
-                                            <option value="Zenith">Zenith Bank</option>
+                                            <option value="">Loading banks...</option>
                                         </select>
-                                        <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
+                                        <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" inputmode="numeric">
                                         <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
                                     `,
                                     showCancelButton: true,
                                     confirmButtonText: 'Save Bank',
                                     confirmButtonColor: '#ff5e00',
+                                    didOpen: () => {
+                                        import('../services/api').then(({ default: api }) => {
+                                            api.payment.getBanks('NGN').then((res: any) => {
+                                                const banks = res.data || [];
+                                                const select = document.getElementById('bank-name') as HTMLSelectElement;
+                                                if (select) {
+                                                    select.innerHTML = '<option value="">Select Bank</option>' +
+                                                        banks.map((b: any) => {
+                                                            const name = b.name || b.bank_name;
+                                                            return `<option value="${name}">${name}</option>`;
+                                                        }).join('');
+                                                }
+                                            }).catch(() => {
+                                                const fallback = ['Access Bank', 'GTBank', 'First Bank of Nigeria', 'UBA', 'Zenith Bank', 'Fidelity Bank', 'Kuda Bank', 'Opay', 'PalmPay', 'Moniepoint'];
+                                                const select = document.getElementById('bank-name') as HTMLSelectElement;
+                                                if (select) {
+                                                    select.innerHTML = '<option value="">Select Bank</option>' +
+                                                        fallback.map(b => `<option value="${b}">${b}</option>`).join('');
+                                                }
+                                            });
+                                        });
+                                    },
                                     preConfirm: () => {
                                         const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
                                         const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
@@ -739,50 +756,6 @@ const DriverSettings: React.FC = () => {
                                     {vehicleData.insurance_expiry && (
                                         <span className="item-badge">{new Date(vehicleData.insurance_expiry).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                                     )}
-                                    <i className="fas fa-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Driving Preferences */}
-                    <div className="settings-card">
-                        <div className="card-header">
-                            <i className="fas fa-sliders-h"></i>
-                            <h3>Driving Preferences</h3>
-                        </div>
-                        <div className="settings-list">
-                            <div className="settings-item" onClick={() => {
-                                Swal.fire({
-                                    title: 'Work Schedule',
-                                    html: `
-                                        <div class="schedule-form">
-                                            ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, i) => `
-                                                <div class="schedule-row">
-                                                    <label class="font-medium">${day}</label>
-                                                    <div class="schedule-times">
-                                                        <input type="time" id="start-${i}" class="swal2-input" placeholder="Start" value="09:00">
-                                                        <input type="time" id="end-${i}" class="swal2-input" placeholder="End" value="17:00">
-                                                    </div>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    `,
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Save Schedule',
-                                    confirmButtonColor: '#ff5e00',
-                                    width: '600px'
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        saveSchedule({});
-                                    }
-                                });
-                            }}>
-                                <div className="settings-item-label">
-                                    <i className="fas fa-clock"></i>
-                                    <span>Work Schedule</span>
-                                </div>
-                                <div className="settings-item-action">
                                     <i className="fas fa-chevron-right"></i>
                                 </div>
                             </div>

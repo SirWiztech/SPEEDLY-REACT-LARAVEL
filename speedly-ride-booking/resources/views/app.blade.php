@@ -49,6 +49,21 @@
         <meta name="msapplication-TileColor" content="#ff5e00">
         <meta name="msapplication-TileImage" content="/favicon/android-chrome-512x512.png?v=2">
 
+        {{-- SEO Meta Tags --}}
+        <meta name="description" content="Speedly — Fast, reliable ride-hailing and booking service in Onitsha, Anambra. Book rides instantly with trusted drivers.">
+        <meta name="keywords" content="ride hailing Onitsha, book a ride Anambra, taxi Onitsha, Speedly, car hire Anambra, Nigeria ride booking">
+        <meta property="og:title" content="@yield('og_title', 'Speedly — Fast Rides in Onitsha')">
+        <meta property="og:description" content="@yield('og_description', 'Book rides instantly with Speedly. Trusted ride-hailing and delivery service in Onitsha, Anambra State.')">
+        <meta property="og:image" content="@yield('og_image', asset('favicon/og-default.png'))">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="Speedly">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="@yield('og_title', 'Speedly — Fast Rides in Onitsha')">
+        <meta name="twitter:description" content="@yield('og_description', 'Book rides instantly with Speedly. Trusted ride-hailing in Onitsha.')">
+        <meta name="twitter:image" content="@yield('og_image', asset('favicon/og-default.png'))">
+        <link rel="canonical" href="{{ url()->current() }}">
+
         @fonts
 
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">

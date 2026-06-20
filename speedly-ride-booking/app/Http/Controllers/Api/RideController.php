@@ -589,6 +589,12 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Can only rate after ride ends'], 400);
         }
 
+        $existing = DriverRating::where('ride_id', $ride->id)
+            ->where('user_id', $user->id)->first();
+        if ($existing) {
+            return response()->json(['success' => false, 'message' => 'You have already rated this ride'], 400);
+        }
+
         DriverRating::create([
             'id' => Str::random(32),
             'ride_id' => $ride->id,

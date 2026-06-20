@@ -242,7 +242,7 @@ const ClientSettings: React.FC = () => {
         Swal.fire({
             icon: 'success',
             title: 'Language Updated',
-            text: `Language set to ${lang === 'en' ? 'English' : lang === 'fr' ? 'Français' : 'Español'}`,
+            text: 'Language set to English',
             timer: 1500,
             showConfirmButton: false
         });
@@ -253,10 +253,8 @@ const ClientSettings: React.FC = () => {
         Swal.fire({
             title: 'Add Payment Method',
             html: `
-                <select id="payment-type" class="swal2-input">
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                </select>
+                <p class="text-sm text-gray-500 mb-3">KoraPay — Secure bank transfer payment</p>
+                <input type="hidden" id="payment-type" value="korapay">
                 <input type="text" id="bank-name" class="swal2-input" placeholder="Bank Name">
                 <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
                 <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
@@ -317,7 +315,7 @@ const ClientSettings: React.FC = () => {
             showCancelButton: true,
             confirmButtonText: 'Save Location',
             confirmButtonColor: '#ff5e00',
-            preConfirm: () => {
+            preConfirm: async () => {
                 const name = (document.getElementById('location-name') as HTMLInputElement)?.value;
                 const address = (document.getElementById('address') as HTMLInputElement)?.value;
                 const type = (document.getElementById('location-type') as HTMLSelectElement)?.value;
@@ -326,7 +324,13 @@ const ClientSettings: React.FC = () => {
                     Swal.showValidationMessage('Please fill all fields');
                     return false;
                 }
-                return { name, address, type };
+                try {
+                    await api.client.saveLocation({ name, address, type });
+                    return true;
+                } catch (e: any) {
+                    Swal.showValidationMessage(e?.message || 'Failed to save location');
+                    return false;
+                }
             }
         }).then((result) => {
             if (result.isConfirmed) {
@@ -642,20 +646,6 @@ const ClientSettings: React.FC = () => {
                                     <span className="toggle-slider"></span>
                                 </label>
                             </div>
-                            <div className="settings-toggle-item">
-                                <div className="toggle-label">
-                                    <i className="fas fa-shield-alt"></i>
-                                    <span>Safety Alerts</span>
-                                </div>
-                                <label className="toggle-switch">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={userSettings.sms_notifications} 
-                                        onChange={(e) => toggleSetting('sms_notifications', e.target.checked)}
-                                    />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
                         </div>
                     </div>
 
@@ -707,11 +697,10 @@ const ClientSettings: React.FC = () => {
                         <div className="settings-list">
                             <div className="settings-item" onClick={() => {
                                 Swal.fire({
-                                    title: 'Select Language',
+                                    title: 'Language',
                                     html: `
-                                        <div class="language-option" data-lang="en" style="padding: 12px; cursor: pointer;">🇬🇧 English</div>
-                                        <div class="language-option" data-lang="fr" style="padding: 12px; cursor: pointer;">🇫🇷 Français</div>
-                                        <div class="language-option" data-lang="es" style="padding: 12px; cursor: pointer;">🇪🇸 Español</div>
+                                        <p class="text-sm text-gray-500 mb-3">English is the only supported language.</p>
+                                        <div class="language-option" data-lang="en" style="padding: 12px; cursor: pointer; background: #fff5f0; border: 2px solid #ff5e00; border-radius: 8px;">🇬🇧 English</div>
                                     `,
                                     showConfirmButton: false,
                                     showCloseButton: true,
@@ -779,21 +768,6 @@ const ClientSettings: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Dark Mode Toggle */}
-                    <div className="settings-dark-mode-toggle">
-                        <div className="dark-mode-info">
-                            <h3>Dark Mode</h3>
-                            <p>Switch between light and dark theme for better visibility</p>
-                        </div>
-                        <label className="toggle-switch">
-                            <input 
-                                type="checkbox" 
-                                checked={userSettings.dark_mode} 
-                                onChange={(e) => toggleDarkMode(e.target.checked)}
-                            />
-                            <span className="toggle-slider"></span>
-                        </label>
-                    </div>
                 </div>
 
                 {/* Action Buttons */}

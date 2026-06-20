@@ -341,11 +341,11 @@ const ClientSettingsMobile: React.FC = () => {
                     <div class="support-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.location.href='mailto:support@speedly.com'">
                         <i class="fas fa-envelope" style="color: #ff5e00; width: 30px;"></i> Email Support
                     </div>
-                    <div class="support-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.open('https://speedly.com/faq', '_blank')">
-                        <i class="fas fa-question-circle" style="color: #ff5e00; width: 30px;"></i> FAQ
+                    <div class="support-item" style="padding: 12px; border-bottom: 1px solid #eee;">
+                        <i class="fas fa-question-circle" style="color: #ff5e00; width: 30px;"></i> <strong>FAQ:</strong> How to book, How to add funds, How to rate a driver. Contact support@speedly.com for more help.
                     </div>
-                    <div class="support-item" style="padding: 12px; cursor: pointer;" onclick="window.open('https://speedly.com/terms', '_blank')">
-                        <i class="fas fa-file-contract" style="color: #ff5e00; width: 30px;"></i> Terms & Conditions
+                    <div class="support-item" style="padding: 12px;">
+                        <i class="fas fa-file-contract" style="color: #ff5e00; width: 30px;"></i> <strong>Terms:</strong> By using Speedly you agree to our terms. Rides subject to availability. Payments processed via KoraPay. Full terms available on request.
                     </div>
                 </div>
             `,
@@ -765,23 +765,21 @@ const ClientSettingsMobile: React.FC = () => {
                                     title: 'Legal',
                                     html: `
                                         <div class="legal-options" style="text-align: left;">
-                                            <div class="legal-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.open('https://speedly.com/privacy', '_blank')">
-                                                📋 Privacy Policy
+                                            <div class="legal-item" style="padding: 12px; border-bottom: 1px solid #eee;">
+                                                <strong>📋 Privacy Policy</strong><br>
+                                                <p style="color:#666;font-size:13px;margin-top:8px;">Speedly collects and uses your personal data (name, email, phone, location) to provide ride-hailing services. Your data is stored securely and never shared with third parties without consent. You can request data deletion at any time by contacting support@speedly.com.</p>
                                             </div>
-                                            <div class="legal-item" style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;" onclick="window.open('https://speedly.com/terms', '_blank')">
-                                                📄 Terms of Service
+                                            <div class="legal-item" style="padding: 12px; border-bottom: 1px solid #eee;">
+                                                <strong>📄 Terms of Service</strong><br>
+                                                <p style="color:#666;font-size:13px;margin-top:8px;">By using Speedly you agree to: (1) provide accurate information, (2) not misuse the platform, (3) pay for rides booked, (4) treat drivers and clients with respect. Speedly reserves the right to suspend accounts that violate these terms.</p>
                                             </div>
-                                            <div class="legal-item" style="padding: 12px; cursor: pointer;" onclick="window.open('https://speedly.com/cookies', '_blank')">
-                                                🍪 Cookie Policy
+                                            <div class="legal-item" style="padding: 12px;">
+                                                <strong>🍪 Cookie Policy</strong><br>
+                                                <p style="color:#666;font-size:13px;margin-top:8px;">Speedly uses essential cookies for authentication and security, and analytics cookies to improve our service. You can disable non-essential cookies in your browser settings. Continued use of the platform constitutes consent.</p>
                                             </div>
                                         </div>
                                     `,
-                                    confirmButtonColor: '#ff5e00',
-                                    didOpen: () => {
-                                        document.querySelectorAll('.legal-item').forEach(item => {
-                                            item.addEventListener('click', () => Swal.close());
-                                        });
-                                    }
+                                    confirmButtonColor: '#ff5e00'
                                 });
                             }}>
                                 <div className="mobile-item-info">

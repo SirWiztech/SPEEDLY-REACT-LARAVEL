@@ -180,22 +180,14 @@ const ClientWallet: React.FC = () => {
                 <p style="margin-bottom: 15px;">Available: <strong>₦${walletBalance.toLocaleString()}</strong></p>
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Enter amount" min="100" max="${walletBalance}" step="100">
                 <select id="bank-name" class="swal2-input">
-                    <option value="">Select Bank</option>
-                    <option value="Access Bank">Access Bank</option>
-                    <option value="GTBank">GTBank</option>
-                    <option value="First Bank">First Bank</option>
-                    <option value="UBA">UBA</option>
-                    <option value="Zenith Bank">Zenith Bank</option>
-                    <option value="Kuda Bank">Kuda Bank</option>
-                    <option value="OPay">OPay</option>
-                    <option value="PalmPay">PalmPay</option>
+                    <option value="">Loading banks...</option>
                 </select>
                 <div style="margin-top: 8px;">
                     <button type="button" id="verify-account-btn" style="background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:13px;width:100%;padding:10px;">
                         <i class="fas fa-check-circle"></i> Verify Account Name
                     </button>
                 </div>
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" inputmode="numeric">
                 <input type="text" id="account-name" class="swal2-input" placeholder="Account Name (auto-verified)" readonly style="background:#f9f9f9;">
                 <div style="margin-top: 10px; font-size: 13px; color: #666;">
                     <p><i class="fas fa-clock" style="color: #ff5e00;"></i> Withdrawals are processed within 24-48 hours after admin approval</p>
@@ -204,6 +196,30 @@ const ClientWallet: React.FC = () => {
             showCancelButton: true,
             confirmButtonText: 'Withdraw',
             confirmButtonColor: '#ff5e00',
+            didOpen: () => {
+                // Dynamically populate bank list
+                import('../services/api').then(({ default: api }) => {
+                    api.payment.getBanks('NGN').then((res: any) => {
+                        const banks = res.data || [];
+                        const select = document.getElementById('bank-name') as HTMLSelectElement;
+                        if (select) {
+                            select.innerHTML = '<option value="">Select Bank</option>' +
+                                banks.map((b: any) => {
+                                    const name = b.name || b.bank_name;
+                                    const code = b.code || b.bank_code || '';
+                                    return `<option value="${name}" data-code="${code}">${name}</option>`;
+                                }).join('');
+                        }
+                    }).catch(() => {
+                        const fallback = [{ name: 'Access Bank', code: '044' }, { name: 'GTBank', code: '058' }, { name: 'First Bank of Nigeria', code: '011' }, { name: 'UBA', code: '033' }, { name: 'Zenith Bank', code: '057' }, { name: 'Fidelity Bank', code: '070' }, { name: 'Kuda Bank', code: '50211' }, { name: 'Opay', code: '999992' }, { name: 'PalmPay', code: '999991' }, { name: 'Moniepoint', code: '50515' }, { name: 'Stanbic IBTC', code: '221' }];
+                        const select = document.getElementById('bank-name') as HTMLSelectElement;
+                        if (select) {
+                            select.innerHTML = '<option value="">Select Bank</option>' +
+                                fallback.map(b => `<option value="${b.name}" data-code="${b.code}">${b.name}</option>`).join('');
+                        }
+                    });
+                });
+            },
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
                 const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
@@ -240,13 +256,14 @@ const ClientWallet: React.FC = () => {
                         const accountInput = document.getElementById('account-number') as HTMLInputElement;
                         const nameInput = document.getElementById('account-name') as HTMLInputElement;
                         const bankName = bankSelect?.value;
+                        const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || bankName;
                         const accountNum = accountInput?.value;
 
                         if (!bankName) { Swal.showValidationMessage('Select a bank first'); return; }
                         if (!accountNum || accountNum.length !== 10 || !/^\d+$/.test(accountNum)) { Swal.showValidationMessage('Enter a valid 10-digit account number'); return; }
 
                         try {
-                            const res = await api.payment.verifyAccount({ bank_code: bankName, account_number: accountNum });
+                            const res = await api.payment.verifyAccount({ bank_code: bankCode, account_number: accountNum });
                             if (res.account_name) {
                                 nameInput.value = res.account_name;
                                 verifyBtn.textContent = '✓ Account Verified';
@@ -298,18 +315,56 @@ const ClientWallet: React.FC = () => {
         });
     };
 
+    // Apply promo code
+    const applyPromoCode = () => {
+        Swal.fire({
+            title: 'Promo Code',
+            input: 'text',
+            inputPlaceholder: 'Enter promo code',
+            showCancelButton: true,
+            confirmButtonText: 'Apply',
+            confirmButtonColor: '#ff5e00',
+            preConfirm: async (code: string) => {
+                if (!code) {
+                    Swal.showValidationMessage('Please enter a promo code');
+                    return false;
+                }
+                try {
+                    const res = await apiFetch('/client/promo/validate', {
+                        method: 'POST',
+                        body: JSON.stringify({ code }),
+                    });
+                    if (!res.success) throw new Error(res.message || 'Invalid promo code');
+                    return res;
+                } catch (e: any) {
+                    Swal.showValidationMessage(e.message || 'Failed to validate promo code');
+                    return false;
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Promo Code Applied!',
+                    text: result.value?.message || 'Discount applied successfully',
+                    confirmButtonColor: '#ff5e00'
+                }).then(() => fetchWalletData());
+            }
+        });
+    };
+
     // Add payment method
     const addPaymentMethod = () => {
         Swal.fire({
             title: 'Add Payment Method',
             html: `
-                <select id="payment-type" class="swal2-input">
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
+                <p class="text-sm text-gray-500 mb-3">KoraPay — Secure payment</p>
+                <input type="hidden" id="payment-type" value="korapay">
+                <select id="bank-name" class="swal2-input">
+                    <option value="">Loading banks...</option>
                 </select>
-                <input type="text" id="bank-name" class="swal2-input" placeholder="Bank Name">
                 <input type="text" id="account-name" class="swal2-input" placeholder="Account Name">
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10">
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" inputmode="numeric">
                 <label class="flex items-center gap-2 mt-2" style="justify-content: center;">
                     <input type="checkbox" id="set-default"> 
                     <span class="text-sm">Set as default payment method</span>
@@ -318,9 +373,24 @@ const ClientWallet: React.FC = () => {
             showCancelButton: true,
             confirmButtonText: 'Add Method',
             confirmButtonColor: '#ff5e00',
-            preConfirm: () => {
-                const type = (document.getElementById('payment-type') as HTMLSelectElement)?.value;
-                const bank = (document.getElementById('bank-name') as HTMLInputElement)?.value;
+            didOpen: () => {
+                import('../services/api').then(({ default: api }) => {
+                    api.payment.getBanks('NGN').then((res: any) => {
+                        const banks = res.data || [];
+                        const select = document.getElementById('bank-name') as HTMLSelectElement;
+                        if (select) {
+                            select.innerHTML = '<option value="">Select Bank</option>' +
+                                banks.map((b: any) => {
+                                    const name = b.name || b.bank_name;
+                                    return `<option value="${name}">${name}</option>`;
+                                }).join('');
+                        }
+                    }).catch(() => { /* silent fallback */ });
+                });
+            },
+            preConfirm: async () => {
+                const type = 'korapay';
+                const bank = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
                 const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
                 const number = (document.getElementById('account-number') as HTMLInputElement)?.value;
                 const isDefault = (document.getElementById('set-default') as HTMLInputElement)?.checked;
@@ -333,9 +403,18 @@ const ClientWallet: React.FC = () => {
                     Swal.showValidationMessage('Please enter a valid 10-digit account number');
                     return false;
                 }
-                return { type, bank, name, number, isDefault };
+                try {
+                    await apiFetch('/client/payment-methods', {
+                        method: 'POST',
+                        body: JSON.stringify({ type, bank_name: bank, account_name: name, account_number: number, is_default: isDefault }),
+                    });
+                    return true;
+                } catch (e: any) {
+                    Swal.showValidationMessage(e?.message || 'Failed to save payment method');
+                    return false;
+                }
             }
-        }).then(async (result) => {
+        }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({
                     icon: 'success',
@@ -702,13 +781,13 @@ const ClientWallet: React.FC = () => {
                                 </div>
                                 <span>Add to Wallet</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport?category=refund')}>
                                 <div className="desktop-action-icon refunds-icon">
                                     <i className="fas fa-undo-alt"></i>
                                 </div>
                                 <span>Refunds</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
+                            <button className="desktop-action-btn" onClick={() => router.visit('/clientridehistory?status=pending')}>
                                 <div className="desktop-action-icon pending-icon">
                                     <i className="fas fa-clock"></i>
                                 </div>
@@ -738,7 +817,7 @@ const ClientWallet: React.FC = () => {
                                 </div>
                                 <span>Transaction History</span>
                             </button>
-                            <button className="desktop-action-btn" onClick={() => router.visit('/clientsupport')}>
+                            <button className="desktop-action-btn" onClick={applyPromoCode}>
                                 <div className="desktop-action-icon promo-icon">
                                     <i className="fas fa-tag"></i>
                                 </div>

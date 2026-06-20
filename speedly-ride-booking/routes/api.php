@@ -87,6 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [\App\Http\Controllers\Api\ClientController::class, 'profile']);
         Route::post('/profile/update', [\App\Http\Controllers\Api\ClientController::class, 'updateProfile']);
         Route::get('/locations', [LocationController::class, 'getClientLocations']);
+        Route::post('/locations/save', [LocationController::class, 'saveUserLocation']);
+        Route::put('/locations/{id}', [LocationController::class, 'updateUserLocation']);
+        Route::delete('/locations/{id}', [LocationController::class, 'deleteUserLocation']);
         Route::post('/support', [\App\Http\Controllers\Api\ClientController::class, 'support']);
         Route::get('/support/tickets', [\App\Http\Controllers\Api\ClientController::class, 'supportTickets']);
 
@@ -187,6 +190,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('/notifications/clear', [NotificationController::class, 'clear']);
     Route::post('/notifications/clear-all', [NotificationController::class, 'clearAll']);
 
