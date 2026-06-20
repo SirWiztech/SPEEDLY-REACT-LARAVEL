@@ -235,12 +235,26 @@ const ClientSettings: React.FC = () => {
                     `;
                 });
                 html += '</div>';
-                Swal.fire({ title: `Notifications (${notifications.length})`, html, icon: 'info', confirmButtonColor: '#ff5e00' });
+                Swal.fire({
+                    title: `Notifications (${notifications.length})`,
+                    html,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff5e00',
+                    confirmButtonText: 'Close',
+                    cancelButtonText: '🗑 Clear All',
+                    cancelButtonColor: '#dc3545',
+                }).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.cancel) {
+                        api.notifications.clearAll().then(() => {
+                            setNotificationCount(0);
+                            Swal.fire({ icon: 'success', title: 'All notifications cleared', timer: 1500, showConfirmButton: false });
+                        });
+                    }
+                });
             } else {
                 Swal.fire({ title: 'Notifications', html: '<p>🔔 No new notifications</p>', icon: 'info', confirmButtonColor: '#ff5e00' });
             }
-            // Mark as read
-            await api.notifications.clearAll();
             setNotificationCount(0);
         } catch {
             Swal.fire({ title: 'Notifications', text: 'Could not load notifications', icon: 'error', confirmButtonColor: '#ff5e00' });

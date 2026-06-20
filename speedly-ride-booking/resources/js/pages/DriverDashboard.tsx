@@ -829,8 +829,18 @@ const DriverDashboard: React.FC = () => {
                     title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
+                    showCancelButton: true,
                     confirmButtonColor: '#ff5e00',
-                    confirmButtonText: 'Close'
+                    confirmButtonText: 'Close',
+                    cancelButtonText: '🗑 Clear All',
+                    cancelButtonColor: '#dc3545',
+                }).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.cancel) {
+                        api.notifications.clearAll().then(() => {
+                            setNotificationCount(0);
+                            Swal.fire({ icon: 'success', title: 'All notifications cleared', timer: 1500, showConfirmButton: false });
+                        });
+                    }
                 });
             } else {
                 Swal.fire({

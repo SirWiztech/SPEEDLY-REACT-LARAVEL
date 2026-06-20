@@ -189,6 +189,7 @@ const DriverSettingsMobile: React.FC = () => {
                 <select id="vehicle-type" class="swal2-input">
                     <option value="economy">Economy</option>
                     <option value="comfort">Comfort</option>
+                    <option value="premium">Luxury</option>
                 </select>
             `,
             showCancelButton: true,
@@ -198,6 +199,8 @@ const DriverSettingsMobile: React.FC = () => {
                 const model = (document.getElementById('vehicle-model') as HTMLInputElement)?.value;
                 const plate = (document.getElementById('plate-number') as HTMLInputElement)?.value;
                 const type = (document.getElementById('vehicle-type') as HTMLSelectElement)?.value;
+                if (!model) { Swal.showValidationMessage('Please enter the vehicle model'); return false; }
+                if (!plate) { Swal.showValidationMessage('Please enter the plate number'); return false; }
                 return { model, plate, type };
             }
         }).then(async (result) => {

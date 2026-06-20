@@ -59,15 +59,70 @@ const DriverSupportMobile: React.FC = () => {
         { value: 'Other', icon: 'fa-ellipsis-h', label: 'Other' }
     ];
 
+    // Check notifications
+    const checkNotifications = async () => {
+        try {
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifications = payload.data || [];
+
+            if (notifications.length > 0) {
+                let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
+                notifications.forEach((notif: any) => {
+                    html += `
+                        <div style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <p><strong>${notif.title || 'Notification'}</strong></p>
+                            <p style="font-size: 13px;">${notif.message || ''}</p>
+                            <p style="font-size: 11px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+
+                Swal.fire({
+                    title: `Notifications (${notifications.length})`,
+                    html,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff5e00',
+                    confirmButtonText: 'Close',
+                    cancelButtonText: '🗑 Clear All',
+                    cancelButtonColor: '#dc3545',
+                }).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.cancel) {
+                        api.notifications.clearAll().then(() => {
+                            setNotificationCount(0);
+                            Swal.fire({ icon: 'success', title: 'All notifications cleared', timer: 1500, showConfirmButton: false });
+                        });
+                    }
+                });
+            } else {
+                Swal.fire({ title: 'Notifications', text: 'No new notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
+            }
+        } catch {
+            Swal.fire({ title: 'Notifications', text: 'No new notifications', icon: 'info', confirmButtonColor: '#ff5e00' });
+        }
+    };
+
     // Fetch user data
     const fetchUserData = async () => {
         try {
-            const data = await api.driver.profile();
-            
-            if (data.success || data.data) {
-                const user = data.data?.user || data.user || data.data;
-                setUserName(user?.fullname || user?.full_name || 'Guest');
-                setNotificationCount(data.data?.notification_count || data.notification_count || 0);
+            const [profileRes, notifRes] = await Promise.allSettled([
+                api.driver.profile(),
+                api.notifications.unreadCount(),
+            ]);
+
+            if (profileRes.status === 'fulfilled') {
+                const data = profileRes.value;
+                if (data.success || data.data) {
+                    const user = data.data?.user || data.user || data.data;
+                    setUserName(user?.fullname || user?.full_name || 'Guest');
+                }
+            }
+
+            if (notifRes.status === 'fulfilled') {
+                const nData = notifRes.value;
+                setNotificationCount(nData.data?.unread_count || nData.unread_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -225,7 +280,7 @@ const DriverSupportMobile: React.FC = () => {
                         <i className="fas fa-arrow-left"></i>
                     </button>
                     <h1>Support Center</h1>
-                    <button className="mobile-notification-btn" onClick={() => router.visit('/notifications')}>
+                    <button className="mobile-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
                         {notificationCount > 0 && <span className="mobile-notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>

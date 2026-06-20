@@ -228,7 +228,7 @@ const ClientBookRide: React.FC = () => {
     }, [preloaderLoading, mapsApiReady, isMobile, initMap]);
 
     useEffect(() => { actionsRef.current = { mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition }; });
-    useEffect(() => { if (step === 3 && booking.pickup.lat && booking.pickup.lng) findNearbyDrivers(booking.pickup.lat, booking.pickup.lng); }, [step]);
+    useEffect(() => { if (step === 3 && booking.pickup.lat && booking.pickup.lng) findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan); }, [step]);
     useEffect(() => { fetchData(); fetchSavedLocations(); }, [fetchData, fetchSavedLocations]);
     useEffect(() => () => { if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current); if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current); }, []);
 
@@ -273,7 +273,7 @@ const ClientBookRide: React.FC = () => {
         }
     };
     const checkNotifications = async () => { try { const d = await api.notifications.list(); Swal.fire({ icon: 'info', title: 'Notifications', text: `${(d.data?.data || []).length} new`, confirmButtonColor: '#ff5e00' }); } catch { Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new', confirmButtonColor: '#ff5e00' }); } };
-    const nextStep = () => { if (step === 1 && (!booking.pickup.lat || !booking.destination.lat)) { Swal.fire({ icon: 'warning', title: 'Incomplete', text: 'Select pickup and destination', confirmButtonColor: '#ff5e00' }); return; } if (step === 2 && !booking.plan) { Swal.fire({ icon: 'warning', title: 'Incomplete', confirmButtonColor: '#ff5e00' }); return; } if (step < 4) { const n = step + 1; setStep(n); if (n === 3 && booking.pickup.lat && booking.pickup.lng) findNearbyDrivers(booking.pickup.lat, booking.pickup.lng); } };
+    const nextStep = () => { if (step === 1 && (!booking.pickup.lat || !booking.destination.lat)) { Swal.fire({ icon: 'warning', title: 'Incomplete', text: 'Select pickup and destination', confirmButtonColor: '#ff5e00' }); return; } if (step === 2 && !booking.plan) { Swal.fire({ icon: 'warning', title: 'Incomplete', confirmButtonColor: '#ff5e00' }); return; } if (step < 4) { const n = step + 1; setStep(n); if (n === 3 && booking.pickup.lat && booking.pickup.lng) findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan); } };
     const prevStep = () => { if (step > 1) setStep(step - 1); };
 
     const formatCurrency = (a: number) => `₦${a.toLocaleString()}`;

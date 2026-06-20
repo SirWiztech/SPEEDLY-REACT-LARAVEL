@@ -695,6 +695,7 @@ const DriverSettings: React.FC = () => {
                                         <select id="vehicle-type" class="swal2-input">
                                             <option value="economy" ${vehicleData.vehicle_type === 'economy' ? 'selected' : ''}>Economy</option>
                                             <option value="comfort" ${vehicleData.vehicle_type === 'comfort' ? 'selected' : ''}>Comfort</option>
+                                            <option value="premium" ${vehicleData.vehicle_type === 'premium' ? 'selected' : ''}>Luxury</option>
                                         </select>
                                         <input type="number" id="passenger-capacity" class="swal2-input" placeholder="Passenger Capacity" value="${vehicleData.passenger_capacity}">
                                     `,
@@ -707,8 +708,9 @@ const DriverSettings: React.FC = () => {
                                         const vehicle_color = (document.getElementById('vehicle-color') as HTMLInputElement)?.value;
                                         const plate_number = (document.getElementById('plate-number') as HTMLInputElement)?.value;
                                         const vehicle_type = (document.getElementById('vehicle-type') as HTMLSelectElement)?.value;
-                                        const passenger_capacity = parseInt((document.getElementById('passenger-capacity') as HTMLInputElement)?.value);
-                                        return { vehicle_model, vehicle_year, vehicle_color, plate_number, vehicle_type, passenger_capacity };
+                                        if (!vehicle_model) { Swal.showValidationMessage('Please enter the vehicle model'); return false; }
+                                        if (!plate_number) { Swal.showValidationMessage('Please enter the plate number'); return false; }
+                                        return { vehicle_model, vehicle_year, vehicle_color, plate_number, vehicle_type };
                                     }
                                 }).then((result) => {
                                     if (result.isConfirmed) {

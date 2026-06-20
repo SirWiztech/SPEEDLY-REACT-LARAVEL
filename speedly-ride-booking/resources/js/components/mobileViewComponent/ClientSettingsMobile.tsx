@@ -225,8 +225,7 @@ const ClientSettingsMobile: React.FC = () => {
                             <span>🌍 Preferred Language</span>
                             <select id="pref-language" class="swal2-select">
                                 <option value="en">English</option>
-                                <option value="es">Spanish</option>
-                                <option value="fr">French</option>
+                                
                             </select>
                         </label>
                     </div>
@@ -603,17 +602,6 @@ const ClientSettingsMobile: React.FC = () => {
                             </div>
 
                 
-
-                            <div className="mobile-settings-item" onClick={ridePreferences}>
-                                <div className="mobile-item-info">
-                                    <div className="mobile-item-icon"><i className="fas fa-cog"></i></div>
-                                    <div className="mobile-item-details">
-                                        <h3>Ride Preferences</h3>
-                                        <p>Vehicle type</p>
-                                    </div>
-                                </div>
-                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                            </div>
 
                             
                         </div>

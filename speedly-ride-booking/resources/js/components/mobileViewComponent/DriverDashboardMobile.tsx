@@ -685,11 +685,13 @@ const DriverDashboardMobile: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const data = await api.notifications.list();
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifications = payload.data || [];
 
-            if (data.success && data.notifications && data.notifications.length > 0) {
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
-                data.notifications.forEach((notif: any) => {
+                notifications.forEach((notif: any) => {
                     html += `
                         <div style="padding: 12px; border-bottom: 1px solid #eee;">
                             <p><strong>${notif.title || 'Notification'}</strong></p>
@@ -701,10 +703,21 @@ const DriverDashboardMobile: React.FC = () => {
                 html += '</div>';
 
                 Swal.fire({
-                    title: `Notifications (${data.notifications.length})`,
+                    title: `Notifications (${notifications.length})`,
                     html: html,
                     icon: 'info',
-                    confirmButtonColor: '#ff5e00'
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff5e00',
+                    confirmButtonText: 'Close',
+                    cancelButtonText: '🗑 Clear All',
+                    cancelButtonColor: '#dc3545',
+                }).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.cancel) {
+                        api.notifications.clearAll().then(() => {
+                            setNotificationCount(0);
+                            Swal.fire({ icon: 'success', title: 'All notifications cleared', timer: 1500, showConfirmButton: false });
+                        });
+                    }
                 });
             } else {
                 Swal.fire({
@@ -1094,4 +1107,4 @@ const DriverDashboardMobile: React.FC = () => {
     );
 };
 
-export default DriverDashboardMobile;obile;
+export default DriverDashboardMobile;
