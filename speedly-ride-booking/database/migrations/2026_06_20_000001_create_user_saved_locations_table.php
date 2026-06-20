@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('user_saved_locations', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name', 100);
             $table->string('address', 255);
             $table->string('type', 20)->default('other'); // home, work, favorite, other
