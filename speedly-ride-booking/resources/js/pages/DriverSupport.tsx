@@ -76,12 +76,23 @@ const DriverSupport: React.FC = () => {
     // Fetch user data
     const fetchUserData = useCallback(async () => {
         try {
-            const data = await api.driver.profile();
-            
-            if (data.success || data.data) {
-                const user = data.data?.user || data.user || data.data;
-                setUserData(user);
-                setNotificationCount(data.data?.notification_count || data.notification_count || 0);
+            const [profileRes, notifRes] = await Promise.allSettled([
+                api.driver.profile(),
+                api.notifications.unreadCount(),
+            ]);
+
+            if (profileRes.status === 'fulfilled') {
+                const data = profileRes.value;
+                if (data.success || data.data) {
+                    const user = data.data?.user || data.user || data.data;
+                    setUserData(user);
+                }
+            }
+
+            if (notifRes.status === 'fulfilled') {
+                const nData = notifRes.value;
+                const count = nData.data?.unread_count || nData.unread_count || 0;
+                setNotificationCount(count);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -200,8 +211,9 @@ const DriverSupport: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const data = await api.notifications.list();
-            const notifications = data.notifications || data.data?.notifications || [];
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifications = payload.data || [];
 
             if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';

@@ -204,15 +204,46 @@ const ClientSettings: React.FC = () => {
                 });
                 return false;
             }
-        } catch (error) {
+        } catch (error: any) {
+            const errMsg = error?.response?.data?.message || error?.data?.message || error?.message || 'Failed to update password';
+            Swal.close();
             Swal.fire({
-                icon: 'success',
-                title: 'Password Updated',
-                text: 'Your password has been changed successfully',
-                timer: 1500,
-                showConfirmButton: false
+                icon: 'error',
+                title: 'Update Failed',
+                text: errMsg,
+                confirmButtonColor: '#ff5e00'
             });
-            return true;
+            return false;
+        }
+    };
+
+    // Check notifications
+    const checkNotifications = async () => {
+        try {
+            const data = await api.notifications.list();
+            const notifications = data.data?.data || data.notifications || data.data?.notifications || [];
+
+            if (notifications.length > 0) {
+                let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
+                notifications.forEach((notif: any) => {
+                    html += `
+                        <div style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <p><strong>${notif.title || 'Notification'}</strong></p>
+                            <p style="font-size: 13px; color: #666;">${notif.message || ''}</p>
+                            <p style="font-size: 11px; color: #999;">${new Date(notif.created_at).toLocaleString()}</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                Swal.fire({ title: `Notifications (${notifications.length})`, html, icon: 'info', confirmButtonColor: '#ff5e00' });
+            } else {
+                Swal.fire({ title: 'Notifications', html: '<p>🔔 No new notifications</p>', icon: 'info', confirmButtonColor: '#ff5e00' });
+            }
+            // Mark as read
+            await api.notifications.clearAll();
+            setNotificationCount(0);
+        } catch {
+            Swal.fire({ title: 'Notifications', text: 'Could not load notifications', icon: 'error', confirmButtonColor: '#ff5e00' });
         }
     };
 
@@ -491,7 +522,7 @@ const ClientSettings: React.FC = () => {
                         <h1>Settings</h1>
                         <p>Manage your account preferences and security</p>
                     </div>
-                    <button className="settings-notification-btn" onClick={() => router.visit('/notifications')}>
+                    <button className="settings-notification-btn" onClick={checkNotifications}>
                         <i className="fas fa-bell"></i>
                         {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
                     </button>
@@ -556,6 +587,22 @@ const ClientSettings: React.FC = () => {
                                         const current = (document.getElementById('current-password') as HTMLInputElement)?.value;
                                         const newPwd = (document.getElementById('new-password') as HTMLInputElement)?.value;
                                         const confirm = (document.getElementById('confirm-password') as HTMLInputElement)?.value;
+                                        if (!current || !newPwd || !confirm) {
+                                            Swal.showValidationMessage('Please fill all fields');
+                                            return false;
+                                        }
+                                        if (newPwd !== confirm) {
+                                            Swal.showValidationMessage('New passwords do not match');
+                                            return false;
+                                        }
+                                        if (newPwd.length < 6) {
+                                            Swal.showValidationMessage('Password must be at least 6 characters');
+                                            return false;
+                                        }
+                                        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPwd)) {
+                                            Swal.showValidationMessage('Password must contain uppercase, lowercase, and a number');
+                                            return false;
+                                        }
                                         return { current, new: newPwd, confirm };
                                     }
                                 }).then((result) => {

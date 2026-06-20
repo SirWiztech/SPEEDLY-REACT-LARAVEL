@@ -142,21 +142,28 @@ const ClientSettingsMobile: React.FC = () => {
                     Swal.showValidationMessage('Password must be at least 6 characters');
                     return false;
                 }
-                return { current_password: current, new_password: newPass, confirm_password: confirm };
+                if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPass)) {
+                    Swal.showValidationMessage('Password must contain uppercase, lowercase, and a number');
+                    return false;
+                }
+                return { current_password: current, new_password: newPass };
             }
         }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
                 try {
-                    const data = await api.client.changePassword(result.value);
+                    const data = await api.auth.changePassword(result.value);
                     Swal.close();
                     if (data.success) {
                         Swal.fire({ icon: 'success', title: 'Password Updated', text: 'Your password has been changed successfully', confirmButtonColor: '#ff5e00' });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to update password', confirmButtonColor: '#ff5e00' });
                     }
                 } catch (error: any) {
                     Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to update password', confirmButtonColor: '#ff5e00' });
+                    const errData = error?.response?.data || error?.data || {};
+                    Swal.fire({ icon: 'error', title: 'Error', text: errData.message || error?.message || 'Failed to update password', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -342,7 +349,7 @@ const ClientSettingsMobile: React.FC = () => {
                         <i class="fas fa-envelope" style="color: #ff5e00; width: 30px;"></i> Email Support
                     </div>
                     <div class="support-item" style="padding: 12px; border-bottom: 1px solid #eee;">
-                        <i class="fas fa-question-circle" style="color: #ff5e00; width: 30px;"></i> <strong>FAQ:</strong> How to book, How to add funds, How to rate a driver. Contact support@speedly.com for more help.
+                        <i class="fas fa-question-circle" style="color: #ff5e00; width: 30px;"></i> <strong>FAQ:</strong> How to book, How to add funds, How to rate a driver. Contact support for more help.
                     </div>
                     <div class="support-item" style="padding: 12px;">
                         <i class="fas fa-file-contract" style="color: #ff5e00; width: 30px;"></i> <strong>Terms:</strong> By using Speedly you agree to our terms. Rides subject to availability. Payments processed via KoraPay. Full terms available on request.
@@ -595,38 +602,20 @@ const ClientSettingsMobile: React.FC = () => {
                                 <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
 
-                            <div className="mobile-settings-item" onClick={managePaymentMethods}>
-                                <div className="mobile-item-info">
-                                    <div className="mobile-item-icon"><i className="fas fa-credit-card"></i></div>
-                                    <div className="mobile-item-details">
-                                        <h3>Payment Methods</h3>
-                                        <p>0 saved methods</p>
-                                    </div>
-                                </div>
-                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                            </div>
+                
 
                             <div className="mobile-settings-item" onClick={ridePreferences}>
                                 <div className="mobile-item-info">
                                     <div className="mobile-item-icon"><i className="fas fa-cog"></i></div>
                                     <div className="mobile-item-details">
                                         <h3>Ride Preferences</h3>
-                                        <p>Vehicle type, language</p>
+                                        <p>Vehicle type</p>
                                     </div>
                                 </div>
                                 <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
 
-                            <div className="mobile-settings-item" onClick={manageSavedLocations}>
-                                <div className="mobile-item-info">
-                                    <div className="mobile-item-icon"><i className="fas fa-map-marker-alt"></i></div>
-                                    <div className="mobile-item-details">
-                                        <h3>Saved Locations</h3>
-                                        <p>{savedLocations.length} saved places</p>
-                                    </div>
-                                </div>
-                                <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>
-                            </div>
+                            
                         </div>
 
                         {/* Preferences */}
@@ -636,20 +625,7 @@ const ClientSettingsMobile: React.FC = () => {
                                 <h2>Preferences</h2>
                             </div>
                             
-                            <div className="mobile-dark-mode-toggle">
-                                <div className="mobile-dark-mode-info">
-                                    <h3>Dark Mode</h3>
-                                    <p>Switch between light and dark theme</p>
-                                </div>
-                                <label className="toggle-switch">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={darkMode} 
-                                        onChange={(e) => toggleDarkMode(e.target.checked)}
-                                    />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
+        
 
                             <div className="mobile-section-header" style={{ marginTop: 8 }}>
                                 <i className="fas fa-globe"></i>
@@ -662,18 +638,7 @@ const ClientSettingsMobile: React.FC = () => {
                                 >
                                     English
                                 </button>
-                                <button 
-                                    className={`mobile-lang-btn ${language === 'es' ? 'active' : ''}`}
-                                    onClick={() => changeLanguage('es')}
-                                >
-                                    Español
-                                </button>
-                                <button 
-                                    className={`mobile-lang-btn ${language === 'fr' ? 'active' : ''}`}
-                                    onClick={() => changeLanguage('fr')}
-                                >
-                                    Français
-                                </button>
+                                
                             </div>
                         </div>
 
@@ -706,16 +671,7 @@ const ClientSettingsMobile: React.FC = () => {
                                 </label>
                             </div>
 
-                            <div className="mobile-toggle-item">
-                                <label className="toggle-label">
-                                    <i className="fas fa-sms"></i>
-                                    <span>SMS Alerts</span>
-                                </label>
-                                <label className="toggle-switch">
-                                    <input type="checkbox" />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
+                            
                         </div>
 
                         {/* Support */}
@@ -754,7 +710,7 @@ const ClientSettingsMobile: React.FC = () => {
                                     <div className="mobile-item-icon"><i className="fas fa-info-circle"></i></div>
                                     <div className="mobile-item-details">
                                         <h3>About Speedly</h3>
-                                        <p>Version 2.5.1 • Ride-hailing app</p>
+                                        <p>Version 1.0.0 • Ride-hailing app</p>
                                     </div>
                                 </div>
                                 <div className="mobile-item-action"><i className="fas fa-chevron-right"></i></div>

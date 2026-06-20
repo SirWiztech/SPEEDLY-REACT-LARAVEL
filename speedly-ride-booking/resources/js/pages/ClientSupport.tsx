@@ -76,11 +76,21 @@ const ClientSupport: React.FC = () => {
     // Fetch user data
     const fetchUserData = useCallback(async () => {
         try {
-            const data = await api.client.profile();
-            
-            if (data.success || data.data) {
-                setUserData(data.data?.user || data.user || data.data);
-                setNotificationCount(data.notification_count || data.data?.notification_count || 0);
+            const [profileRes, notifRes] = await Promise.allSettled([
+                api.client.profile(),
+                api.notifications.unreadCount(),
+            ]);
+
+            if (profileRes.status === 'fulfilled') {
+                const data = profileRes.value;
+                if (data.success || data.data) {
+                    setUserData(data.data?.user || data.user || data.data);
+                }
+            }
+
+            if (notifRes.status === 'fulfilled') {
+                const nData = notifRes.value;
+                setNotificationCount(nData.data?.unread_count || nData.unread_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -199,10 +209,11 @@ const ClientSupport: React.FC = () => {
     // Check notifications
     const checkNotifications = async () => {
         try {
-            const data = await api.notifications.list();
+            const response = await api.notifications.list();
+            const payload = response.data || response;
+            const notifications = payload.data || [];
 
-            if ((data.success || data.data) && (data.notifications?.length || data.data?.notifications?.length)) {
-                const notifications = data.notifications || data.data?.notifications || [];
+            if (notifications.length > 0) {
                 let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
                 notifications.forEach((notif: any) => {
                     html += `

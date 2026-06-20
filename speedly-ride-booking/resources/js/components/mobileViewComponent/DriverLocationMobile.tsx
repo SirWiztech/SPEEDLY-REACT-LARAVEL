@@ -622,17 +622,7 @@ const DriverLocationMobile: React.FC = () => {
                     {/* Map Container */}
                     <div className="mobile-map-container">
                         <div ref={mapRef} className="mobile-map"></div>
-                        <div className="mobile-map-controls">
-                            <button className="mobile-map-btn" onClick={togglePlaces} title="Find nearby restaurants">
-                                <i className="fas fa-store"></i>
-                            </button>
-                            <button className="mobile-map-btn" onClick={findNearbyChurches} title="Find nearby churches">
-                                <i className="fas fa-church"></i>
-                            </button>
-                            <button className="mobile-map-btn" onClick={centerOnUser} title="Center on my location">
-                                <i className="fas fa-crosshairs"></i>
-                            </button>
-                        </div>
+                        
                         <div ref={directionArrowRef} className="mobile-direction-arrow">
                             <i className="fas fa-location-arrow"></i>
                         </div>

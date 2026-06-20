@@ -616,19 +616,7 @@ const DriverSettingsMobile: React.FC = () => {
                                 <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
 
-                            <div className="settings-item" onClick={addBankAccount}>
-                                <div className="item-info">
-                                    <div className="item-icon"><i className="fas fa-university"></i></div>
-                                    <div className="item-details">
-                                        <h3>Bank Details</h3>
-                                        <p>{bankAccounts.length > 0 ? bankAccounts[0].bank_name : 'Add bank for withdrawals'}</p>
-                                    </div>
-                                </div>
-                                {bankAccounts.length > 0 && (
-                                    <div className="item-value">••••{bankAccounts[0].account_number.slice(-4)}</div>
-                                )}
-                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
-                            </div>
+                            
 
                             {/* Bank Accounts List */}
                             {bankAccounts.length > 1 && (
@@ -677,67 +665,8 @@ const DriverSettingsMobile: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Notifications */}
-                        <div className="settings-section">
-                            <div className="section-header">
-                                <i className="fas fa-bell"></i>
-                                <h2>Driver Notifications</h2>
-                            </div>
-                            
-                            <div className="settings-toggle-item">
-                                <div className="toggle-info">
-                                    <i className="fas fa-car"></i>
-                                    <div>
-                                        <h3>New Ride Requests</h3>
-                                        <p>Get notified of new rides</p>
-                                    </div>
-                                </div>
-                                <label className="toggle-switch">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={notificationSettings.ride_requests} 
-                                        onChange={(e) => toggleSetting('ride_requests', e.target.checked)}
-                                    />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
-
-                            <div className="settings-toggle-item">
-                                <div className="toggle-info">
-                                    <i className="fas fa-money-bill"></i>
-                                    <div>
-                                        <h3>Earnings Updates</h3>
-                                        <p>Payment notifications</p>
-                                    </div>
-                                </div>
-                                <label className="toggle-switch">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={notificationSettings.earnings_notif} 
-                                        onChange={(e) => toggleSetting('earnings_notif', e.target.checked)}
-                                    />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
-
-                            <div className="settings-toggle-item">
-                                <div className="toggle-info">
-                                    <i className="fas fa-volume-up"></i>
-                                    <div>
-                                        <h3>Sound Alerts</h3>
-                                        <p>Play sound for new rides</p>
-                                    </div>
-                                </div>
-                                <label className="toggle-switch">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={notificationSettings.sound_alerts} 
-                                        onChange={(e) => toggleSetting('sound_alerts', e.target.checked)}
-                                    />
-                                    <span className="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
+            
+                        
 
                         {/* Support */}
                         <div className="settings-section">
@@ -751,10 +680,10 @@ const DriverSettingsMobile: React.FC = () => {
                                     title: 'Driver Help Center',
                                     html: `
                                         <div class="mobile-help-links">
-                                            <div class="help-link" onclick="window.open('https://speedly.com/driver-guide', '_blank')">📚 Driver Guide</div>
-                                            <div class="help-link" onclick="window.open('https://speedly.com/earnings-faq', '_blank')">💰 Earnings FAQ</div>
-                                            <div class="help-link" onclick="window.open('https://speedly.com/vehicle-requirements', '_blank')">🛠️ Vehicle Requirements</div>
-                                            <div class="help-link" onclick="window.location.href='support.php'">📞 Contact Driver Support</div>
+                                            <div class="help-link" onclick="window.open('https://speedly-react-laravel-1.onrender.com/driver-support')">📚 Driver Guide</div>
+                                            <div class="help-link" onclick="window.open('https://speedly-react-laravel-1.onrender.com/driversupport')">💰 Earnings FAQ</div>
+                                            <div class="help-link" onclick="window.open('https://speedly-react-laravel-1.onrender.com/driversupport')">🛠️ Vehicle Requirements</div>
+                                            <div class="help-link" onclick="window.location.href='https://speedly-react-laravel-1.onrender.com/driversupport'">📞 Contact Driver Support</div>
                                         </div>
                                     `,
                                     confirmButtonColor: '#ff5e00',
@@ -782,7 +711,7 @@ const DriverSettingsMobile: React.FC = () => {
                                         <div style="text-align: center;">
                                             <img src="/main-assets/logo-no-background.png" alt="Speedly" style="max-width: 120px; margin-bottom: 20px;">
                                             <h3 style="font-size: 20px; font-weight: bold;">Speedly Driver</h3>
-                                            <p>Version 2.5.1</p>
+                                            <p>Version 1.0.0</p>
                                             <p class="text-gray-500 mt-2">© 2026 Speedly. All rights reserved.</p>
                                         </div>
                                     `,

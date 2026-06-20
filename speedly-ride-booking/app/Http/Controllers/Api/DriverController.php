@@ -569,16 +569,24 @@ class DriverController extends Controller
         $request->validate([
             'lat' => 'required|numeric|between:-90,90',
             'lng' => 'required|numeric|between:-180,180',
-            'radius_km' => 'sometimes|numeric|min:0.1|max:100'
+            'radius_km' => 'sometimes|numeric|min:0.1|max:100',
+            'ride_type' => 'sometimes|string|in:economy,comfort,premium',
         ]);
 
         $lat = $request->lat;
         $lng = $request->lng;
         $radiusKm = $request->radius_km ?? 50;
 
+        $rideType = $request->ride_type;
+
         $drivers = DriverProfile::whereIn('driver_status', ['online', 'on_ride'])
             ->whereHas('user')
             ->with('user')
+            ->when($rideType, function ($q) use ($rideType) {
+                $q->whereHas('vehicle', function ($vq) use ($rideType) {
+                    $vq->where('vehicle_type', $rideType);
+                });
+            })
             ->with('vehicle')
             ->get()
             ->each(function ($driver) use ($lat, $lng) {

@@ -285,7 +285,7 @@ const ClientBookRideMobile: React.FC = () => {
     }, [booking.pickup.lat, booking.pickup.lng, booking.destination.lat, booking.destination.lng]);
 
     // Calculate fare
-    const calculateFare = useCallback(async () => {
+    const calculateFare = useCallback(async (rideType?: string) => {
         const pLat = booking.pickup.lat;
         const pLng = booking.pickup.lng;
         const dLat = booking.destination.lat;
@@ -293,12 +293,13 @@ const ClientBookRideMobile: React.FC = () => {
         if (!pLat || !pLng || !dLat || !dLng) return;
 
         try {
+            const type = rideType || booking.plan || 'economy';
             const data = await api.rides.calculateFare({
                 pickup_lat: pLat,
                 pickup_lng: pLng,
                 dropoff_lat: dLat,
                 dropoff_lng: dLng,
-                ride_type: booking.plan || 'economy'
+                ride_type: type
             });
 
             if (data.success && data.data) {
@@ -670,9 +671,11 @@ const ClientBookRideMobile: React.FC = () => {
     const selectPlan = useCallback((plan: string) => {
         setSelectedPlan(plan);
         setBooking(prev => ({ ...prev, plan }));
-        // Auto-advance to driver step after picking plan (like desktop)
+        // Recalculate fare with the selected plan
+        calculateFare(plan);
+        // Auto-advance to driver step (like desktop)
         setTimeout(() => { setStep(3); }, 400);
-    }, []);
+    }, [calculateFare]);
 
     // Select driver
     const selectDriver = useCallback((driverId: string) => {
@@ -1182,6 +1185,22 @@ const ClientBookRideMobile: React.FC = () => {
                                     <li><i className="fas fa-check"></i> Professional drivers</li>
                                     <li><i className="fas fa-check"></i> Premium vehicles</li>
                                     <li><i className="fas fa-check"></i> Free water</li>
+                                </ul>
+                            </div>
+
+                            <div className={`mobile-plan-card ${selectedPlan === 'premium' ? 'selected' : ''}`} onClick={() => selectPlan('premium')}>
+                                <div className="mobile-plan-header">
+                                    <div className="mobile-plan-icon"><i className="fas fa-star"></i></div>
+                                    <div>
+                                        <div className="mobile-plan-title">Luxury</div>
+                                        <div className="mobile-plan-price">₦2,500 per km</div>
+                                    </div>
+                                </div>
+                                <ul className="mobile-plan-features">
+                                    <li><i className="fas fa-check"></i> Premium vehicle</li>
+                                    <li><i className="fas fa-check"></i> VIP treatment</li>
+                                    <li><i className="fas fa-check"></i> Top-rated drivers</li>
+                                    <li><i className="fas fa-check"></i> Premium amenities</li>
                                 </ul>
                             </div>
                         </div>

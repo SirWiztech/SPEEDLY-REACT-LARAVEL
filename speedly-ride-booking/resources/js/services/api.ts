@@ -297,6 +297,7 @@ export const api = {
   // Notifications
   notifications: {
     list: (page?: number) => apiFetch(`/notifications${page ? `?page=${page}` : ''}`),
+    unreadCount: () => apiFetch('/notifications/unread-count'),
     clear: (data: { notification_id: string }) =>
       apiFetch('/notifications/clear', { method: 'POST', body: JSON.stringify(data) }),
     clearAll: () =>
