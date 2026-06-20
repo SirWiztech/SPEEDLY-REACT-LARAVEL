@@ -1,6 +1,0 @@
-Fix: user_saved_locations migration — foreignId instead of foreignUuid
-
-The users table uses bigint IDs, not UUIDs. Changed the foreign key
-column type to match, fixing the PostgreSQL constraint error on deploy.
-
-Co-authored-by: CommandCodeBot <noreply@commandcode.ai>
