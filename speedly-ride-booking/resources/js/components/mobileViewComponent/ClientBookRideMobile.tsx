@@ -1271,15 +1271,10 @@ const ClientBookRideMobile: React.FC = () => {
                         <p className="mobile-section-subtitle">Select your preferred payment method</p>
 
                         <div className="mobile-payment-options">
-                            <div className={`mobile-payment-option ${selectedPayment === 'wallet' ? 'selected' : ''}`} onClick={() => selectPayment('wallet')}>
+                            <div className={`mobile-payment-option selected`} onClick={() => { setSelectedPayment('wallet'); setBooking(prev => ({ ...prev, payment: 'wallet' })); }}>
                                 <i className="fas fa-wallet"></i>
                                 <h4>Speedly Wallet</h4>
                                 <p>Balance: {formatCurrency(walletBalance)}</p>
-                            </div>
-                            <div className={`mobile-payment-option ${selectedPayment === 'card' ? 'selected' : ''}`} onClick={() => selectPayment('card')}>
-                                <i className="fas fa-credit-card"></i>
-                                <h4>Card</h4>
-                                <p>Pay with card</p>
                             </div>
                         </div>
 
@@ -1287,10 +1282,10 @@ const ClientBookRideMobile: React.FC = () => {
                             <div className="mobile-fare-summary">
                                 <h3>Fare Summary</h3>
                                 <div className="mobile-fare-item"><span>Distance</span><span>{booking.distance.toFixed(1)} km</span></div>
-                                <div className="mobile-fare-item"><span>Rate per km</span><span>₦{booking.plan === 'economy' ? '1,000' : '1,500'}</span></div>
-                                <div className="mobile-fare-item"><span>Base fare</span><span>₦500</span></div>
+                                <div className="mobile-fare-item"><span>Rate per km</span><span>₦{booking.plan === 'economy' ? '1,000' : booking.plan === 'premium' ? '2,500' : '1,500'}</span></div>
+                                <div className="mobile-fare-item"><span>Base fare</span><span>₦{booking.plan === 'economy' ? '500' : booking.plan === 'premium' ? '1,500' : '800'}</span></div>
                                 <div className="mobile-fare-item total"><span>Total Amount</span><span>₦{booking.fare.toLocaleString()}</span></div>
-                                {selectedPayment === 'wallet' && booking.fare > walletBalance && (
+                                {booking.fare > walletBalance && (
                                     <div className="mobile-insufficient-warning">⚠️ Insufficient balance. Please add funds.</div>
                                 )}
                             </div>

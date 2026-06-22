@@ -237,20 +237,6 @@ class RideController extends Controller
                 'payment_status' => 'held',
             ]);
 
-            WalletTransaction::create([
-                'id' => Str::random(32),
-                'user_id' => $user->id,
-                'transaction_type' => 'ride_payment',
-                'amount' => $totalFare,
-                'balance_before' => $balanceBefore,
-                'balance_after' => $balanceAfter,
-                'reference' => $reference,
-                'status' => 'completed',
-                'category' => 'ride_booking',
-                'description' => "Payment for ride #{$ride->ride_number}",
-                'ride_id' => $rideId,
-            ]);
-
             $admins = User::where('role', 'admin')->get();
             foreach ($admins as $admin) {
                 Notification::create([
@@ -293,20 +279,47 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $ride]);
+        $rideData = $ride->toArray();
+        $rideData['user_rating'] = null;
+
+        $user = $request->user();
+        if ($user) {
+            $existingRating = \App\Models\DriverRating::where('ride_id', $ride->id)
+                ->where('user_id', $user->id)
+                ->first();
+            if ($existingRating) {
+                $rideData['user_rating'] = $existingRating->rating;
+                $rideData['user_review'] = $existingRating->review;
+            }
+        }
+
+        return response()->json(['success' => true, 'data' => $rideData]);
     }
 
     public function receipt(Request $request, $id)
     {
+        \Illuminate\Support\Facades\Log::info('[Receipt] Fetching receipt for ride', ['id' => $id, 'user' => $request->user()?->id]);
+
         $ride = Ride::with(['client.user', 'driver.user', 'driver.vehicle'])->find($id);
 
         if (!$ride) {
+            \Illuminate\Support\Facades\Log::warning('[Receipt] Ride not found', ['id' => $id]);
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
+        \Illuminate\Support\Facades\Log::info('[Receipt] Ride found', [
+            'id' => $ride->id,
+            'status' => $ride->status,
+            'payment_status' => $ride->payment_status,
+            'total_fare' => $ride->total_fare,
+        ]);
+
         if (in_array($ride->status, ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])) {
+            \Illuminate\Support\Facades\Log::info('[Receipt] Rejected — ride is cancelled', ['id' => $ride->id, 'status' => $ride->status]);
             return response()->json(['success' => false, 'message' => 'Receipt not available for cancelled rides'], 400);
         }
+
+        \Illuminate\Support\Facades\Log::info('[Receipt] Proceeding to generate receipt data', ['id' => $ride->id, 'status' => $ride->status]);
 
         $ride->distance_km = (float) $ride->distance_km;
         $ride->total_fare = (float) $ride->total_fare;
@@ -504,24 +517,6 @@ class RideController extends Controller
             ]);
 
             // Refund client's wallet
-            $clientUser = $ride->client->user;
-            $lastClientTx = WalletTransaction::where('user_id', $clientUser->id)
-                ->orderBy('created_at', 'desc')->first();
-            $clientBalanceBefore = $lastClientTx ? $lastClientTx->balance_after : 0;
-            $clientBalanceAfter = $clientBalanceBefore + $ride->total_fare;
-
-            WalletTransaction::create([
-                'id' => Str::random(32),
-                'user_id' => $clientUser->id,
-                'transaction_type' => 'ride_refund',
-                'description' => "Refund for cancelled ride #{$ride->ride_number}",
-                'amount' => $ride->total_fare,
-                'balance_before' => $clientBalanceBefore,
-                'balance_after' => $clientBalanceAfter,
-                'status' => 'completed',
-                'ride_id' => $ride->id,
-            ]);
-
             if ($isDriver) {
                 Notification::create([
                     'id' => Str::random(32),

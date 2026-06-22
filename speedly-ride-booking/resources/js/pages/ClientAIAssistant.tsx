@@ -50,8 +50,6 @@ const ClientAIAssistant: React.FC = () => {
     const [isTyping, setIsTyping] = useState<boolean>(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedTopicAnswer, setSelectedTopicAnswer] = useState<string | null>(null);
-    const [conversationHistory, setConversationHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-    const [isBooking, setIsBooking] = useState(false);
 
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const topicsDataRef = useRef<Record<string, TopicCategory>>({});
@@ -71,19 +69,19 @@ const ClientAIAssistant: React.FC = () => {
                     icon: 'fa-user-plus',
                     title: 'Creating an Account',
                     description: 'Learn how to sign up and verify your account',
-                    answer: 'To create a Speedly account:\n\n1. Go to the registration page\n2. Enter your full name, username, email, and phone number\n3. Create a strong password\n4. Select your role (Customer or Driver)\n5. Agree to the Terms of Service\n6. Click "Create Account"\n7. Verify your email using the OTP sent\n\nOnce verified, you can start using Speedly!'
+                    answer: 'To create a Speedly account:\n\n1. Go to the registration page\n2. Enter your full name, username, email, and phone number\n3. Create a strong password\n4. Select your role (Customer or Client)\n5. Agree to the Terms of Service\n6. Click "Create Account"\n7. Verify your email using the OTP sent\n\nOnce verified, you can start using Speedly!'
                 },
                 {
                     icon: 'fa-car-side',
                     title: 'Your First Ride',
                     description: 'Step-by-step guide to booking your first trip',
-                    answer: 'Booking your first ride is easy:\n\n1. Log in to your Speedly account\n2. Tap "Book Ride" from the dashboard\n3. Enter your pickup location\n4. Enter your destination\n5. Choose your vehicle type (Economy or Comfort)\n6. Review the estimated fare\n7. Confirm your booking\n\nYour driver will be assigned and you can track their location in real-time!'
+                    answer: 'Booking your first ride is easy:\n\n1. Log in to your Speedly account\n2. Tap "Book Ride" from the dashboard\n3. Enter your pickup location\n4. Enter your destination\n5. Choose your vehicle type (Economy or Comfort)\n6. Review the estimated fare\n7. Confirm your booking\n\nYour Client will be assigned and you can track their location in real-time!'
                 },
                 {
                     icon: 'fa-map-marker-alt',
                     title: 'Setting Locations',
                     description: 'How to accurately set pickup and drop-off',
-                    answer: 'Setting accurate locations helps your driver find you:\n\n• Use the map to pinpoint your exact pickup spot\n• Enable location services for better accuracy\n• Add a description if needed\n• For pickup, wait in a safe, visible location\n\nTip: Save your frequent locations (home, office) for faster booking!'
+                    answer: 'Setting accurate locations helps your Client find you:\n\n• Use the map to pinpoint your exact pickup spot\n• Enable location services for better accuracy\n• Add a description if needed\n• For pickup, wait in a safe, visible location\n\nTip: Save your frequent locations (home, office) for faster booking!'
                 }
             ]
         },
@@ -109,7 +107,7 @@ const ClientAIAssistant: React.FC = () => {
                     icon: 'fa-times-circle',
                     title: 'Cancelling Rides',
                     description: 'How to cancel and cancellation policy',
-                    answer: 'To cancel a ride:\n\n1. Go to your active ride\n2. Tap "Cancel Ride"\n3. Select a reason for cancellation\n\n⚠️ Cancellation Policy:\n• Free cancellation within 2 minutes of booking\n• After 2 minutes, a small fee may apply\n• If driver is already en route, fee may be higher'
+                    answer: 'To cancel a ride:\n\n1. Go to your active ride\n2. Tap "Cancel Ride"\n3. Select a reason for cancellation\n\n⚠️ Cancellation Policy:\n• Free cancellation within 2 minutes of booking\n• After 2 minutes, a small fee may apply\n• If Client is already en route, fee may be higher'
                 }
             ]
         },
@@ -139,8 +137,8 @@ const ClientAIAssistant: React.FC = () => {
                 }
             ]
         },
-        'driver-guide': {
-            title: 'Driver Guide',
+        'Client-guide': {
+            title: 'Client Guide',
             icon: 'fa-id-card',
             color: '#ef6c00',
             bgColor: '#fff3e0',
@@ -148,14 +146,14 @@ const ClientAIAssistant: React.FC = () => {
                 {
                     icon: 'fa-user-check',
                     title: 'Getting Approved',
-                    description: 'Complete your driver onboarding',
-                    answer: 'To become a Speedly driver:\n\n1. Register as a Driver\n2. Complete your KYC verification:\n   • Upload driver\'s license\n   • Take a selfie with your ID\n3. Add your vehicle information\n4. Wait for admin approval\n\nOnce approved, you can start accepting rides!'
+                    description: 'Complete your Client onboarding',
+                    answer: 'To become a Speedly Client:\n\n1. Register as a Client\n2. Complete your KYC verification:\n   • Upload Client\'s license\n   • Take a selfie with your ID\n3. Add your vehicle information\n4. Wait for admin approval\n\nOnce approved, you can start accepting rides!'
                 },
                 {
                     icon: 'fa-money-check',
                     title: 'Earnings & Withdrawals',
                     description: 'How to earn and withdraw your money',
-                    answer: 'As a driver, you earn from completed rides.\n\n📈 EARNINGS:\n• You receive 80% of the fare\n• Earnings appear in your wallet\n\n💸 WITHDRAWALS:\n• Minimum withdrawal: ₦1,000\n• Add your bank details in Settings\n• Request from Wallet page\n• Processed within 24-48 hours'
+                    answer: 'As a Client, you earn from completed rides.\n\n📈 EARNINGS:\n• You receive 80% of the fare\n• Earnings appear in your wallet\n\n💸 WITHDRAWALS:\n• Minimum withdrawal: ₦1,000\n• Add your bank details in Settings\n• Request from Wallet page\n• Processed within 24-48 hours'
                 },
                 {
                     icon: 'fa-map-marked',
@@ -173,15 +171,15 @@ const ClientAIAssistant: React.FC = () => {
             items: [
                 {
                     icon: 'fa-user-check',
-                    title: 'Verify Your Driver',
-                    description: 'How to confirm your driver is legitimate',
-                    answer: 'Safety first! Always verify your driver:\n\n✅ Check the app:\n• Driver photo matches the person\n• License plate matches your ride\n• Driver name matches booking\n\n✅ Before starting:\n• Ask "Who are you picking up?"\n• Don\'t share personal info\n• If something feels wrong, cancel and report'
+                    title: 'Verify Your Client',
+                    description: 'How to confirm your Client is legitimate',
+                    answer: 'Safety first! Always verify your Client:\n\n✅ Check the app:\n• Client photo matches the person\n• License plate matches your ride\n• Client name matches booking\n\n✅ Before starting:\n• Ask "Who are you picking up?"\n• Don\'t share personal info\n• If something feels wrong, cancel and report'
                 },
                 {
                     icon: 'fa-map-pin',
                     title: 'Share Your Trip',
                     description: 'How to share your location with others',
-                    answer: 'For your safety, share your trip:\n\n1. During the ride\n2. Tap the "Share Trip" option\n3. Choose a contact to share with\n\nWhat\'s shared:\n• Real-time location\n• Driver details\n• Estimated arrival time\n\nYour contacts can track you without needing the app!'
+                    answer: 'For your safety, share your trip:\n\n1. During the ride\n2. Tap the "Share Trip" option\n3. Choose a contact to share with\n\nWhat\'s shared:\n• Real-time location\n• Client details\n• Estimated arrival time\n\nYour contacts can track you without needing the app!'
                 },
                 {
                     icon: 'fa-exclamation-triangle',
@@ -213,7 +211,7 @@ const ClientAIAssistant: React.FC = () => {
                     icon: 'fa-car-crash',
                     title: 'Ride Issues',
                     description: 'What to do when something goes wrong',
-                    answer: 'Common ride issues:\n\n🚗 Driver not showing:\n• Check if they cancelled\n• Try calling the driver\n• Request another ride\n\n📍 Wrong location:\n• Verify pickup/destination in app\n• Contact driver to clarify\n\n💸 Wrong fare:\n• Check ride history for breakdown\n• Dispute within 24 hours'
+                    answer: 'Common ride issues:\n\n🚗 Client not showing:\n• Check if they cancelled\n• Try calling the Client\n• Request another ride\n\n📍 Wrong location:\n• Verify pickup/destination in app\n• Contact Client to clarify\n\n💸 Wrong fare:\n• Check ride history for breakdown\n• Dispute within 24 hours'
                 }
             ]
         }
@@ -222,13 +220,13 @@ const ClientAIAssistant: React.FC = () => {
     // Fetch user data
     const fetchUserData = async () => {
         try {
-            const data = await api.client.profile();
+            const data = await api.Client.profile();
             
             if (data.success || data.data) {
                 const user = data.data?.user || data.user || data.data;
                 setUserData(user);
-                setUserRole(user?.role || data.data?.role || 'client');
-                setNotificationCount(data.notification_count || data.data?.notification_count || 0);
+                setUserRole(user?.role || data.data?.role || 'Client');
+                setNotificationCount(data.data?.notification_count || data.notification_count || 0);
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -237,95 +235,58 @@ const ClientAIAssistant: React.FC = () => {
         }
     };
 
-    // ========== Voice Output (Web Speech API, no key needed) ==========
-    const speak = (text: string) => {
-        if (!('speechSynthesis' in window)) return;
-        const clean = text.replace(/[^\w\s,.'!?\-]/g, '').replace(/\n+/g, '. ').replace(/\s+/g, ' ').trim();
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(clean);
-        utterance.lang = 'en-NG';
-        utterance.rate = 0.92;
-        utterance.pitch = 1.05;
-        utterance.volume = 1;
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
-        if (preferred) utterance.voice = preferred;
-        window.speechSynthesis.speak(utterance);
-    };
-
-    // ========== Handle BOOK_RIDE command from Gemini ==========
-    const handleBookingCommand = async (aiText: string) => {
-        try {
-            setIsBooking(true);
-            const jsonMatch = aiText.match(/BOOK_RIDE:(\{.*\})/);
-            if (!jsonMatch) throw new Error('Invalid booking format');
-            const bookingData = JSON.parse(jsonMatch[1]);
-
-            setMessages(prev => [...prev, {
-                id: Date.now().toString(),
-                text: `Booking your ${bookingData.ride_type} ride...\n\nPickup: ${bookingData.pickup}\nDestination: ${bookingData.destination}`,
-                isUser: false,
-                timestamp: new Date(),
-            }]);
-
-            const result = await api.rides.book({
-                pickup_location: bookingData.pickup,
-                dropoff_location: bookingData.destination,
-                pickup_lat: 0, pickup_lng: 0, dropoff_lat: 0, dropoff_lng: 0,
-                ride_type: bookingData.ride_type,
-            });
-
-            if (result.success) {
-                const successMsg = `Your ${bookingData.ride_type} ride has been booked!\n\nA driver will be assigned to you shortly.\nYou can track your ride from the dashboard.`;
-                setMessages(prev => [...prev, { id: Date.now().toString(), text: successMsg, isUser: false, timestamp: new Date() }]);
-                speak(successMsg);
-                setConversationHistory([]);
-                setTimeout(() => router.visit('/clientridehistory'), 2500);
-            } else {
-                setMessages(prev => [...prev, { id: Date.now().toString(), text: result.message || 'Booking failed. Please try again.', isUser: false, timestamp: new Date() }]);
-            }
-        } catch (err: any) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), text: err?.response?.data?.message || 'Booking failed. Please try again.', isUser: false, timestamp: new Date() }]);
-        } finally {
-            setIsBooking(false);
+    // Get AI response based on question
+    const getAIResponse = (question: string): string => {
+        const q = question.toLowerCase();
+        
+        if (q.includes('book') || q.includes('ride')) {
+            return 'To book a ride:\n\n1. Go to your dashboard\n2. Tap "Book Ride"\n3. Set pickup & destination\n4. Choose vehicle type\n5. Confirm & pay\n\nNeed more help? I can show you detailed guides!';
         }
+        if (q.includes('wallet') || q.includes('add money') || q.includes('deposit') || q.includes('fund')) {
+            return 'To add funds to your wallet:\n\n1. Go to Wallet\n2. Tap "Add to Wallet"\n3. Enter amount\n4. Pay via KoraPay\n5. Funds credited instantly!\n\nMinimum: ₦100 | Maximum: ₦500,000';
+        }
+        if (q.includes('cancel')) {
+            return 'To cancel a ride:\n\n1. Open active ride\n2. Tap "Cancel Ride"\n3. Select reason\n\n⚠️ Free within 2 minutes. After that, a small fee may apply.';
+        }
+        if (q.includes('support') || q.includes('help') || q.includes('contact')) {
+            return 'Need support? Here are your options:\n\n📱 Go to Support page in your dashboard\n💬 Open a support ticket\n📧 Email: speedlyentreprise01@gmail.com\n📞 Phone: +234 800 000 0000\n\nResponse time: within 24 hours';
+        }
+        if (q.includes('Client') && q.includes('withdraw')) {
+            return 'As a Client, to withdraw earnings:\n\n1. Go to Wallet\n2. Tap "Withdraw"\n3. Enter amount (min ₦1,000)\n4. Select/add bank details\n5. Submit request\n\nProcessed within 24-48 hours!';
+        }
+        if (q.includes('safety') || q.includes('emergency')) {
+            return 'Safety tips:\n\n✅ Verify Client details before ride\n✅ Share your trip with contacts\n✅ Rate Clients honestly\n✅ Report issues via Support\n\nFor emergencies, call 911 first!';
+        }
+        
+        return 'I\'m here to help! Try asking about:\n\n• Booking rides\n• Wallet & payments\n• Client earnings (for Clients)\n• Safety guidelines\n• Troubleshooting\n\nOr browse the topics on the left!';
     };
 
-    // ========== Send Message via Gemini API ==========
-    const sendMessage = async () => {
-        if (!inputValue.trim() || isBooking) return;
+    // Send message
+    const sendMessage = () => {
+        if (!inputValue.trim()) return;
 
-        const userText = inputValue.trim();
+        const userMessage: Message = {
+            id: Date.now().toString(),
+            text: inputValue,
+            isUser: true,
+            timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, userMessage]);
         setInputValue('');
-
-        const userMsg: Message = { id: Date.now().toString(), text: userText, isUser: true, timestamp: new Date() };
-        setMessages(prev => [...prev, userMsg]);
         setIsTyping(true);
 
-        const updatedHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
-
-        try {
-            const response = await api.ai.chat(updatedHistory);
-            const aiText: string = response.data?.text || response.text || "Sorry, I couldn't process that. Please try again.";
-
-            if (aiText.includes('BOOK_RIDE:')) {
-                await handleBookingCommand(aiText);
-            } else {
-                const aiMsg: Message = { id: (Date.now() + 1).toString(), text: aiText, isUser: false, timestamp: new Date() };
-                setMessages(prev => [...prev, aiMsg]);
-                setConversationHistory([...updatedHistory, { role: 'assistant', content: aiText }]);
-                speak(aiText);
-            }
-        } catch (err: any) {
-            console.error('[Speedly AI] Chat error:', err?.message || err);
-            if (err?.response) {
-                console.error('[Speedly AI] Response status:', err.response.status);
-                console.error('[Speedly AI] Response body:', err.response.data || err.response.body);
-            }
-            setMessages(prev => [...prev, { id: Date.now().toString(), text: 'Connection error: ' + (err?.message || 'Please try again.'), isUser: false, timestamp: new Date() }]);
-        } finally {
+        setTimeout(() => {
+            const response = getAIResponse(inputValue);
+            const aiMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                text: response,
+                isUser: false,
+                timestamp: new Date()
+            };
+            setMessages(prev => [...prev, aiMessage]);
             setIsTyping(false);
-        }
+        }, 1500);
     };
 
     // Show topic answer
@@ -401,7 +362,7 @@ const ClientAIAssistant: React.FC = () => {
                     </div>
                     <button className="ai-notification-btn" onClick={() => router.visit('/notifications')}>
                         <i className="fas fa-bell"></i>
-                        {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+                        {notificationCount > 0 && <span className="notification-badge font-roboto-number">{notificationCount}</span>}
                     </button>
                 </div>
 
@@ -441,13 +402,13 @@ const ClientAIAssistant: React.FC = () => {
                                 </div>
                             </div>
 
-                            {userRole === 'driver' && (
-                                <div className="ai-category-item" onClick={() => setSelectedCategory('driver-guide')}>
+                            {userRole === 'Client' && (
+                                <div className="ai-category-item" onClick={() => setSelectedCategory('Client-guide')}>
                                     <div className="category-icon" style={{ background: '#fff3e0', color: '#ef6c00' }}>
                                         <i className="fas fa-id-card"></i>
                                     </div>
                                     <div className="category-info">
-                                        <h3>Driver Guide</h3>
+                                        <h3>Client Guide</h3>
                                         <p>Earnings, withdrawals & more</p>
                                     </div>
                                 </div>
@@ -532,7 +493,7 @@ const ClientAIAssistant: React.FC = () => {
                         </div>
 
                         <div className="ai-quick-actions">
-                            <button className="ai-quick-btn" onClick={() => { setInputValue('I want to book a ride'); setTimeout(() => sendMessage(), 100); }}>
+                            <button className="ai-quick-btn" onClick={() => askQuickQuestion('How do I book a ride?')}>
                                 <i className="fas fa-car"></i> Book Ride
                             </button>
                             <button className="ai-quick-btn" onClick={() => askQuickQuestion('How do I add money?')}>
@@ -550,14 +511,13 @@ const ClientAIAssistant: React.FC = () => {
                             <input
                                 type="text"
                                 className="ai-chat-input"
-                                placeholder={isBooking ? 'Booking your ride...' : 'Type your question here...'}
+                                placeholder="Type your question here..."
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                                disabled={isBooking}
                             />
-                            <button className="ai-send-btn" onClick={sendMessage} disabled={isBooking}>
-                                <i className={`fas ${isBooking ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+                            <button className="ai-send-btn" onClick={sendMessage}>
+                                <i className="fas fa-paper-plane"></i>
                             </button>
                         </div>
                     </div>

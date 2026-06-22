@@ -214,6 +214,12 @@ const DriverDashboard: React.FC = () => {
 
     // Web speech helper — speak repeatedly with stop condition
     const newRideSpeechActiveRef = useRef(false);
+    const driverNameRef = useRef<string>('Driver');
+
+    // Keep driver name ref in sync with driverData
+    useEffect(() => {
+        driverNameRef.current = (driverData?.fullname || driverData?.full_name)?.split(' ')[0] || 'Driver';
+    }, [driverData]);
 
     // Debug log for speech
     const logSpeech = (msg: string) => {
@@ -225,8 +231,8 @@ const DriverDashboard: React.FC = () => {
         if (newRideSpeechActiveRef.current) return;
         newRideSpeechActiveRef.current = true;
 
-        const clientName = ride.client_name || 'passenger';
-        const text = `Hello. A new ride is available from ${clientName}. Pickup at ${ride.pickup_address}. Please accept the ride.`;
+        const name = driverNameRef.current;
+        const text = `Hello ${name}, you have a new ride pending to accept.`;
         let count = 0;
         const maxCount = 5;
 

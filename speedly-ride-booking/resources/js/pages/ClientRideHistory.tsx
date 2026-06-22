@@ -251,6 +251,15 @@ const ClientRideHistory: React.FC = () => {
                     </button>
                 </div>
             `;
+        } else if (!['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'].includes(ride.status)) {
+            html += `
+                <div style="background: #f0f7ff; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center;">
+                    <button onclick="window.viewReceipt('${ride.id}')"
+                        style="padding: 12px 24px; background: linear-gradient(135deg, #ff5e00, #ff8c3a); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                        <i class="fas fa-receipt"></i> View Receipt
+                    </button>
+                </div>
+            `;
         }
 
         if (driverName) {

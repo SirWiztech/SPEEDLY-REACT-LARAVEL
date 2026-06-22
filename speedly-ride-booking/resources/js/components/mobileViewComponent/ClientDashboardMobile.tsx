@@ -333,20 +333,97 @@ const ClientDashboardMobile: React.FC = () => {
             const rideData = data.data;
             if (rideData) {
                 const driverName = rideData.driver?.user?.full_name || null;
+                const canRate = (rideData.status === 'completed' || rideData.status === 'awaiting_release') && !rideData.user_rating;
+
+                let html = `
+                    <div style="text-align: left;">
+                        <p><strong>Ride #:</strong> ${rideData.ride_number || rideData.id}</p>
+                        <p><strong>From:</strong> ${rideData.pickup_address || 'N/A'}</p>
+                        <p><strong>To:</strong> ${rideData.destination_address || 'N/A'}</p>
+                        <p><strong>Fare:</strong> <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(rideData.total_fare)}</span></p>
+                        <p><strong>Status:</strong> ${getStatusDisplay(rideData.status)}</p>
+                        ${driverName ? `<p><strong>Driver:</strong> ${driverName}</p>` : ''}
+                `;
+
+                if (canRate) {
+                    html += `
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                            <h4 style="margin-bottom: 15px; color: #E65100;">Rate Your Driver</h4>
+                            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; font-size: 30px;" id="mobileRatingStars">
+                                <i class="fas fa-star" data-rating="1" style="color: #ddd; cursor: pointer; transition: color 0.2s;"></i>
+                                <i class="fas fa-star" data-rating="2" style="color: #ddd; cursor: pointer; transition: color 0.2s;"></i>
+                                <i class="fas fa-star" data-rating="3" style="color: #ddd; cursor: pointer; transition: color 0.2s;"></i>
+                                <i class="fas fa-star" data-rating="4" style="color: #ddd; cursor: pointer; transition: color 0.2s;"></i>
+                                <i class="fas fa-star" data-rating="5" style="color: #ddd; cursor: pointer; transition: color 0.2s;"></i>
+                            </div>
+                            <textarea id="mobileReviewText" placeholder="Share your experience with this driver (optional)" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; font-family: inherit;" rows="3"></textarea>
+                            <button onclick="window.submitMobileRating('${rideData.id}')" style="background: #ff5e00; color: white; border: none; padding: 12px 20px; border-radius: 8px; width: 100%; font-weight: bold; font-size: 16px; cursor: pointer;">
+                                <i class="fas fa-star"></i> Submit Rating
+                            </button>
+                        </div>
+                    `;
+                } else if (rideData.user_rating) {
+                    html += `
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                            <h4 style="margin-bottom: 10px; color: #2E7D32;">Your Rating</h4>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <div style="color: #FFD700; font-size: 24px;">
+                                    ${'★'.repeat(rideData.user_rating)}${'☆'.repeat(5 - rideData.user_rating)}
+                                </div>
+                                <span style="font-weight: bold;">${rideData.user_rating}/5</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+
                 Swal.fire({
                     title: 'Ride Details',
-                    html: `
-                        <div style="text-align: left;">
-                            <p><strong>Ride #:</strong> ${rideData.ride_number || rideData.id}</p>
-                            <p><strong>From:</strong> ${rideData.pickup_address || 'N/A'}</p>
-                            <p><strong>To:</strong> ${rideData.destination_address || 'N/A'}</p>
-                            <p><strong>Fare:</strong> <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">${formatCurrency(rideData.total_fare)}</span></p>
-                            <p><strong>Status:</strong> ${getStatusDisplay(rideData.status)}</p>
-                            ${driverName ? `<p><strong>Driver:</strong> ${driverName}</p>` : ''}
-                        </div>
-                    `,
+                    html: html,
                     confirmButtonColor: '#ff5e00',
-                    confirmButtonText: 'Close'
+                    confirmButtonText: 'Close',
+                    didOpen: () => {
+                        if (canRate) {
+                            let selectedRatingValue = 0;
+                            const stars = document.querySelectorAll('#mobileRatingStars i');
+                            const highlightStars = (rating: number) => {
+                                stars.forEach((star, index) => {
+                                    (star as HTMLElement).style.color = index < rating ? '#FFD700' : '#ddd';
+                                });
+                            };
+                            stars.forEach(star => {
+                                star.addEventListener('mouseenter', () => {
+                                    highlightStars(parseInt(star.getAttribute('data-rating') || '0'));
+                                });
+                                star.addEventListener('mouseleave', () => highlightStars(selectedRatingValue));
+                                star.addEventListener('click', () => {
+                                    selectedRatingValue = parseInt(star.getAttribute('data-rating') || '0');
+                                    highlightStars(selectedRatingValue);
+                                });
+                            });
+                            (window as any).submitMobileRating = async (id: string) => {
+                                if (selectedRatingValue === 0) {
+                                    Swal.fire({ icon: 'warning', title: 'Rating Required', text: 'Please select a rating', confirmButtonColor: '#ff5e00' });
+                                    return;
+                                }
+                                const review = (document.getElementById('mobileReviewText') as HTMLTextAreaElement)?.value || '';
+                                Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                                try {
+                                    const res = await api.rides.rateDriver(id, { rating: selectedRatingValue, comment: review });
+                                    Swal.close();
+                                    if (res.success) {
+                                        Swal.fire({ icon: 'success', title: 'Thank You!', text: 'Rating submitted', confirmButtonColor: '#ff5e00' }).then(() => fetchDashboardData());
+                                    } else {
+                                        Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed to submit', confirmButtonColor: '#ff5e00' });
+                                    }
+                                } catch {
+                                    Swal.close();
+                                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to submit rating', confirmButtonColor: '#ff5e00' });
+                                }
+                            };
+                        }
+                    }
                 });
             } else {
                 Swal.fire({

@@ -187,6 +187,17 @@ const ClientRideHistoryMobile: React.FC = () => {
                 </div>
         `;
 
+        if (!['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'].includes(ride.status)) {
+            html += `
+                <div style="background: #f0f7ff; padding: 12px; border-radius: 10px; margin-bottom: 12px; text-align: center;">
+                    <button onclick="window.viewReceiptMobile('${ride.id}')"
+                        style="padding: 10px 20px; background: linear-gradient(135deg, #ff5e00, #ff8c3a); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px;">
+                        <i class="fas fa-receipt"></i> View Receipt
+                    </button>
+                </div>
+            `;
+        }
+
         if (driverName) {
             html += `
                 <div style="background: #e8f5e9; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
@@ -383,8 +394,13 @@ const ClientRideHistoryMobile: React.FC = () => {
             submitRating(rideId, rating, review);
         };
 
+        (window as any).viewReceiptMobile = (rideId: string) => {
+            router.visit(`/generatereceipt?rideId=${rideId}`);
+        };
+
         return () => {
             delete (window as any).submitRatingFromModal;
+            delete (window as any).viewReceiptMobile;
         };
     }, [selectedRating]);
 

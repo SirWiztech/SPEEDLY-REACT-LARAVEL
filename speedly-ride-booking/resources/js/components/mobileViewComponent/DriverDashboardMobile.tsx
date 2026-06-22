@@ -104,6 +104,35 @@ const DriverDashboardMobile: React.FC = () => {
     const [showQrScanner, setShowQrScanner] = useState(false);
 
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const prevPendingRef = useRef<boolean>(false);
+    const speechActiveRef = useRef<boolean>(false);
+    const driverNameRef = useRef<string>('Driver');
+
+    // Keep driver name ref in sync
+    useEffect(() => {
+        driverNameRef.current = (driverData?.fullname || driverData?.full_name)?.split(' ')[0] || 'Driver';
+    }, [driverData]);
+
+    const speakNewRide = useCallback(() => {
+        if (!('speechSynthesis' in window)) return;
+        if (speechActiveRef.current) return;
+        speechActiveRef.current = true;
+
+        const name = driverNameRef.current;
+        const text = `Hello ${name}, you have a new ride pending to accept.`;
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-NG';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.05;
+        utterance.volume = 1;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+        if (preferred) utterance.voice = preferred;
+        utterance.onend = () => { speechActiveRef.current = false; };
+        window.speechSynthesis.speak(utterance);
+    }, []);
 
     // Fetch driver dashboard data
     const fetchDashboardData = useCallback(async () => {
@@ -799,6 +828,13 @@ const DriverDashboardMobile: React.FC = () => {
                         setPendingRide(pending || null);
                         if (pending) {
                             setCountdown(30);
+                            // Speak when a new ride appears (was none before)
+                            if (!prevPendingRef.current) {
+                                speakNewRide();
+                            }
+                            prevPendingRef.current = true;
+                        } else {
+                            prevPendingRef.current = false;
                         }
                     }
                 }

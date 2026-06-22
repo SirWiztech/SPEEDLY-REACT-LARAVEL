@@ -51,7 +51,18 @@ self.addEventListener('fetch', function(event) {
         return;
     }
 
-    // Everything else — network-first, cache fallback
+    // API reads (GET) — network-only, no cache (prevents stale data)
+    if (url.pathname.startsWith('/api/') && request.method === 'GET') {
+        event.respondWith(fetch(request).catch(function() {
+            return new Response(
+                JSON.stringify({ success: false, message: 'You are offline. Please check your connection.' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+        }));
+        return;
+    }
+
+    // Everything else (assets, pages) — network-first, cache fallback
     event.respondWith(
         fetch(request).then(function(response) {
             if (response.ok && response.type === 'basic') {

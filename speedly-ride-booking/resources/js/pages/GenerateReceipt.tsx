@@ -67,14 +67,9 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                 if (response.success && payload.ride) {
                     const rideStatus = payload.ride.status;
                     const cancelledStatuses = ['cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'];
-                    const inProgressStatuses = ['pending', 'accepted', 'ongoing'];
 
                     if (cancelledStatuses.includes(rideStatus)) {
                         setError('Receipt not available for cancelled rides.');
-                        return;
-                    }
-                    if (inProgressStatuses.includes(rideStatus)) {
-                        setError('Receipt will be available once the ride is completed and payment is confirmed.');
                         return;
                     }
                     setRide(payload.ride);
@@ -82,9 +77,11 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
                     setFareBreakdown(payload.fare_breakdown || null);
                 } else {
                     setError(response.message || 'Failed to load ride details');
+                    console.error('[Receipt] API returned error:', response);
                 }
-            } catch {
-                setError('Failed to load ride details');
+            } catch (err: any) {
+                console.error('[Receipt] API threw:', err);
+                setError(err?.message || 'Failed to load ride details');
             } finally {
                 setLoading(false);
             }
