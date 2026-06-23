@@ -35,6 +35,15 @@ const ClientLocation: React.FC = () => {
     const directionArrowRef = useRef<HTMLDivElement>(null);
     const mapInitRef = useRef(false);
     const initTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+    const lastGeocodedRef = useRef<{ lat: number; lng: number } | null>(null);
+
+    const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
 
     const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
@@ -57,26 +66,35 @@ const ClientLocation: React.FC = () => {
 
     const requestLocationPermission = () => {
         setGpsStatus('Getting location...');
+        // Single high-accuracy request — no inaccurate cached pre-fetch that causes map jumping
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                setHasPermission(true); setIsTracking(true); setGpsStatus('Refining...');
+                setHasPermission(true); setIsTracking(true); setGpsStatus('Live tracking');
                 const coords: LocationCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, altitude: pos.coords.altitude, speed: pos.coords.speed, heading: pos.coords.heading };
-                updateLocation(coords); doReverseGeocode(coords.lat, coords.lng); startWatchingPosition(); updateGPSStatus('active');
-                navigator.geolocation.getCurrentPosition(
-                    (ref) => { const rc: LocationCoords = { lat: ref.coords.latitude, lng: ref.coords.longitude, accuracy: ref.coords.accuracy, altitude: ref.coords.altitude, speed: ref.coords.speed, heading: ref.coords.heading }; updateLocation(rc); updateMapMarker(rc); doReverseGeocode(rc.lat, rc.lng); setGpsStatus('Live tracking'); },
-                    () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
+                updateLocation(coords); updateMapMarker(coords); doReverseGeocode(coords.lat, coords.lng);
+                startWatchingPosition(); updateGPSStatus('active');
             },
             (err) => { setHasPermission(false); setIsTracking(false); setGpsStatus(err.code === 1 ? 'Location denied' : 'Unable to get location'); updateGPSStatus('denied'); },
-            { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     };
 
     const startWatchingPosition = () => {
         if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = navigator.geolocation.watchPosition(
-            (pos) => { const c: LocationCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, altitude: pos.coords.altitude, speed: pos.coords.speed, heading: pos.coords.heading }; updateLocation(c); updateMapMarker(c); doReverseGeocode(c.lat, c.lng); updateDirectionArrow(c.heading); },
-            () => {}, { enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 }
+            (pos) => {
+                // Reject readings worse than 150m — low accuracy = cell-tower fix, not GPS
+                if (pos.coords.accuracy > 150) return;
+                const c: LocationCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, altitude: pos.coords.altitude, speed: pos.coords.speed, heading: pos.coords.heading };
+                updateLocation(c); updateMapMarker(c);
+                // Throttle geocoding — only re-geocode if position changed by > 30m
+                if (!lastGeocodedRef.current || haversineDistance(lastGeocodedRef.current.lat, lastGeocodedRef.current.lng, c.lat, c.lng) > 30) {
+                    lastGeocodedRef.current = { lat: c.lat, lng: c.lng };
+                    doReverseGeocode(c.lat, c.lng);
+                }
+                updateDirectionArrow(c.heading);
+            },
+            () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
     };
 
@@ -101,6 +119,8 @@ const ClientLocation: React.FC = () => {
 
     const doReverseGeocode = useCallback((lat: number, lng: number) => {
         if (!window.google) return;
+        // Reuse single geocoder instance — creating new ones per call causes
+        // race conditions where old responses arrive late and overwrite correct address
         if (!geocoderRef.current) geocoderRef.current = new google.maps.Geocoder();
         geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
             if (status !== 'OK' || !results?.length) return;

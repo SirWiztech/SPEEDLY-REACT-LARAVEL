@@ -6,6 +6,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import React from 'react';
 import CookieConsent from '@/components/CookieConsent';
 import GlobalChatBubble from '@/components/GlobalChatBubble';
+import { ActiveRideProvider } from '@/contexts/ActiveRideContext';
 import { registerPWA } from '@/pwa';
 
 // Register PWA service worker on first load
@@ -26,9 +27,11 @@ createInertiaApp({
         const root = createRoot(el);
         root.render(
             <React.Fragment>
-                <App {...props} />
-                <CookieConsent />
-                <GlobalChatBubble />
+                <ActiveRideProvider>
+                    <App {...props} />
+                    <CookieConsent />
+                    <GlobalChatBubble />
+                </ActiveRideProvider>
             </React.Fragment>
         );
     },

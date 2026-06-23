@@ -377,14 +377,14 @@
     opacity: 0.7;
 }
 
-/* Map Container — full screen behind the card */
+/* Map Container */
 .mobile-map-container {
     position: relative;
     margin: 0;
     overflow: hidden;
     border: none;
-    height: 85vh;
-    min-height: 400px;
+    height: 50vh;
+    min-height: 320px;
     width: 100%;
     flex-shrink: 0;
     z-index: 1;

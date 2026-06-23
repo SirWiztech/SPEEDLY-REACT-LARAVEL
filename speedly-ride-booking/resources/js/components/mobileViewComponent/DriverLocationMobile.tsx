@@ -53,9 +53,20 @@ const DriverLocationMobile: React.FC = () => {
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
     const markerRef = useRef<google.maps.Marker | null>(null);
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+    const geocoderRef = useRef<google.maps.Geocoder | null>(null);
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
     const mapInitRef = useRef(false);
+    const lastGeocodedRef = useRef<{ lat: number; lng: number } | null>(null);
+    const bestAccuracyRef = useRef<number>(Infinity);
+
+    const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
 
     // Reactive state for location stats
     const [locationStats, setLocationStats] = useState({
@@ -176,6 +187,7 @@ const DriverLocationMobile: React.FC = () => {
         setGpsStatus('GPS ACTIVE - TRACKING');
         setIsTracking(true);
         updateMobileGPSStatus('active');
+        bestAccuracyRef.current = Infinity; // Reset on fresh start
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -187,7 +199,11 @@ const DriverLocationMobile: React.FC = () => {
                     speed: position.coords.speed,
                     heading: position.coords.heading
                 };
+                // Accept first fix unconditionally — watchPosition will refine to GPS accuracy
+                bestAccuracyRef.current = coords.accuracy;
                 updateLocation(coords);
+                updateMapMarker(coords);
+                lastGeocodedRef.current = { lat: coords.lat, lng: coords.lng };
                 reverseGeocode(coords.lat, coords.lng);
                 startWatchingPosition();
             },
@@ -236,9 +252,31 @@ const DriverLocationMobile: React.FC = () => {
                     speed: position.coords.speed,
                     heading: position.coords.heading
                 };
+
+                // Accept if accuracy improved OR position is plausible (≤500m from last fix)
+                const isImprovedAccuracy = coords.accuracy < bestAccuracyRef.current;
+                let isPlausibleMove = true;
+                const lastCoords = { lat: 0, lng: 0 }; // fallback
+                if (lastGeocodedRef.current) {
+                    const d = haversineDistance(lastGeocodedRef.current.lat, lastGeocodedRef.current.lng, coords.lat, coords.lng);
+                    isPlausibleMove = d <= 500;
+                }
+
+                if (!isImprovedAccuracy && !isPlausibleMove) return; // Reject bad reading
+
+                if (coords.accuracy < bestAccuracyRef.current) {
+                    bestAccuracyRef.current = coords.accuracy;
+                }
+
                 updateLocation(coords);
                 updateMapMarker(coords);
-                reverseGeocode(coords.lat, coords.lng);
+
+                // Throttle geocoding — only fire when moved > 30m
+                if (!lastGeocodedRef.current || haversineDistance(lastGeocodedRef.current.lat, lastGeocodedRef.current.lng, coords.lat, coords.lng) > 30) {
+                    lastGeocodedRef.current = { lat: coords.lat, lng: coords.lng };
+                    reverseGeocode(coords.lat, coords.lng);
+                }
+
                 updateDirectionArrow(coords.heading);
             },
             (error) => {
@@ -300,9 +338,10 @@ const DriverLocationMobile: React.FC = () => {
         }
     };
 
-    // Reverse geocode
+    // Reverse geocode — reuse single instance to prevent race conditions
     const reverseGeocode = (lat: number, lng: number) => {
-        const geocoder = new google.maps.Geocoder();
+        if (!geocoderRef.current) geocoderRef.current = new google.maps.Geocoder();
+        const geocoder = geocoderRef.current;
 
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
             if (status === 'OK' && results && results[0]) {

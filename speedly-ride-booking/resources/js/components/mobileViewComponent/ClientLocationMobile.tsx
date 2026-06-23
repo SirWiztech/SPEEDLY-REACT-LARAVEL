@@ -1,5 +1,3 @@
-// ClientLocationMobile.tsx - Updated version with proper spacing
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import ClientNavMobile from '../../components/navbars/ClientNavMobile';
@@ -7,7 +5,6 @@ import Swal from 'sweetalert2';
 import { loadGoogleMapsApi } from '../../lib/googleMaps';
 import '../../../css/ClientLocationMobile.css';
 
-// Types
 interface LocationCoords {
     lat: number;
     lng: number;
@@ -34,15 +31,10 @@ interface PlaceResult {
 }
 
 const ClientLocationMobile: React.FC = () => {
-    // State
     const [userData, setUserData] = useState<any>(null);
     const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
     const [address, setAddress] = useState<AddressComponents>({
-        street: 'Waiting for GPS...',
-        area: '',
-        city: '',
-        state: '',
-        country: '',
+        street: 'Waiting for GPS...', area: '', city: '', state: '', country: '',
         formatted: 'Click "Enable Location" to see your exact position'
     });
     const [hasPermission, setHasPermission] = useState<boolean>(false);
@@ -51,7 +43,6 @@ const ClientLocationMobile: React.FC = () => {
     const [showPlaces, setShowPlaces] = useState<boolean>(false);
     const [showPermissionPrompt, setShowPermissionPrompt] = useState<boolean>(false);
     const [isTracking, setIsTracking] = useState<boolean>(false);
-    const [gpsCardCollapsed, setGpsCardCollapsed] = useState<boolean>(false);
 
     const watchIdRef = useRef<number | null>(null);
     const mapRef = useRef<HTMLDivElement>(null);
@@ -61,18 +52,38 @@ const ClientLocationMobile: React.FC = () => {
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
     const mapInitRef = useRef(false);
+    const lastValidCoordsRef = useRef<LocationCoords | null>(null);
+    const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+    const lastGeocodedRef = useRef<{ lat: number; lng: number } | null>(null);
+    const bestAccuracyRef = useRef<number>(Infinity);
 
-    // Reactive state for location stats
     const [locationStats, setLocationStats] = useState({
-        latitude: '--',
-        longitude: '--',
-        accuracy: '--',
-        speed: '0',
-        heading: '--',
-        altitude: '--',
+        latitude: '--', longitude: '--', accuracy: '--',
+        speed: '0', heading: '--', altitude: '--',
     });
 
-    // initMap MUST be defined before any useEffect that lists it as a dependency.
+    const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    // Accept a position if it improves our best known accuracy, or if the movement is
+    // plausible (≤500m from last fix). This replaces the old >100m hard reject that
+    // blocked the first real GPS fix on cold start, and the >200m jump guard that
+    // rejected legitimate positions while still feeding bad fallbacks to processPosition.
+    const shouldAcceptPosition = (coords: LocationCoords): boolean => {
+        if (coords.accuracy < bestAccuracyRef.current) return true;
+        if (lastValidCoordsRef.current) {
+            const d = haversineDistance(lastValidCoordsRef.current.lat, lastValidCoordsRef.current.lng, coords.lat, coords.lng);
+            if (d <= 500) return true;
+            return coords.accuracy < lastValidCoordsRef.current.accuracy * 0.75;
+        }
+        return true;
+    };
+
     const initMap = useCallback(() => {
         if (!mapRef.current || !window.google || mapInitRef.current) return;
         mapInitRef.current = true;
@@ -92,66 +103,30 @@ const ClientLocationMobile: React.FC = () => {
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
     }, []);
 
-    // Load Google Maps shared instance
     useEffect(() => {
         loadGoogleMapsApi().then(() => initMap()).catch(e => console.error('Maps:', e));
     }, [initMap]);
 
-    // Init map after mount (fallback for when the API is already loaded)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            initMap();
-        }, 500);
+        const timer = setTimeout(() => initMap(), 500);
         return () => clearTimeout(timer);
     }, [initMap]);
 
-    // Check geolocation permission
-    const checkGeolocationPermission = () => {
-        if (!navigator.permissions) {
-            return;
-        }
-
-        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-            if (result.state === 'granted') {
-                setHasPermission(true);
-                setShowPermissionPrompt(false);
-                startGPSTracking();
-            } else if (result.state === 'prompt') {
-                setShowPermissionPrompt(true);
-            } else if (result.state === 'denied') {
-                setHasPermission(false);
-                setGpsStatus('GPS ACCESS DENIED');
-                setShowPermissionPrompt(true);
-            }
-
-            result.addEventListener('change', () => {
-                if (result.state === 'granted') {
-                    setHasPermission(true);
-                    setShowPermissionPrompt(false);
-                    startGPSTracking();
-                }
-            });
-        });
-    };
-
-    // Request location permission
     const requestLocationPermission = () => {
         setShowPermissionPrompt(false);
         setGpsStatus('REQUESTING GPS ACCESS...');
         setIsTracking(true);
-        
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setHasPermission(true);
                 setShowPermissionPrompt(false);
                 startGPSTracking();
-                
+
                 Swal.fire({
-                    icon: 'success',
-                    title: 'Location Enabled',
+                    icon: 'success', title: 'Location Enabled',
                     text: 'GPS tracking activated successfully',
-                    timer: 1500,
-                    showConfirmButton: false
+                    timer: 1500, showConfirmButton: false
                 });
             },
             (error) => {
@@ -160,10 +135,9 @@ const ClientLocationMobile: React.FC = () => {
                 setGpsStatus('GPS ACCESS DENIED');
                 setShowPermissionPrompt(true);
                 setIsTracking(false);
-                
+
                 Swal.fire({
-                    icon: 'warning',
-                    title: 'Location Required',
+                    icon: 'warning', title: 'Location Required',
                     text: 'Please enable location to see your position on map',
                     confirmButtonColor: '#ff5e00'
                 });
@@ -172,17 +146,16 @@ const ClientLocationMobile: React.FC = () => {
         );
     };
 
-    // Start GPS tracking
     const startGPSTracking = () => {
         if (!navigator.geolocation) return;
 
-        setGpsStatus('GPS ACTIVE - TRACKING');
+        setGpsStatus('GPS ACTIVE — TRACKING');
         setIsTracking(true);
-        updateMobileGPSStatus('active');
+        bestAccuracyRef.current = Infinity; // Reset on fresh start
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const coords = {
+                const coords: LocationCoords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                     accuracy: position.coords.accuracy,
@@ -190,21 +163,22 @@ const ClientLocationMobile: React.FC = () => {
                     speed: position.coords.speed,
                     heading: position.coords.heading
                 };
-                updateLocation(coords);
-                reverseGeocode(coords.lat, coords.lng);
+                // Accept the first fix unconditionally — it's the only fix we have.
+                // watchPosition will refine it to GPS accuracy within a few seconds.
+                bestAccuracyRef.current = coords.accuracy;
+                lastValidCoordsRef.current = coords;
+                processPosition(coords);
                 startWatchingPosition();
             },
             (error) => {
                 console.error('GPS Error:', error.message);
                 setGpsStatus('GPS ERROR');
-                updateMobileGPSStatus('error');
                 setIsTracking(false);
             },
             { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
         );
     };
 
-    // Stop GPS tracking
     const stopGPSTracking = () => {
         if (watchIdRef.current) {
             navigator.geolocation.clearWatch(watchIdRef.current);
@@ -212,26 +186,20 @@ const ClientLocationMobile: React.FC = () => {
         }
         setIsTracking(false);
         setGpsStatus('GPS STOPPED');
-        updateMobileGPSStatus('stopped');
-        
+
         Swal.fire({
-            icon: 'info',
-            title: 'GPS Stopped',
+            icon: 'info', title: 'GPS Stopped',
             text: 'Location tracking has been stopped',
-            timer: 1500,
-            showConfirmButton: false
+            timer: 1500, showConfirmButton: false
         });
     };
 
-    // Start watching position
     const startWatchingPosition = () => {
-        if (watchIdRef.current) {
-            navigator.geolocation.clearWatch(watchIdRef.current);
-        }
+        if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
 
         watchIdRef.current = navigator.geolocation.watchPosition(
             (position) => {
-                const coords = {
+                const coords: LocationCoords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                     accuracy: position.coords.accuracy,
@@ -239,20 +207,22 @@ const ClientLocationMobile: React.FC = () => {
                     speed: position.coords.speed,
                     heading: position.coords.heading
                 };
-                updateLocation(coords);
-                updateMapMarker(coords);
-                reverseGeocode(coords.lat, coords.lng);
-                updateDirectionArrow(coords.heading);
+                if (shouldAcceptPosition(coords)) {
+                    if (coords.accuracy < bestAccuracyRef.current) {
+                        bestAccuracyRef.current = coords.accuracy;
+                    }
+                    lastValidCoordsRef.current = coords;
+                    processPosition(coords);
+                }
+                // Silently drop readings that fail the acceptance check — don't
+                // fall through to processPosition with bad data
             },
-            (error) => {
-                console.log('Watch error:', error.message);
-            },
+            () => {},
             { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
     };
 
-    // Update location
-    const updateLocation = (coords: LocationCoords) => {
+    const processPosition = (coords: LocationCoords) => {
         setUserLocation(coords);
 
         setLocationStats({
@@ -268,19 +238,26 @@ const ClientLocationMobile: React.FC = () => {
             mapInstanceRef.current.setCenter({ lat: coords.lat, lng: coords.lng });
             mapInstanceRef.current.setZoom(18);
         }
+
+        updateMapMarker(coords);
+        // Throttle geocoding — only call when moved > 30m to avoid race conditions
+        // where a slow response from an earlier position overwrites the current address
+        if (!lastGeocodedRef.current || haversineDistance(lastGeocodedRef.current.lat, lastGeocodedRef.current.lng, coords.lat, coords.lng) > 30) {
+            lastGeocodedRef.current = { lat: coords.lat, lng: coords.lng };
+            reverseGeocode(coords.lat, coords.lng);
+        }
+        updateDirectionArrow(coords.heading);
     };
 
-    // Update map marker
     const updateMapMarker = (coords: LocationCoords) => {
         if (!mapInstanceRef.current) return;
-
         const position = { lat: coords.lat, lng: coords.lng };
 
         if (markerRef.current) {
             markerRef.current.setPosition(position);
         } else {
             markerRef.current = new google.maps.Marker({
-                position: position,
+                position,
                 map: mapInstanceRef.current,
                 title: 'You are here',
                 icon: {
@@ -296,106 +273,81 @@ const ClientLocationMobile: React.FC = () => {
         }
     };
 
-    // Update direction arrow
     const updateDirectionArrow = (heading: number | null) => {
         if (directionArrowRef.current && heading) {
             directionArrowRef.current.style.transform = `rotate(${heading}deg)`;
         }
     };
 
-    // Reverse geocode
     const reverseGeocode = (lat: number, lng: number) => {
-        const geocoder = new google.maps.Geocoder();
-
+        if (!window.google) return;
+        // Reuse single instance — new Geocoder() per call causes race conditions
+        if (!geocoderRef.current) geocoderRef.current = new google.maps.Geocoder();
+        const geocoder = geocoderRef.current;
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === 'OK' && results && results[0]) {
-                const components = results[0].address_components;
-                let street = '', area = '', city = '', state = '', country = '';
-
-                for (const component of components) {
-                    if (component.types.includes('route')) street = component.long_name;
-                    if (component.types.includes('sublocality') || component.types.includes('neighborhood')) area = component.long_name;
-                    if (component.types.includes('locality')) city = component.long_name;
-                    if (component.types.includes('administrative_area_level_1')) state = component.long_name;
-                    if (component.types.includes('country')) country = component.long_name;
-                }
-
-                setAddress({
-                    street: street || 'Unknown Street',
-                    area,
-                    city,
-                    state: state || 'Anambra',
-                    country: country || 'Nigeria',
-                    formatted: results[0].formatted_address
-                });
+            if (status !== 'OK' || !results?.[0]) return;
+            const c = results[0].address_components;
+            let street = '', area = '', city = '', state = '', country = '';
+            for (const comp of c) {
+                if (comp.types.includes('route')) street = comp.long_name;
+                if (comp.types.includes('sublocality') || comp.types.includes('neighborhood')) area = comp.long_name;
+                if (comp.types.includes('locality')) city = comp.long_name;
+                if (comp.types.includes('administrative_area_level_1')) state = comp.long_name;
+                if (comp.types.includes('country')) country = comp.long_name;
             }
+            setAddress({
+                street: street || 'Unknown Street', area, city,
+                state: state || 'Anambra', country: country || 'Nigeria',
+                formatted: results[0].formatted_address
+            });
         });
     };
 
-    // Find nearby places
     const togglePlaces = () => {
         if (!userLocation || !placesServiceRef.current) {
             Swal.fire({ icon: 'warning', title: 'Location Required', text: 'Please enable GPS first', confirmButtonColor: '#ff5e00' });
             return;
         }
-
-        if (showPlaces) {
-            setShowPlaces(false);
-            return;
-        }
-
-        const request: google.maps.places.NearbySearchRequest = {
-            location: { lat: userLocation.lat, lng: userLocation.lng },
-            radius: 1000,
-            type: 'restaurant'
-        };
-
-        placesServiceRef.current.nearbySearch(request, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                const places: PlaceResult[] = results.slice(0, 10).map(place => ({
-                    id: place.place_id || Math.random().toString(),
-                    name: place.name || 'Unknown',
-                    vicinity: place.vicinity || '',
-                    location: { lat: place.geometry!.location!.lat(), lng: place.geometry!.location!.lng() }
-                }));
-                setNearbyPlaces(places);
-                setShowPlaces(true);
-            } else {
-                Swal.fire({ icon: 'info', title: 'No Places Found', text: 'No nearby places found', confirmButtonColor: '#ff5e00' });
+        if (showPlaces) { setShowPlaces(false); return; }
+        placesServiceRef.current.nearbySearch(
+            { location: { lat: userLocation.lat, lng: userLocation.lng }, radius: 1000, type: 'restaurant' },
+            (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    setNearbyPlaces(results.slice(0, 10).map(p => ({
+                        id: p.place_id || Math.random().toString(),
+                        name: p.name || 'Unknown', vicinity: p.vicinity || '',
+                        location: { lat: p.geometry!.location!.lat(), lng: p.geometry!.location!.lng() }
+                    })));
+                    setShowPlaces(true);
+                } else {
+                    Swal.fire({ icon: 'info', title: 'No Places Found', text: 'No nearby places found', confirmButtonColor: '#ff5e00' });
+                }
             }
-        });
+        );
     };
 
-    // Find nearby churches
     const findNearbyChurches = () => {
         if (!userLocation || !placesServiceRef.current) {
             Swal.fire({ icon: 'warning', title: 'Location Required', text: 'Please enable GPS first', confirmButtonColor: '#ff5e00' });
             return;
         }
-
-        const request: google.maps.places.NearbySearchRequest = {
-            location: { lat: userLocation.lat, lng: userLocation.lng },
-            radius: 2000,
-            keyword: 'church'
-        };
-
-        placesServiceRef.current.nearbySearch(request, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                const places: PlaceResult[] = results.slice(0, 10).map(place => ({
-                    id: place.place_id || Math.random().toString(),
-                    name: place.name || 'Unknown',
-                    vicinity: place.vicinity || '',
-                    location: { lat: place.geometry!.location!.lat(), lng: place.geometry!.location!.lng() }
-                }));
-                setNearbyPlaces(places);
-                setShowPlaces(true);
-            } else {
-                Swal.fire({ icon: 'info', title: 'No Churches Found', text: 'No nearby churches found', confirmButtonColor: '#ff5e00' });
+        placesServiceRef.current.nearbySearch(
+            { location: { lat: userLocation.lat, lng: userLocation.lng }, radius: 2000, keyword: 'church' },
+            (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    setNearbyPlaces(results.slice(0, 10).map(p => ({
+                        id: p.place_id || Math.random().toString(),
+                        name: p.name || 'Unknown', vicinity: p.vicinity || '',
+                        location: { lat: p.geometry!.location!.lat(), lng: p.geometry!.location!.lng() }
+                    })));
+                    setShowPlaces(true);
+                } else {
+                    Swal.fire({ icon: 'info', title: 'No Churches Found', text: 'No nearby churches found', confirmButtonColor: '#ff5e00' });
+                }
             }
-        });
+        );
     };
 
-    // Center on user
     const centerOnUser = () => {
         if (userLocation && mapInstanceRef.current) {
             mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
@@ -405,7 +357,6 @@ const ClientLocationMobile: React.FC = () => {
         }
     };
 
-    // Go to place
     const goToPlace = (place: PlaceResult) => {
         if (mapInstanceRef.current) {
             mapInstanceRef.current.setCenter(place.location);
@@ -414,93 +365,31 @@ const ClientLocationMobile: React.FC = () => {
         }
     };
 
-    // Update mobile GPS status
-    const updateMobileGPSStatus = (status: 'active' | 'denied' | 'error' | 'stopped') => {
-        if (status === 'active') {
-            setGpsStatus('🟢 GPS ACTIVE - TRACKING');
-        } else if (status === 'denied') {
-            setGpsStatus('❌ GPS ACCESS DENIED');
-        } else if (status === 'stopped') {
-            setGpsStatus('⏸️ GPS STOPPED');
-        } else {
-            setGpsStatus('⚠️ GPS ERROR');
-        }
-    };
-
-    // Cleanup
-    useEffect(() => {
-        return () => {
-            if (watchIdRef.current) {
-                navigator.geolocation.clearWatch(watchIdRef.current);
-            }
-        };
+    useEffect(() => () => {
+        if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     }, []);
 
     return (
         <>
             <style>{`
-                /* Reset all margins and paddings */
-                html, body, #app, .app-container, main {
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    overflow-x: hidden !important;
-                    background: white !important;
-                }
-                
-                .mobile-location-container {
-                    width: 100vw !important;
-                    max-width: 100vw !important;
-                    min-width: 100vw !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    background: white !important;
-                    overflow-x: hidden !important;
-                }
-                
-                .mobile-location-view {
-                    overflow-y: auto !important;
-                    overflow-x: hidden !important;
-                    padding-bottom: 80px !important;
-                    min-height: 100vh !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    width: 100% !important;
-                }
-                
-                .mobile-location-content {
-                    flex: 1 !important;
-                    overflow-y: visible !important;
-                }
-                
-                /* Fix for iOS Safari viewport */
-                @supports (-webkit-touch-callout: none) {
-                    .mobile-location-view {
-                        height: -webkit-fill-available !important;
-                    }
-                }
-                
-                /* Small phones */
-                @media (max-width: 380px) {
-                    .mobile-map-container {
-                        height: 60vh !important;
-                        min-height: 300px !important;
-                    }
-                }
+                html, body, #app { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; background: white !important; }
+                .mobile-location-container { width: 100vw !important; max-width: 100vw !important; margin: 0 !important; padding: 0 !important; background: white !important; overflow-x: hidden !important; }
+                .mobile-location-view { overflow-y: auto !important; overflow-x: hidden !important; padding-bottom: 80px !important; min-height: 100vh !important; display: flex !important; flex-direction: column !important; width: 100% !important; }
+                @media (max-width: 380px) { .mobile-map-container { height: 50vh !important; min-height: 280px !important; } }
+                @supports (-webkit-touch-callout: none) { .mobile-location-view { height: -webkit-fill-available !important; } }
             `}</style>
-            
+
             <div className="mobile-location-container">
                 <div className="mobile-location-view">
                     {/* Header */}
                     <div className="mobile-location-header">
                         <div className="mobile-location-user-info">
                             <h1>Live Location Tracker</h1>
-                            <p>📍 Real-time GPS • Maps • Places • Directions</p>
+                            <p>📍 Real-time GPS • Maps • Places</p>
                         </div>
                     </div>
 
-                    {/* Enable Location Button - Only shown when GPS is not active */}
+                    {/* Enable Location Prompt */}
                     {(!hasPermission || !isTracking) && (
                         <div className="mobile-enable-location-btn-container">
                             <button className="mobile-enable-location-btn" onClick={requestLocationPermission}>
@@ -514,7 +403,6 @@ const ClientLocationMobile: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Permission Prompt (Alternative) */}
                     {showPermissionPrompt && !hasPermission && !isTracking && (
                         <div className="mobile-permission-prompt">
                             <i className="fas fa-exclamation-triangle"></i>
@@ -524,10 +412,41 @@ const ClientLocationMobile: React.FC = () => {
                         </div>
                     )}
 
-                    {/* GPS Status Card - Always visible when tracking is active or permission granted */}
+                    {/* Map — top section, full height taken from viewport */}
+                    <div className="mobile-map-container">
+                        <div ref={mapRef} className="mobile-map"></div>
+
+                        <div ref={directionArrowRef} className="mobile-direction-arrow">
+                            <i className="fas fa-location-arrow"></i>
+                        </div>
+
+                        {showPlaces && (
+                            <div className="mobile-places-panel">
+                                <div className="mobile-places-header">
+                                    <h3>Nearby Places</h3>
+                                    <button className="mobile-close-places" onClick={() => setShowPlaces(false)}>
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div className="mobile-places-list">
+                                    {nearbyPlaces.map((place) => (
+                                        <div key={place.id} className="mobile-place-item" onClick={() => goToPlace(place)}>
+                                            <div className="mobile-place-icon"><i className="fas fa-map-marker-alt"></i></div>
+                                            <div className="mobile-place-info">
+                                                <h4>{place.name}</h4>
+                                                <p>{place.vicinity}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* GPS Info Card — BELOW the map, not floating */}
                     {(hasPermission || isTracking) && (
-                        <div className={`mobile-location-card ${gpsCardCollapsed ? 'collapsed' : ''}`}>
-                            <div className="mobile-location-header-row" onClick={() => setGpsCardCollapsed(!gpsCardCollapsed)}>
+                        <div className="mobile-location-card">
+                            <div className="mobile-location-header-row">
                                 <div className="mobile-location-title">
                                     <span className={`mobile-gps-pulse ${hasPermission && isTracking ? 'active' : 'inactive'}`}></span>
                                     <span className="mobile-gps-state">{gpsStatus}</span>
@@ -535,13 +454,8 @@ const ClientLocationMobile: React.FC = () => {
                                 <span className="mobile-gps-badge">
                                     <i className="fas fa-satellite-dish"></i> GPS Live
                                 </span>
-                                <i className={`fas fa-chevron-${gpsCardCollapsed ? 'down' : 'up'} mobile-collapse-icon`}></i>
                             </div>
 
-                            {!gpsCardCollapsed && (
-                            <>
-
-                            {/* Stop/Start GPS Button */}
                             {hasPermission && (
                                 <div className="mobile-gps-control">
                                     {isTracking ? (
@@ -558,9 +472,7 @@ const ClientLocationMobile: React.FC = () => {
 
                             <div className="mobile-street-address">
                                 <i className="fas fa-location-dot"></i>
-                                <span className="mobile-street-name">
-                                    {address.street}
-                                </span>
+                                <span className="mobile-street-name">{address.street}</span>
                             </div>
 
                             <div className="mobile-full-address">
@@ -606,46 +518,9 @@ const ClientLocationMobile: React.FC = () => {
                                     <span className="stat-unit">m</span>
                                 </div>
                             </div>
-                            </>
-                            )}
                         </div>
                     )}
 
-                    {/* Map Container - Always visible, with proper spacing */}
-                    <div className="mobile-map-container">
-                        <div ref={mapRef} className="mobile-map"></div>
-                        
-                        <div ref={directionArrowRef} className="mobile-direction-arrow">
-                            <i className="fas fa-location-arrow"></i>
-                        </div>
-
-                        {/* Places Panel */}
-                        {showPlaces && (
-                            <div className="mobile-places-panel">
-                                <div className="mobile-places-header">
-                                    <h3>Nearby Places</h3>
-                                    <button className="mobile-close-places" onClick={() => setShowPlaces(false)}>
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <div className="mobile-places-list">
-                                    {nearbyPlaces.map((place) => (
-                                        <div key={place.id} className="mobile-place-item" onClick={() => goToPlace(place)}>
-                                            <div className="mobile-place-icon">
-                                                <i className="fas fa-map-marker-alt"></i>
-                                            </div>
-                                            <div className="mobile-place-info">
-                                                <h4>{place.name}</h4>
-                                                <p>{place.vicinity}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Bottom Navigation */}
                     <ClientNavMobile />
                 </div>
             </div>

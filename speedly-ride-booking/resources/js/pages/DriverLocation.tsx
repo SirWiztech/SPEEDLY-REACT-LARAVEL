@@ -60,9 +60,19 @@ const DriverLocation: React.FC = () => {
     const markerRef = useRef<google.maps.Marker | null>(null);
     const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+    const geocoderRef = useRef<google.maps.Geocoder | null>(null);
     const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
     const directionArrowRef = useRef<HTMLDivElement>(null);
     const mapInitRef = useRef(false);
+    const lastGeocodedRef = useRef<{ lat: number; lng: number } | null>(null);
+
+    const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
 
     // Initialize map
     const initMap = useCallback(() => {
@@ -138,12 +148,14 @@ const DriverLocation: React.FC = () => {
     const requestLocationPermission = () => {
         setGpsStatus('Getting your location...');
 
-        // First attempt: cached/low-accuracy for instant display
+        // Single high-accuracy request — the double-fetch pattern (cached first, accurate second)
+        // caused the map to jump: the bad cached fix moved the marker, then the accurate fix
+        // moved it again. One accurate request avoids that entirely.
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setHasPermission(true);
                 setIsTracking(true);
-                setGpsStatus('Location acquired. Refining accuracy...');
+                setGpsStatus('GPS active — live tracking');
 
                 const coords = {
                     lat: position.coords.latitude,
@@ -154,29 +166,10 @@ const DriverLocation: React.FC = () => {
                     heading: position.coords.heading,
                 };
                 updateLocation(coords);
+                updateMapMarker(coords);
                 reverseGeocode(coords.lat, coords.lng);
                 startWatchingPosition();
                 updateGPSStatus('active');
-
-                // Second attempt: force high accuracy for refinement
-                navigator.geolocation.getCurrentPosition(
-                    (refinedPosition) => {
-                        const refinedCoords = {
-                            lat: refinedPosition.coords.latitude,
-                            lng: refinedPosition.coords.longitude,
-                            accuracy: refinedPosition.coords.accuracy,
-                            altitude: refinedPosition.coords.altitude,
-                            speed: refinedPosition.coords.speed,
-                            heading: refinedPosition.coords.heading,
-                        };
-                        updateLocation(refinedCoords);
-                        updateMapMarker(refinedCoords);
-                        reverseGeocode(refinedCoords.lat, refinedCoords.lng);
-                        setGpsStatus('GPS active — live tracking');
-                    },
-                    () => { /* refinement failed, using initial position */ },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
             },
             (error) => {
                 console.error('GPS error:', error.message);
@@ -190,7 +183,7 @@ const DriverLocation: React.FC = () => {
                 }
                 updateGPSStatus('denied');
             },
-            { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     };
 
@@ -202,6 +195,9 @@ const DriverLocation: React.FC = () => {
 
         watchIdRef.current = navigator.geolocation.watchPosition(
             (position) => {
+                // Reject readings worse than 150m accuracy (cell-tower / WiFi fixes)
+                if (position.coords.accuracy > 150) return;
+
                 const coords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
@@ -212,7 +208,12 @@ const DriverLocation: React.FC = () => {
                 };
                 updateLocation(coords);
                 updateMapMarker(coords);
-                reverseGeocode(coords.lat, coords.lng);
+                // Throttle geocoding to only fire when moved > 30m — prevents race conditions
+                // where a slow geocode response arrives late and overwrites the current address
+                if (!lastGeocodedRef.current || haversineDistance(lastGeocodedRef.current.lat, lastGeocodedRef.current.lng, coords.lat, coords.lng) > 30) {
+                    lastGeocodedRef.current = { lat: coords.lat, lng: coords.lng };
+                    reverseGeocode(coords.lat, coords.lng);
+                }
                 updateDirectionArrow(coords.heading);
             },
             (error) => {
@@ -308,9 +309,10 @@ const DriverLocation: React.FC = () => {
         }
     };
 
-    // Reverse geocode
+    // Reverse geocode — reuse single Geocoder instance to prevent race conditions
     const reverseGeocode = (lat: number, lng: number) => {
-        const geocoder = new google.maps.Geocoder();
+        if (!geocoderRef.current) geocoderRef.current = new google.maps.Geocoder();
+        const geocoder = geocoderRef.current;
 
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
             if (status === 'OK' && results && results[0]) {

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Ignore SIGWINCH — Render sends this during deploys and it kills Apache prematurely
+trap '' SIGWINCH
+
 # Generate app key if not set
 if [ -z "$APP_KEY" ]; then
     php artisan key:generate --force
