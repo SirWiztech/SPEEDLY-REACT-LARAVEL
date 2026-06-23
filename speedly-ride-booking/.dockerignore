@@ -23,11 +23,6 @@ public/hot
 .DS_Store
 Thumbs.db
 
-# Docker
-.dockerignore
-Dockerfile
-docker-entrypoint.sh
-
 # Logs
 *.log
 storage/logs/*
