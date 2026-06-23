@@ -211,7 +211,7 @@ export default function Home({ isLoggedIn = false }) {
             {/* Navigation */}
             <nav className="navbar">
                 <Link href="/home" className="nav-logo">
-                    <img src="/main-assets/logo-no-background.png" alt="Speedly Logo" />
+                    <img src="/main-assets/logo-no-background.webp" alt="Speedly Logo" />
                     <span className="logo-text">SPEEDLY</span>
                 </Link>
 
@@ -278,7 +278,7 @@ export default function Home({ isLoggedIn = false }) {
             <div className={`mobile-menu ${mobileMenuOpen ? 'active' : ''}`}>
                 <div className="mobile-menu-header">
                     <Link href="/home" className="nav-logo">
-                        <img src="/main-assets/logo-no-background.png" alt="Speedly Logo" />
+                        <img src="/main-assets/logo-no-background.webp" alt="Speedly Logo" />
                         <span className="logo-text">SPEEDLY</span>
                     </Link>
                     <button 
@@ -328,7 +328,7 @@ export default function Home({ isLoggedIn = false }) {
                 <section className="hero reverse visible" id="hero">
                     <div className="hero-bg">
                         <video autoPlay muted loop playsInline preload="none">
-                            <source src="https://speedly-resources.netlify.app/5233_New_York_NYC_1920x1080.mp4" type="video/mp4" />
+                            <source src="/main-assets/5233_New_York_NYC_1920x1080.webm" type="video/mp4" />
                         </video>
                         <div className="hero-overlay"></div>
                     </div>
@@ -365,7 +365,7 @@ export default function Home({ isLoggedIn = false }) {
                         </div>
 
                         <div className="services-grid">
-                            <div className="service-card" style={{ backgroundImage: 'url(https://speedly-resources.netlify.app/book-ride-1.jpg)'}}>
+                            <div className="service-card" style={{ backgroundImage: 'url(/main-assets/book-ride-1.webp)' }}>
                                 <div className="service-overlay"></div>
                                 <div className="service-content">
                                     <h3 className="service-title">Premium Airport Transfers</h3>
@@ -373,7 +373,7 @@ export default function Home({ isLoggedIn = false }) {
                                 </div>
                             </div>
 
-                            <div className="service-card" style={{ backgroundImage: 'url(https://speedly-resources.netlify.app/book-ride-2.jpg)' }}>
+                            <div className="service-card" style={{ backgroundImage: 'url(/main-assets/book-ride-2.webp)' }}>
                                 <div className="service-overlay"></div>
                                 <div className="service-content">
                                     <h3 className="service-title">City-to-City Travel</h3>
@@ -381,7 +381,7 @@ export default function Home({ isLoggedIn = false }) {
                                 </div>
                             </div>
 
-                            <div className="service-card" style={{ backgroundImage: 'url(https://speedly-resources.netlify.app/book-ride-3.jpg)' }}>
+                            <div className="service-card" style={{ backgroundImage: 'url(/main-assets/book-ride-3.webp)' }}>
                                 <div className="service-overlay"></div>
                                 <div className="service-content">
                                     <h3 className="service-title">Corporate Chauffeur</h3>
@@ -394,7 +394,7 @@ export default function Home({ isLoggedIn = false }) {
 
                 {/* Explore Banner */}
                 <section className="explore-banner" id="explore-section">
-                    <div className="explore-bg" style={{ backgroundImage: 'url(https://speedly-resources.netlify.app/explore.jpg)' }}></div>
+                    <div className="explore-bg" style={{ backgroundImage: 'url(/main-assets/explore.webp)' }}></div>
                     <div className="explore-overlay"></div>
                     <div className="explore-content">
                         <h2 className="explore-text">
@@ -436,7 +436,7 @@ export default function Home({ isLoggedIn = false }) {
 
                         <div className="feature-card">
                             <div className="feature-image">
-                                <img src="https://speedly-resources.netlify.app/driver.png" alt="Premium Interior" loading="lazy" />
+                                <img src="/main-assets/driver.webp" alt="Premium Interior" loading="lazy" />
                             </div>
                             <div className="feature-content">
                                 <span className="feature-badge">Book at Comfort</span>
@@ -450,7 +450,7 @@ export default function Home({ isLoggedIn = false }) {
 
                         <div className="feature-card reverse">
                             <div className="feature-image">
-                                <img src="https://speedly-resources.netlify.app/travel.jpg" alt="Safe Travel" loading="lazy" />
+                                <img src="/main-assets/travel.webp" alt="Safe Travel" loading="lazy" />
                             </div>
                             <div className="feature-content">
                                 <span className="feature-badge">Safe Travel</span>
@@ -464,7 +464,7 @@ export default function Home({ isLoggedIn = false }) {
 
                         <div className="feature-card">
                             <div className="feature-image">
-                                <img src="https://speedly-resources.netlify.app/office.jpg" alt="Drive with Speedly" loading="lazy" />
+                                <img src="/main-assets/office.webp" alt="Drive with Speedly" loading="lazy" />
                             </div>
                             <div className="feature-content">
                                 <span className="feature-badge">Drive with Speedly</span>
@@ -533,7 +533,7 @@ export default function Home({ isLoggedIn = false }) {
                 <div className="footer-container">
                     <div>
                         <div className="footer-brand" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <img src="https://speedly-resources.netlify.app/logo-no-background.png" alt="Speedly" width="50" style={{ borderRadius: '50%' }} />
+                            <img src="/main-assets/logo-no-background.webp" alt="Speedly" width="50" style={{ borderRadius: '50%' }} />
                             <span className="logo-text">SPEEDLY</span>
                         </div>
                         <p style={{ maxWidth: '260px', marginTop: '16px' }}>
