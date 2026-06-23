@@ -327,7 +327,7 @@ export default function Home({ isLoggedIn = false }) {
                 {/* Hero Section */}
                 <section className="hero reverse visible" id="hero">
                     <div className="hero-bg">
-                        <video autoPlay muted loop playsInline preload="none">
+                        <video autoPlay muted loop playsInline preload="auto">
                             <source src="/main-assets/5233_New_York_NYC_1920x1080.webm" type="video/mp4" />
                         </video>
                         <div className="hero-overlay"></div>
