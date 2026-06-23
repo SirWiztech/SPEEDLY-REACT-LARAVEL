@@ -100,13 +100,22 @@ const DriverDashboardMobile: React.FC = () => {
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [apiError, setApiError] = useState<string | null>(null);
-    const [countdown, setCountdown] = useState<number>(30);
     const [showQrScanner, setShowQrScanner] = useState(false);
 
-    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const prevPendingRef = useRef<boolean>(false);
     const speechActiveRef = useRef<boolean>(false);
+    const speechIntervalMobileRef = useRef<number | null>(null);
     const driverNameRef = useRef<string>('Driver');
+    const activeRideMobileRef = useRef<boolean>(false);
+
+    const stopMobileSpeech = useCallback(() => {
+        speechActiveRef.current = false;
+        if (speechIntervalMobileRef.current) {
+            clearInterval(speechIntervalMobileRef.current);
+            speechIntervalMobileRef.current = null;
+        }
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }, []);
 
     // Keep driver name ref in sync
     useEffect(() => {
@@ -121,17 +130,21 @@ const DriverDashboardMobile: React.FC = () => {
         const name = driverNameRef.current;
         const text = `Hello ${name}, you have a new ride pending to accept.`;
 
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-NG';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.05;
-        utterance.volume = 1;
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
-        if (preferred) utterance.voice = preferred;
-        utterance.onend = () => { speechActiveRef.current = false; };
-        window.speechSynthesis.speak(utterance);
+        const speakOnce = () => {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-NG';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.05;
+            utterance.volume = 1;
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+            if (preferred) utterance.voice = preferred;
+            window.speechSynthesis.speak(utterance);
+        };
+
+        speakOnce();
+        speechIntervalMobileRef.current = window.setInterval(speakOnce, 3500);
     }, []);
 
     // Fetch driver dashboard data
@@ -208,6 +221,11 @@ const DriverDashboardMobile: React.FC = () => {
             if (pendingData && pendingData.success && pendingData.data) {
                 const pendingArray = Array.isArray(pendingData.data) ? pendingData.data : [];
                 setPendingRide(pendingArray.length > 0 ? pendingArray[0] : null);
+
+                // Start speech on page load if there are pending rides and driver is online
+                if (pendingArray.length > 0 && driverStatus === 'online' && !speechActiveRef.current) {
+                    speakNewRide();
+                }
             }
 
             // Process notifications
@@ -293,6 +311,8 @@ const DriverDashboardMobile: React.FC = () => {
                 const data = await api.rides.accept(rideId);
 
                 if (data.success) {
+                    speechActiveRef.current = false;
+                    activeRideMobileRef.current = true;
                     Swal.fire({
                         title: 'Success',
                         text: 'Ride accepted successfully!',
@@ -766,41 +786,14 @@ const DriverDashboardMobile: React.FC = () => {
         }
     };
 
-    // Start countdown for pending ride
-    useEffect(() => {
-        if (pendingRide && !activeRide) {
-            if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current);
-            }
-            
-            setCountdown(30);
-            
-            countdownIntervalRef.current = setInterval(() => {
-                setCountdown((prev) => {
-                    if (prev <= 1) {
-                        if (countdownIntervalRef.current) {
-                            clearInterval(countdownIntervalRef.current);
-                        }
-                        if (pendingRide) {
-                            declineRide(pendingRide.id);
-                        }
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
-        
-        return () => {
-            if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current);
-            }
-        };
-    }, [pendingRide, activeRide]);
-
     useEffect(() => {
         fetchDashboardData();
     }, []);
+
+    // Keep active ride ref in sync
+    useEffect(() => {
+        activeRideMobileRef.current = !!activeRide;
+    }, [activeRide]);
 
     // Periodic polling every 10 seconds
     useEffect(() => {
@@ -817,6 +810,7 @@ const DriverDashboardMobile: React.FC = () => {
                         const ridesArray = Array.isArray(rides) ? rides : (rides.data || []);
                         const active = ridesArray.find((r: any) => r.status === 'accepted' || r.status === 'ongoing');
                         setActiveRide(active || null);
+                        activeRideMobileRef.current = !!active;
                         setRecentRides(ridesArray.filter((r: any) => r.status === 'completed').slice(0, 5));
                     }
                 }
@@ -826,15 +820,15 @@ const DriverDashboardMobile: React.FC = () => {
                         const pending = (Array.isArray(data.data) ? data.data : [data.data])
                             .find((r: any) => r.status === 'pending');
                         setPendingRide(pending || null);
-                        if (pending) {
-                            setCountdown(30);
-                            // Speak when a new ride appears (was none before)
-                            if (!prevPendingRef.current) {
-                                speakNewRide();
-                            }
-                            prevPendingRef.current = true;
-                        } else {
-                            prevPendingRef.current = false;
+
+                        // Start speech when there are pending rides and speech is not active
+                        if (pending && !speechActiveRef.current) {
+                            speakNewRide();
+                        }
+
+                        // Stop speech when no more pending rides
+                        if (!pending) {
+                            stopMobileSpeech();
                         }
                     }
                 }
@@ -973,9 +967,6 @@ const DriverDashboardMobile: React.FC = () => {
                                 <span className="fare font-roboto-number">{formatCurrency(pendingRide.total_fare)}</span>
                                 <span>Est. <span className="font-roboto-number">{Math.round((pendingRide.distance_km || 0) / 30 * 60)}</span> min</span>
                             </div>
-                        </div>
-                        <div className="countdown-timer">
-                            <i className="fas fa-hourglass-half"></i> Accept within: <span className="timer-value font-roboto-number">{countdown}s</span>
                         </div>
                         <div className="ride-actions">
                             <button className="action-accept" onClick={() => acceptRide(pendingRide.id)}>

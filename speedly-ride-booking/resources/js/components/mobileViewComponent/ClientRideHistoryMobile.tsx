@@ -134,6 +134,8 @@ const ClientRideHistoryMobile: React.FC = () => {
             'driver_assigned': '#2196F3',
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
+            'awaiting_release': '#FF9800',
+            'declined': '#E57373',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'
@@ -418,6 +420,8 @@ const ClientRideHistoryMobile: React.FC = () => {
             'driver_assigned': '#2196F3',
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
+            'awaiting_release': '#FF9800',
+            'declined': '#E57373',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'

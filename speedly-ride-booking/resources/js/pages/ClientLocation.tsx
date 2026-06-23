@@ -36,7 +36,7 @@ const ClientLocation: React.FC = () => {
     const mapInitRef = useRef(false);
     const initTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-    const preloaderLoading = usePreloader(300);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     const fetchProfileData = useCallback(async () => {

@@ -97,7 +97,7 @@ const DriverLocation: React.FC = () => {
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
     }, []);
 
-    const preloaderLoading = usePreloader(300);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Load Google Maps shared instance

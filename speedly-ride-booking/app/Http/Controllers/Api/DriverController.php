@@ -139,7 +139,7 @@ class DriverController extends Controller
                     'client_name' => $ride->client?->user?->full_name ?? 'Unknown',
                     'client_phone' => $ride->client?->user?->phone_number ?? '',
                     'client_photo' => $ride->client?->user?->profile_picture_url,
-                    'request_type' => 'public',
+                    'request_type' => $ride->request_type ?? 'public',
                 ];
             });
 
@@ -331,7 +331,7 @@ class DriverController extends Controller
                     'client_name' => $ride->client?->user?->full_name ?? 'Unknown',
                     'client_phone' => $ride->client?->user?->phone_number ?? '',
                     'client_photo' => $ride->client?->user?->profile_picture_url,
-                    'request_type' => 'public',
+                    'request_type' => $ride->request_type ?? 'public',
                     'driver_id' => $ride->driver_id,
                 ];
             });

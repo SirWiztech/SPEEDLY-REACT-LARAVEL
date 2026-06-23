@@ -69,7 +69,7 @@ const DriverKyc: React.FC = () => {
     const [insuranceName, setInsuranceName] = useState<string>('');
     const [vehicleRegistrationName, setVehicleRegistrationName] = useState<string>('');
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch KYC data

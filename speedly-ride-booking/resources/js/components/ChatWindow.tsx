@@ -33,12 +33,7 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(true);
     const [minimized, setMinimized] = useState(false);
-    const [wsConnected, setWsConnected] = useState(false);
-    const [reconnectAttempt, setReconnectAttempt] = useState(0);
     const bottomRef = useRef<HTMLDivElement>(null);
-    const echoRef = useRef<any>(null);
-    const reconnectTimerRef = useRef<NodeJS.Timeout>();
-    const heartbeatRef = useRef<NodeJS.Timeout>();
 
     const scrollDown = () => {
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -57,101 +52,13 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
         } catch {}
     };
 
+    // Polling-based message fetching (no WebSocket — compatible with Render free plan)
     useEffect(() => {
-        let cleanup = () => {};
-        let cancelled = false;
-        const maxReconnectDelay = 30000;
-
-        const setupReverb = async () => {
-            try {
-                const wsHost = window.location.hostname;
-                const isProd = window.location.protocol === 'https:';
-
-                const Pusher = (await import('pusher-js')).default;
-                const Echo = (await import('laravel-echo')).default;
-
-                const echo = new Echo({
-                    broadcaster: 'pusher',
-                    key: 'speedlykey',
-                    wsHost: isProd ? wsHost : '127.0.0.1',
-                    wsPort: isProd ? 443 : 8080,
-                    wssPort: 443,
-                    forceTLS: isProd,
-                    encrypted: isProd,
-                    disableStats: true,
-                    enabledTransports: isProd ? ['wss'] : ['ws'],
-                });
-
-                echo.connector.socket.on('connect', () => {
-                    console.log('[Chat] WebSocket connected');
-                    setWsConnected(true);
-                    setReconnectAttempt(0);
-                    // Clear any pending reconnect timer
-                    if (reconnectTimerRef.current) {
-                        clearTimeout(reconnectTimerRef.current);
-                        reconnectTimerRef.current = undefined;
-                    }
-                });
-                echo.connector.socket.on('disconnect', () => {
-                    console.log('[Chat] WebSocket disconnected');
-                    setWsConnected(false);
-                    if (!cancelled) {
-                        // Exponential backoff reconnect
-                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), maxReconnectDelay);
-                        console.log(`[Chat] Reconnecting in ${delay}ms (attempt ${reconnectAttempt + 1})`);
-                        reconnectTimerRef.current = setTimeout(() => {
-                            if (!cancelled) {
-                                setReconnectAttempt(prev => prev + 1);
-                                echo.disconnect();
-                                setupReverb();
-                            }
-                        }, delay);
-                    }
-                });
-                echo.connector.socket.on('error', () => {
-                    console.warn('[Chat] WebSocket error');
-                });
-
-                const channel = echo.channel('chat.' + rideId);
-                channel.subscribed(() => console.log('[Chat] Subscribed to chat.' + rideId));
-                channel.listen('.message.sent', (msg: any) => {
-                    setMessages(prev => {
-                        if (prev.some(m => m.id === msg.id || (msg.id && m.id === msg.id))) return prev;
-                        return [...prev, msg];
-                    });
-                    scrollDown();
-                });
-
-                // Heartbeat ping every 25 seconds to keep connection alive
-                heartbeatRef.current = setInterval(() => {
-                    if (echo.connector?.socket?.connected) {
-                        chatFetch(`/rides/${rideId}/chat?count=1`).catch(() => {});
-                    }
-                }, 25000);
-
-                echoRef.current = echo;
-                cleanup = () => {
-                    cancelled = true;
-                    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-                    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-                    try { echo.disconnect(); } catch {}
-                };
-            } catch (e) {
-                console.warn('[Chat] Reverb setup failed, falling back to polling', e);
-                cleanup = () => { cancelled = true; };
-            }
-        };
-        setupReverb();
-        return () => cleanup();
-    }, [rideId, reconnectAttempt]);
+        const timer = setInterval(loadMessages, 3000);
+        return () => clearInterval(timer);
+    }, [rideId]);
 
     useEffect(() => { loadMessages().then(() => setLoading(false)); }, [rideId]);
-
-    useEffect(() => {
-        const interval = wsConnected ? 10000 : 2000;
-        const timer = setInterval(loadMessages, interval);
-        return () => clearInterval(timer);
-    }, [rideId, wsConnected]);
 
     useEffect(() => { scrollDown(); }, [messages.length]);
 
@@ -226,10 +133,10 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
                         <div style={{ fontSize: 10, opacity: 0.7, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <span style={{
                                 width: 6, height: 6, borderRadius: 3,
-                                background: wsConnected ? '#4CAF50' : '#FF9800',
+                                background: '#4CAF50',
                                 display: 'inline-block',
                             }}></span>
-                            {wsConnected ? 'Online' : 'Connecting...'}
+                            Online
                         </div>
                     </div>
                 </div>

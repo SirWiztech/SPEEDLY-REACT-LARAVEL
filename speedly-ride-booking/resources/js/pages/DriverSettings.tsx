@@ -96,7 +96,7 @@ const DriverSettings: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [driverStatus, setDriverStatus] = useState<string>('offline');
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch driver settings data

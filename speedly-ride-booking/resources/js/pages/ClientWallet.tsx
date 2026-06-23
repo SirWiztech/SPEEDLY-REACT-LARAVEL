@@ -52,7 +52,7 @@ const ClientWallet: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
 
     const isMobile = useMobile();
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
 
     // Fetch wallet data
     const fetchWalletData = useCallback(async () => {

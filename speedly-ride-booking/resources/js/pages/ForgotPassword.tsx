@@ -24,7 +24,7 @@ export default function ForgotPassword() {
     const [loading, setLoading] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
     
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     const handleSubmit = async (e: React.FormEvent) => {

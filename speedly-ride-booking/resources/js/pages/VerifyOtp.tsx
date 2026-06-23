@@ -20,7 +20,7 @@ export default function VerifyOtp() {
     const [isResending, setIsResending] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
-    const loading = usePreloader(1000);
+    const loading = usePreloader(0);
     const isMobile = useMobile();
 
     const showToast = (type: Toast['type'], title: string, message: string) => {

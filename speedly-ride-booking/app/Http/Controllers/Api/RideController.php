@@ -36,17 +36,19 @@ class RideController extends Controller
         $clientProfile = ClientProfile::where('user_id', $user->id)->first();
         $driverProfile = DriverProfile::where('user_id', $user->id)->first();
 
+        $excluded = ['pending', 'declined', 'completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'];
+
         $ride = null;
         if ($clientProfile) {
             $ride = Ride::with(['driver.user', 'client.user'])
                 ->where('client_id', $clientProfile->id)
-                ->whereNotIn('status', ['completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
+                ->whereNotIn('status', $excluded)
                 ->latest()
                 ->first();
         } elseif ($driverProfile) {
             $ride = Ride::with(['driver.user', 'client.user'])
                 ->where('driver_id', $driverProfile->id)
-                ->whereNotIn('status', ['completed', 'cancelled_by_client', 'cancelled_by_driver', 'cancelled_by_admin'])
+                ->whereNotIn('status', $excluded)
                 ->latest()
                 ->first();
         }
@@ -141,6 +143,8 @@ class RideController extends Controller
             'dropoff_lat' => 'required|numeric',
             'dropoff_lng' => 'required|numeric',
             'ride_type' => 'required|in:economy,comfort,premium',
+            'driver_id' => 'nullable|string|exists:driver_profiles,id',
+            'request_type' => 'nullable|in:public,private',
         ]);
 
         $user = $request->user();
@@ -222,6 +226,7 @@ class RideController extends Controller
                 'id' => $rideId,
                 'ride_number' => 'RIDE-' . strtoupper(Str::random(8)),
                 'client_id' => $clientProfile->id,
+                'driver_id' => $request->request_type === 'private' ? $request->driver_id : null,
                 'pickup_address' => $request->pickup_location,
                 'destination_address' => $request->dropoff_location,
                 'pickup_latitude' => $pickupLat,
@@ -235,6 +240,7 @@ class RideController extends Controller
                 'distance_km' => round($distance, 2),
                 'status' => 'pending',
                 'payment_status' => 'held',
+                'request_type' => $request->request_type ?? 'public',
             ]);
 
             $admins = User::where('role', 'admin')->get();
@@ -418,12 +424,42 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Ride is no longer available'], 400);
         }
 
-        DriverRideDecline::create([
-            'id' => Str::uuid(),
-            'ride_id' => $ride->id,
-            'driver_id' => $driverProfile->id,
-            'auto_decline' => false,
-        ]);
+        DB::beginTransaction();
+        try {
+            DriverRideDecline::create([
+                'id' => Str::uuid(),
+                'ride_id' => $ride->id,
+                'driver_id' => $driverProfile->id,
+                'auto_decline' => false,
+            ]);
+
+            // Private rides: set to declined and notify client
+            // Public rides: keep as pending so other drivers can accept
+            if ($ride->request_type === 'private') {
+                $ride->update(['status' => 'declined']);
+
+                $clientUserId = $ride->client?->user_id;
+                if ($clientUserId) {
+                    Notification::create([
+                        'id' => Str::random(32),
+                        'user_id' => $clientUserId,
+                        'type' => 'ride_declined',
+                        'title' => 'Ride Declined',
+                        'message' => "The driver declined ride #{$ride->ride_number}. You can book another ride or cancel to get a refund.",
+                        'is_read' => false,
+                    ]);
+                }
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('[Ride Decline] Exception', [
+                'error' => $e->getMessage(),
+                'ride_id' => $ride->id,
+            ]);
+            return response()->json(['success' => false, 'message' => 'Failed to process decline: ' . $e->getMessage()], 500);
+        }
 
         return response()->json(['success' => true, 'message' => 'Ride declined']);
     }

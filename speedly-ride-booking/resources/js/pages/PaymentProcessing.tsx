@@ -11,7 +11,7 @@ const PaymentProcessing: React.FC = () => {
     const [amount, setAmount] = useState<number>(0);
     const [reference, setReference] = useState<string>('');
     
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     useEffect(() => {

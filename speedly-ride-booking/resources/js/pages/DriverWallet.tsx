@@ -80,7 +80,7 @@ const DriverWallet: React.FC = () => {
     const [banksList, setBanksList] = useState<Bank[]>([]);
     const [loadingBanks, setLoadingBanks] = useState<boolean>(false);
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch wallet data

@@ -69,7 +69,7 @@ const ClientRideHistory: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState<number>(0);
 
     const isMobile = useMobile();
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
 
     // Fetch ride history data
     const fetchRideHistory = useCallback(async () => {
@@ -156,6 +156,7 @@ const ClientRideHistory: React.FC = () => {
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
             'awaiting_release': '#FF9800',
+            'declined': '#E57373',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'
@@ -169,6 +170,7 @@ const ClientRideHistory: React.FC = () => {
             'driver_arrived': 'fa-map-pin',
             'ongoing': 'fa-spinner',
             'awaiting_release': 'fa-hand-holding-usd',
+            'declined': 'fa-times-circle',
             'cancelled_by_client': 'fa-times-circle',
             'cancelled_by_driver': 'fa-times-circle',
             'cancelled_by_admin': 'fa-times-circle'
@@ -525,6 +527,7 @@ const ClientRideHistory: React.FC = () => {
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
             'awaiting_release': '#FF9800',
+            'declined': '#E57373',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'

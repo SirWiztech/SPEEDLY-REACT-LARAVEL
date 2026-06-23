@@ -12,7 +12,7 @@ const ForgotAdminPassword: React.FC = () => {
     const [message, setMessage] = useState<string>('');
     const [error, setError] = useState<string>('');
     
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     const handleSubmit = async (e: React.FormEvent) => {

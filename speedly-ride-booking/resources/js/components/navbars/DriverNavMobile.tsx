@@ -8,21 +8,23 @@ interface DriverNavMobileProps {
 
 const DriverNavMobile: React.FC<DriverNavMobileProps> = () => {
   const { url } = usePage();
-  const currentPath = url;
+  const cleanPath = url.split('?')[0].replace(/\/$/, '');
 
-  const isActive = (path: string, alternativePaths: string[] = []) => {
-    if (currentPath === path) return true;
-    return alternativePaths.some(altPath => currentPath === altPath);
+  const isActive = (path: string): boolean => {
+    const exact = path.split('?')[0].replace(/\/$/, '');
+    if (cleanPath === exact) return true;
+    if (cleanPath.startsWith(exact)) return true;
+    return false;
   };
 
   const navItems = [
-    { path: '/driverdashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/driverdashboard'] },
-    { path: '/driverbookhistory', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/driverbookhistory'] },
-    { path: '/driverwallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/driverwallet'] },
-    { path: '/driverlocation', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/driverlocation'] },
-    { path: '/driveraiassistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/driveraiassistant'] },
-    { path: '/driversupport', name: 'Support', icon: 'fas fa-headset', matchPaths: ['/driversupport'] },
-    { path: '/driversettings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/driversettings', '/driver-profile', '/kyc'] },
+    { path: '/driverdashboard', name: 'Home', icon: 'fas fa-home' },
+    { path: '/driverbookhistory', name: 'Rides', icon: 'fas fa-car' },
+    { path: '/driverwallet', name: 'Wallet', icon: 'fas fa-wallet' },
+    { path: '/driverlocation', name: 'Map', icon: 'fas fa-map-marker-alt' },
+    { path: '/driveraiassistant', name: 'AI', icon: 'fas fa-robot' },
+    { path: '/driversupport', name: 'Support', icon: 'fas fa-headset' },
+    { path: '/driversettings', name: 'Profile', icon: 'fas fa-user' },
   ];
 
   return (

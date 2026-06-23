@@ -113,6 +113,7 @@ const ClientDashboard: React.FC = () => {
             'driver_arrived': '#9C27B0',
             'ongoing': '#FF5722',
             'awaiting_release': '#FF9800',
+            'declined': '#E57373',
             'cancelled_by_client': '#F44336',
             'cancelled_by_driver': '#F44336',
             'cancelled_by_admin': '#F44336'
@@ -852,7 +853,7 @@ const ClientDashboard: React.FC = () => {
 
     const tierColor = userData?.membership_tier ? tierColors[userData.membership_tier] : '#6c757d';
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
 
     if (preloaderLoading) {
         return <DesktopPreloader />;

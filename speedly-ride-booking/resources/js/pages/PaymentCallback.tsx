@@ -13,7 +13,7 @@ const PaymentCallback: React.FC = () => {
     const [reference, setReference] = useState<string>('');
     const [errorMessage, setErrorMessage] = useState<string>('');
     
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     useEffect(() => {

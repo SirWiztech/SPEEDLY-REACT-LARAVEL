@@ -9,24 +9,30 @@ const ClientNavMobile: React.FC<ClientNavMobileProps> = () => {
   const { url } = usePage();
   const currentPath = url;
 
+  const getPath = (url: string) => {
+    // Strip query string and trailing slash for clean comparison
+    return url.split('?')[0].replace(/\/$/, '');
+  };
+
+  const cleanPath = getPath(currentPath);
+
   const isActive = (path: string, matchPaths?: string[]): boolean => {
-    if (currentPath === path) return true;
-    if (matchPaths && matchPaths.some(p => currentPath === p)) return true;
-    // For nested routes like /settings/*, check if path is a prefix
-    if (path !== '/client-dashboard' && currentPath.startsWith(path)) {
-      return true;
-    }
+    const exact = getPath(path);
+    if (cleanPath === exact) return true;
+    if (matchPaths && matchPaths.some(p => cleanPath === getPath(p))) return true;
+    // For nested/parameterized routes, check if cleanPath starts with the nav path
+    if (cleanPath.startsWith(exact)) return true;
     return false;
   };
 
   const navItems = [
-    { path: '/clientdashboard', name: 'Home', icon: 'fas fa-home', matchPaths: ['/client-dashboard'] },
-    { path: '/clientbookride', name: 'Rides', icon: 'fas fa-car', matchPaths: ['/client-book-ride'] },
-    { path: '/clientwallet', name: 'Wallet', icon: 'fas fa-wallet', matchPaths: ['/client-wallet'] },
-    { path: '/clientlocation', name: 'Map', icon: 'fas fa-map-marker-alt', matchPaths: ['/client-location'] },
-    { path: '/clientaiassistant', name: 'AI', icon: 'fas fa-robot', matchPaths: ['/client-ai-assistant'] },
-    { path: '/clientsupport', name: 'Support', icon: 'fas fa-headset', matchPaths: ['/client-support'] },
-    { path: '/clientsettings', name: 'Profile', icon: 'fas fa-user', matchPaths: ['/client-profile', '/settings'] },
+    { path: '/clientdashboard', name: 'Home', icon: 'fas fa-home' },
+    { path: '/clientbookride', name: 'Rides', icon: 'fas fa-car' },
+    { path: '/clientwallet', name: 'Wallet', icon: 'fas fa-wallet' },
+    { path: '/clientlocation', name: 'Map', icon: 'fas fa-map-marker-alt' },
+    { path: '/clientaiassistant', name: 'AI', icon: 'fas fa-robot' },
+    { path: '/clientsupport', name: 'Support', icon: 'fas fa-headset' },
+    { path: '/clientsettings', name: 'Profile', icon: 'fas fa-user' },
   ];
 
   return (

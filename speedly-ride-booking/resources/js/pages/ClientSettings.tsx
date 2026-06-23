@@ -72,7 +72,7 @@ const ClientSettings: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [homeAddress, setHomeAddress] = useState<string>('');
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch settings data

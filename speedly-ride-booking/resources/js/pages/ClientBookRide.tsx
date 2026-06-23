@@ -50,7 +50,7 @@ const ClientBookRide: React.FC = () => {
     const initTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const preloaderLoading = usePreloader(300);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     const popularLocations = [
@@ -251,7 +251,7 @@ const ClientBookRide: React.FC = () => {
         if (result.isConfirmed) {
             Swal.fire({ title: 'Booking...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                const data = await api.rides.book({ pickup_location: booking.pickup.address, dropoff_location: booking.destination.address, pickup_lat: booking.pickup.lat || 0, pickup_lng: booking.pickup.lng || 0, dropoff_lat: booking.destination.lat || 0, dropoff_lng: booking.destination.lng || 0, ride_type: booking.plan, notes: booking.driverId ? `Driver: ${booking.driverId}` : undefined });
+                const data = await api.rides.book({ pickup_location: booking.pickup.address, dropoff_location: booking.destination.address, pickup_lat: booking.pickup.lat || 0, pickup_lng: booking.pickup.lng || 0, dropoff_lat: booking.destination.lat || 0, dropoff_lng: booking.destination.lng || 0, ride_type: booking.plan, driver_id: booking.driverId || undefined, request_type: booking.driverSelected ? 'private' : 'public' });
                 Swal.close();
                 if (data.success) {
                     const rideId = data.data?.id || '';

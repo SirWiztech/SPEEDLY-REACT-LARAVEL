@@ -22,7 +22,7 @@ interface KycStatus {
 }
 
 export default function ClientKyc() {
-  const loading = usePreloader(1000);
+  const loading = usePreloader(0);
   const isMobile = useMobile();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<string>('id_card');

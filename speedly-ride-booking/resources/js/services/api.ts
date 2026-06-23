@@ -185,7 +185,7 @@ export const api = {
       qs.set('ride_type', params.ride_type);
       return apiFetch(`/rides/calculate-fare?${qs}`);
     },
-    book: (data: { pickup_location: string; dropoff_location: string; pickup_lat: number; pickup_lng: number; dropoff_lat: number; dropoff_lng: number; ride_type: string; scheduled_at?: string; notes?: string }) =>
+    book: (data: { pickup_location: string; dropoff_location: string; pickup_lat: number; pickup_lng: number; dropoff_lat: number; dropoff_lng: number; ride_type: string; scheduled_at?: string; notes?: string; driver_id?: string; request_type?: string }) =>
       apiFetch('/rides/book', { method: 'POST', body: JSON.stringify(data) }),
     getById: (id: string) => apiFetch(`/rides/${id}`),
     receipt: (id: string) => apiFetch(`/rides/${id}/receipt`),

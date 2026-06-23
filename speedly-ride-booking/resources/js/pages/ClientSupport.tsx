@@ -36,7 +36,7 @@ const ClientSupport: React.FC = () => {
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [myTickets, setMyTickets] = useState<any[]>([]);
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // FAQ Data

@@ -147,7 +147,7 @@ const AdminDashboard: React.FC = () => {
     
     let chartInstance: Chart | null = null;
     
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Toggle sidebar on mobile

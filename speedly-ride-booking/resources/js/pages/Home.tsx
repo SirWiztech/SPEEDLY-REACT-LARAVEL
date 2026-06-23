@@ -7,7 +7,7 @@ import '../../css/home.css';
 import '../../css/page-transitions.css';
 
 export default function Home({ isLoggedIn = false }) {
-    const loading = usePreloader(1500);
+    const loading = usePreloader(0);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const profileBtnRef = useRef(null);

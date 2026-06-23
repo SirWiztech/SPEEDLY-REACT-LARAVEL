@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
-import ClientNavMobile from '../../components/navbars/DriverNavMobile';
+import ClientNavMobile from '../../components/navbars/ClientNavMobile';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import '../../../css/ClientAIAssistantMobile.css';

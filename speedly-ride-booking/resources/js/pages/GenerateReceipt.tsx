@@ -55,7 +55,7 @@ const GenerateReceipt: React.FC<{ rideId?: string }> = ({ rideId: propRideId }) 
     const [copied, setCopied] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
-    const preloaderLoading = usePreloader(800);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     useEffect(() => {

@@ -22,7 +22,7 @@ const AdminLogin: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [toasts, setToasts] = useState<Toast[]>([]);
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     const showToast = useCallback((type: Toast['type'], title: string, message: string) => {

@@ -54,7 +54,7 @@ const DriverAIAssistant: React.FC = () => {
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const topicsDataRef = useRef<Record<string, TopicCategory>>({});
     
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Topics data

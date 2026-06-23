@@ -14,7 +14,7 @@ interface ProfileData {
 }
 
 export default function ClientProfileMobile() {
-    const loading = usePreloader(1500);
+    const loading = usePreloader(0);
 
     const { data: profile } = useQuery<ProfileData>({
         queryKey: ['client-profile-mobile'],

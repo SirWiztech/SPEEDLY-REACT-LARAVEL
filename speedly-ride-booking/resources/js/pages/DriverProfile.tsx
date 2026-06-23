@@ -92,7 +92,7 @@ const DriverProfile: React.FC = () => {
     const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState<boolean>(false);
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch driver data

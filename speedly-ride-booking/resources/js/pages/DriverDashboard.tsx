@@ -107,7 +107,7 @@ const DriverDashboard: React.FC = () => {
     const speechIntervalRef = useRef<number | null>(null);
     const activeRideRef = useRef<boolean>(false);
     const driverStatusRef = useRef<string>('offline');
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch driver dashboard data
@@ -203,6 +203,11 @@ const DriverDashboard: React.FC = () => {
                     const pendingArray = Array.isArray(pendingData.data) ? pendingData.data : [];
                     setPendingRides(pendingArray);
                     pendingRidesCountRef.current = pendingArray.length;
+
+                    // Start speech on page load if there are pending rides and driver is online
+                    if (pendingArray.length > 0 && driverStatusRef.current === 'online') {
+                        announceNewRide();
+                    }
                 }
             }
         } catch (error) {
@@ -226,34 +231,15 @@ const DriverDashboard: React.FC = () => {
         if (import.meta.env.DEV) console.log('[Driver Speech]', msg);
     };
 
-    const announceNewRide = useCallback((ride: Ride) => {
+    const announceNewRide = useCallback(() => {
         if (!('speechSynthesis' in window)) return;
         if (newRideSpeechActiveRef.current) return;
         newRideSpeechActiveRef.current = true;
 
         const name = driverNameRef.current;
         const text = `Hello ${name}, you have a new ride pending to accept.`;
-        let count = 0;
-        const maxCount = 5;
 
         const speakOnce = () => {
-            if (count >= maxCount) {
-                newRideSpeechActiveRef.current = false;
-                if (speechIntervalRef.current) {
-                    clearInterval(speechIntervalRef.current);
-                    speechIntervalRef.current = null;
-                }
-                return;
-            }
-            const activeRideEl = document.querySelector('[data-active-ride]');
-            if (activeRideEl) {
-                newRideSpeechActiveRef.current = false;
-                if (speechIntervalRef.current) {
-                    clearInterval(speechIntervalRef.current);
-                    speechIntervalRef.current = null;
-                }
-                return;
-            }
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-NG';
@@ -263,7 +249,6 @@ const DriverDashboard: React.FC = () => {
             const voices = window.speechSynthesis.getVoices();
             const preferred = voices.find(v => v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
             if (preferred) utterance.voice = preferred;
-            utterance.onend = () => { count++; };
             window.speechSynthesis.speak(utterance);
         };
 
@@ -602,7 +587,7 @@ const DriverDashboard: React.FC = () => {
 
     // Manual token entry
     const handleManualTokenEntry = async () => {
-        const { value: tokenInput } = await Swal.fire({
+        Swal.fire({
             title: 'Enter Release Token',
             html: `
                 <p style="font-size:13px;color:#666;margin-bottom:12px">Paste the full token string from the client's receipt:</p>
@@ -619,11 +604,11 @@ const DriverDashboard: React.FC = () => {
                 if (!match) { Swal.showValidationMessage('Invalid token format. Expected: SPEEDLY_RELEASE:rideId:releaseToken'); return false; }
                 return { rideId: match[1], token: match[2] };
             }
+        }).then(async (result) => {
+            if (result.isConfirmed && result.value?.rideId && result.value?.token) {
+                await handleQrRelease(result.value.rideId, result.value.token);
+            }
         });
-
-        if (tokenInput?.rideId && tokenInput?.token) {
-            await handleQrRelease(tokenInput.rideId, tokenInput.token);
-        }
     };
 
     // QR release handler
@@ -909,22 +894,15 @@ const DriverDashboard: React.FC = () => {
                         setPendingRides(pendingArray);
                         pendingRidesCountRef.current = pendingArray.length;
 
-                        if (currentDriverStatus === 'online' && pendingArray.length > 0 && !hadRideBefore) {
-                            logSpeech('New ride detected, triggering speech...');
-                            const ride = pendingArray[0];
-                            announceNewRide(ride);
-                            Swal.fire({
-                                title: 'New Ride Request!',
-                                text: `${pendingArray.length} ride(s) available`,
-                                icon: 'info',
-                                timer: 4000,
-                                showConfirmButton: false
-                            });
+                        // Start speech when there are pending rides and driver is online
+                        if (currentDriverStatus === 'online' && pendingArray.length > 0 && !newRideSpeechActiveRef.current) {
+                            logSpeech('Pending rides detected, starting speech...');
+                            announceNewRide();
                         }
 
-                        // Stop speech if ride was accepted
-                        if (wasAccepted && pendingArray.length === 0) {
-                            logSpeech('Ride accepted, stopping speech');
+                        // Stop speech when no more pending rides
+                        if (pendingArray.length === 0) {
+                            logSpeech('No more pending rides, stopping speech');
                             stopNewRideSpeech();
                         }
                     }
@@ -963,7 +941,7 @@ const DriverDashboard: React.FC = () => {
                     if (cancelled) return;
                     if (driverStatusRef.current === 'online' && data.ride) {
                         logSpeech('WS: New ride received via WebSocket!');
-                        announceNewRide(data.ride);
+                        if (!newRideSpeechActiveRef.current) announceNewRide();
                         Swal.fire({
                             title: 'New Ride Request!',
                             text: `${data.ride.client_name || 'A passenger'} is nearby`,

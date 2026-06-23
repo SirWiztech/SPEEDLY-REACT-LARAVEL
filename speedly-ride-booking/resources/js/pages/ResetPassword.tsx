@@ -30,7 +30,7 @@ export default function ResetPassword() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
-    const loading = usePreloader(1000);
+    const loading = usePreloader(0);
     const isMobile = useMobile();
 
     // Password strength calculation

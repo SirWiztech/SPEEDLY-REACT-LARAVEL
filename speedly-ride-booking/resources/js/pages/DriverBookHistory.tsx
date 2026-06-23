@@ -75,7 +75,7 @@ const DriverBookHistory: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'accepted' | 'declined'>('accepted');
     const [apiError, setApiError] = useState<string | null>(null);
 
-    const preloaderLoading = usePreloader(1000);
+    const preloaderLoading = usePreloader(0);
     const isMobile = useMobile();
 
     // Fetch book history data

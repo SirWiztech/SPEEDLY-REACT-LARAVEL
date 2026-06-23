@@ -18,7 +18,7 @@ interface KycStatus {
 }
 
 export default function ClientKycMobile() {
-    const loading = usePreloader(1500);
+    const loading = usePreloader(0);
 
     const { data: kycStatus, isLoading } = useQuery<KycStatus>({
         queryKey: ['client-kyc-mobile'],
