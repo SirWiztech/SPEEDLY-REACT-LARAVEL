@@ -36,7 +36,8 @@ class AuthController extends Controller
             $phone = '+234' . substr($phone, 1);
         }
 
-        $user = DB::transaction(function () use ($data, $phone) {
+        $otp = '';
+        $user = DB::transaction(function () use ($data, $phone, &$otp) {
             $user = User::create([
                 'full_name' => $data['full_name'],
                 'username' => $data['username'],
