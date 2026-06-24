@@ -84,7 +84,7 @@ export default function Splash() {
                                 </div>
                             </div>
                             <div className="logo-ring"></div>
-                            <img src="./main-assets/logo.webp" alt="Speedly Logo" className="logo-img" />
+                            <img src="/main-assets/logo.png" alt="Speedly Logo" className="logo-img" />
                         </div>
                         <h1 className="brand-title">SPEEDLY</h1>
                         <p className="brand-tagline">Your Everyday Ride Partner</p>
