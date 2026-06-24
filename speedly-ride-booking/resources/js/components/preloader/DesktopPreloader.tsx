@@ -591,7 +591,7 @@ export default function DesktopPreloader({ id = 'pagePreloader', onLoad }: Prelo
                         <div style={styles.logoGlowEffect}></div>
                         <div style={styles.logoInnerShadow}></div>
                         <img 
-                            src="/main-assets/logo-no-background.webp" 
+                            src="/main-assets/logo.png" 
                             alt="Speedly" 
                             className="preloader-logo-main"
                             style={styles.logoMain}
