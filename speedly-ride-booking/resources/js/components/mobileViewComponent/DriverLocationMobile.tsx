@@ -492,7 +492,7 @@ const DriverLocationMobile: React.FC = () => {
                     overflow-y: auto !important;
                     overflow-x: hidden !important;
                     padding-bottom: 80px !important;
-                    height: 100vh !important;
+                    min-height: 100vh !important;
                     display: flex !important;
                     flex-direction: column !important;
                 }
@@ -507,41 +507,20 @@ const DriverLocationMobile: React.FC = () => {
                     background: white !important;
                 }
                 
-                /* Full width for all containers */
-                .mobile-location-card,
-                .mobile-permission-prompt,
+                /* Map takes fixed height, card flows below */
                 .mobile-map-container {
-                    margin-left: 0 !important;
-                    margin-right: 0 !important;
-                    border-radius: 0 !important;
-                    width: 100% !important;
+                    flex-shrink: 0 !important;
+                    height: 50vh !important;
+                    min-height: 320px !important;
                 }
-                
+
                 .mobile-location-card {
-                    padding: 20px !important;
-                    margin-bottom: 16px !important;
-                }
-                
-                .mobile-permission-prompt {
-                    padding: 20px !important;
-                }
-                
-                .mobile-map-container {
-                    margin-top: 0 !important;
-                    margin-bottom: 16px !important;
-                    border-radius: 0 !important;
                     flex-shrink: 0 !important;
                 }
                 
                 /* Make content scrollable */
                 .mobile-location-view {
                     scroll-behavior: smooth !important;
-                }
-                
-                /* Ensure proper spacing */
-                .mobile-location-content {
-                    flex: 1 !important;
-                    overflow-y: visible !important;
                 }
             `}</style>
             
@@ -579,7 +558,41 @@ const DriverLocationMobile: React.FC = () => {
                         </div>
                     )}
 
-                    {/* GPS Status Card */}
+                    {/* Map Container — first so it's at the top */}
+                    <div className="mobile-map-container">
+                        <div ref={mapRef} className="mobile-map"></div>
+                        
+                        <div ref={directionArrowRef} className="mobile-direction-arrow">
+                            <i className="fas fa-location-arrow"></i>
+                        </div>
+
+                        {/* Places Panel */}
+                        {showPlaces && (
+                            <div className="mobile-places-panel">
+                                <div className="mobile-places-header">
+                                    <h3>Nearby Places</h3>
+                                    <button className="mobile-close-places" onClick={() => setShowPlaces(false)}>
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div className="mobile-places-list">
+                                    {nearbyPlaces.map((place) => (
+                                        <div key={place.id} className="mobile-place-item" onClick={() => goToPlace(place)}>
+                                            <div className="mobile-place-icon">
+                                                <i className="fas fa-map-marker-alt"></i>
+                                            </div>
+                                            <div className="mobile-place-info">
+                                                <h4>{place.name}</h4>
+                                                <p>{place.vicinity}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* GPS Status Card — BELOW the map, in normal flow */}
                     <div className="mobile-location-card">
                         <div className="mobile-location-header-row">
                             <div className="mobile-location-title">
@@ -656,40 +669,6 @@ const DriverLocationMobile: React.FC = () => {
                                 <span className="stat-unit">m</span>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Map Container */}
-                    <div className="mobile-map-container">
-                        <div ref={mapRef} className="mobile-map"></div>
-                        
-                        <div ref={directionArrowRef} className="mobile-direction-arrow">
-                            <i className="fas fa-location-arrow"></i>
-                        </div>
-
-                        {/* Places Panel */}
-                        {showPlaces && (
-                            <div className="mobile-places-panel">
-                                <div className="mobile-places-header">
-                                    <h3>Nearby Places</h3>
-                                    <button className="mobile-close-places" onClick={() => setShowPlaces(false)}>
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <div className="mobile-places-list">
-                                    {nearbyPlaces.map((place) => (
-                                        <div key={place.id} className="mobile-place-item" onClick={() => goToPlace(place)}>
-                                            <div className="mobile-place-icon">
-                                                <i className="fas fa-map-marker-alt"></i>
-                                            </div>
-                                            <div className="mobile-place-info">
-                                                <h4>{place.name}</h4>
-                                                <p>{place.vicinity}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Bottom Navigation */}
