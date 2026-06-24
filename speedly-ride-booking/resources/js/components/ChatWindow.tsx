@@ -107,9 +107,12 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
     const otherColor = currentRole === 'client' ? ['#4CAF50', '#2E7D32'] : ['#FF9800', '#E65100'];
 
     return (
-        <div style={{
+        <div className="cc-chat-window" style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-            width: 380, height: 520, background: '#fff', borderRadius: 20,
+            width: 'min(380px, calc(100vw - 24px))',
+            maxWidth: 380,
+            height: 'min(520px, calc(100vh - 120px))',
+            background: '#fff', borderRadius: 20,
             boxShadow: '0 12px 48px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column',
             overflow: 'hidden', border: '1px solid #eee',
         }}>
@@ -265,6 +268,20 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
                 @keyframes chatSpin {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
+                }
+                .cc-chat-window {
+                    right: 12px !important;
+                }
+                @media (max-width: 480px) {
+                    .cc-chat-window {
+                        right: 8px !important;
+                        left: 8px !important;
+                        bottom: 80px !important;
+                        width: auto !important;
+                        max-width: none !important;
+                        border-radius: 16px !important;
+                        max-height: calc(100vh - 130px) !important;
+                    }
                 }
             `}</style>
         </div>
