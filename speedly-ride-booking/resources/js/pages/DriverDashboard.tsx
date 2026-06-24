@@ -413,79 +413,21 @@ const DriverDashboard: React.FC = () => {
 
     // Complete ride
     const completeRide = async (rideId: string, payout: number) => {
-        let selectedRating = 0;
-        let reviewComment = '';
-
         const result = await Swal.fire({
             title: 'Complete Ride?',
             html: `
                 <p>Have you completed this ride?</p>
                 <p class="mt-2 font-bold text-green-600">You will earn: <span style="font-family: 'Roboto', sans-serif; font-variant-numeric: tabular-nums;">₦${payout.toLocaleString()}</span></p>
-                <div class="mt-4">
-                    <label class="block text-sm text-gray-600 mb-2">Rate the client (optional)</label>
-                    <div class="flex justify-center gap-2 text-2xl rating-stars">
-                        <i class="far fa-star rating-star" data-rating="1"></i>
-                        <i class="far fa-star rating-star" data-rating="2"></i>
-                        <i class="far fa-star rating-star" data-rating="3"></i>
-                        <i class="far fa-star rating-star" data-rating="4"></i>
-                        <i class="far fa-star rating-star" data-rating="5"></i>
-                    </div>
-                </div>
-                <textarea id="review-comment" class="swal2-textarea mt-4" placeholder="Leave a comment (optional)"></textarea>
             `,
             showCancelButton: true,
             confirmButtonColor: '#10b981',
             confirmButtonText: 'Yes, complete',
             cancelButtonText: 'Cancel',
-            didOpen: () => {
-                const stars = document.querySelectorAll('.rating-star');
-                
-                stars.forEach((star) => {
-                    star.addEventListener('mouseover', () => {
-                        const rating = parseInt(star.getAttribute('data-rating') || '0');
-                        stars.forEach((s, idx) => {
-                            if (idx < rating) {
-                                s.className = 'fas fa-star rating-star text-yellow-400';
-                            } else {
-                                s.className = 'far fa-star rating-star';
-                            }
-                        });
-                    });
-                    
-                    star.addEventListener('click', () => {
-                        selectedRating = parseInt(star.getAttribute('data-rating') || '0');
-                        stars.forEach((s, idx) => {
-                            if (idx < selectedRating) {
-                                s.className = 'fas fa-star rating-star text-yellow-400';
-                            } else {
-                                s.className = 'far fa-star rating-star';
-                            }
-                        });
-                    });
-                });
-                
-                const starsContainer = document.querySelector('.rating-stars');
-                starsContainer?.addEventListener('mouseleave', () => {
-                    stars.forEach((s, idx) => {
-                        if (idx < selectedRating) {
-                            s.className = 'fas fa-star rating-star text-yellow-400';
-                        } else {
-                            s.className = 'far fa-star rating-star';
-                        }
-                    });
-                });
-            }
         });
 
         if (result.isConfirmed) {
-            reviewComment = (document.getElementById('review-comment') as HTMLTextAreaElement)?.value || '';
-
             try {
                 const data = await api.rides.complete(rideId);
-
-                if (selectedRating > 0) {
-                    await api.rides.rateClient(rideId, { rating: selectedRating, comment: reviewComment });
-                }
 
                 if (data.success) {
                     activeRideRef.current = false;
