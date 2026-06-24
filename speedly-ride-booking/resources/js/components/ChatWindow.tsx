@@ -32,7 +32,7 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(true);
-    const [minimized, setMinimized] = useState(false);
+    const minimized = false;
     const bottomRef = useRef<HTMLDivElement>(null);
 
     const scrollDown = () => {
@@ -87,21 +87,9 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
         } catch {}
     };
 
-    if (minimized) return (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
-            <button onClick={() => setMinimized(false)} style={{
-                width: 56, height: 56, borderRadius: 28,
-                background: 'linear-gradient(135deg, #ff5e00, #ff8c3a)',
-                color: '#fff', border: 'none', cursor: 'pointer', fontSize: 22,
-                boxShadow: '0 6px 24px rgba(255,94,0,0.35)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'transform 0.2s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-            >💬</button>
-        </div>
-    );
+    if (minimized) {
+        return null;
+    }
 
     const otherInitial = (otherPartyName || 'User').charAt(0).toUpperCase();
     const otherColor = currentRole === 'client' ? ['#4CAF50', '#2E7D32'] : ['#FF9800', '#E65100'];
@@ -144,7 +132,7 @@ const ChatWindow: React.FC<Props> = ({ rideId, otherPartyName, currentRole, onCl
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setMinimized(true)} style={{
+                    <button onClick={onClose} style={{
                         background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff',
                         borderRadius: 8, width: 30, height: 30, cursor: 'pointer',
                         fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
