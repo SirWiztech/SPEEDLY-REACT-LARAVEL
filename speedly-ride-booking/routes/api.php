@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\RideController;
 use App\Http\Controllers\Api\WalletController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,6 +47,39 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::post('/delete-account', [AuthController::class, 'deleteAccount']);
+
+    // Profile picture upload (shared by all authenticated users)
+    Route::post('/upload-profile-picture', function (Request $request) {
+        $request->validate([
+            'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        $user = $request->user();
+        $file = $request->file('profile_picture');
+        $filename = 'profile_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('profile_pictures', $filename, 'public');
+
+        if (!$path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload profile picture'
+            ], 500);
+        }
+
+        $url = asset('storage/' . $path);
+
+        // Update user's profile_picture_url
+        $user->profile_picture_url = $url;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile picture uploaded successfully',
+            'data' => [
+                'profile_picture_url' => $url
+            ]
+        ]);
+    });
 
     /*
     |--------------------------------------------------------------------------

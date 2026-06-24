@@ -14,6 +14,8 @@ interface DriverData {
     full_name?: string;
     email: string;
     phone: string;
+    phone_number?: string;
+    profile_picture_url: string | null;
     address: string | null;
     city: string | null;
     state: string | null;
@@ -396,6 +398,48 @@ const DriverProfile: React.FC = () => {
             fetchNotifications();
         } catch (error) {
             console.error('Error marking notification:', error);
+        }
+    };
+
+    // Profile picture upload
+    const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        Swal.fire({
+            title: 'Uploading...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const formData = new FormData();
+            formData.append('profile_picture', file);
+            const data = await api.uploadProfilePicture(formData);
+            
+            if (data.success) {
+                setDriverData(prev => prev ? { ...prev, profile_picture_url: data.data.profile_picture_url } : prev);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Profile Picture Updated',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Failed',
+                    text: data.message || 'Failed to upload profile picture',
+                    confirmButtonColor: '#ff5e00'
+                });
+            }
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error?.message || 'Failed to upload profile picture',
+                confirmButtonColor: '#ff5e00'
+            });
         }
     };
 

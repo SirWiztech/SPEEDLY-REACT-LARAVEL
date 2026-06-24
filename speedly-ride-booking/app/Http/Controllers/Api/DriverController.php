@@ -439,6 +439,7 @@ class DriverController extends Controller
             'license_expiry' => 'sometimes|date',
             'date_of_birth' => 'sometimes|date',
             'gender' => 'sometimes|string|in:male,female,other,prefer-not-to-say',
+            'profile_picture_url' => 'sometimes|string|nullable',
         ]);
 
         if ($request->has('full_name')) {
@@ -449,6 +450,9 @@ class DriverController extends Controller
         }
         if ($request->has('phone_number')) {
             $user->phone_number = $request->phone_number;
+        }
+        if ($request->has('profile_picture_url')) {
+            $user->profile_picture_url = $request->profile_picture_url;
         }
         $user->save();
 

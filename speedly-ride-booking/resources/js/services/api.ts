@@ -333,6 +333,10 @@ payment: {
     chat: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
       apiFetch('/ai/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
   },
+
+  // Profile picture upload (shared by all authenticated users)
+  uploadProfilePicture: (formData: FormData) =>
+    apiFetch('/upload-profile-picture', { method: 'POST', body: formData }),
 };
 
 export default api;
