@@ -1022,7 +1022,7 @@ const DriverDashboardMobile: React.FC = () => {
                         <div className="action-icon"><i className={`fas fa-toggle-${driverStatus === 'online' ? 'on' : 'off'}`}></i></div>
                         <span>Go {driverStatus === 'online' ? 'Offline' : 'Online'}</span>
                     </button>
-                    <button className="mobile-action-btn" onClick={() => router.visit('/ride-history')}>
+                    <button className="mobile-action-btn" onClick={() => router.visit('/driverbookhistory')}>
                         <div className="action-icon"><i className="fas fa-calendar-check"></i></div>
                         <span>History</span>
                     </button>
@@ -1078,7 +1078,7 @@ const DriverDashboardMobile: React.FC = () => {
                 <div className="mobile-recent-section">
                     <div className="section-header">
                         <div className="section-title">🕒 Recent Rides</div>
-                        <button className="see-all-btn" onClick={() => router.visit('/ride-history')}>See All</button>
+                        <button className="see-all-btn" onClick={() => router.visit('/driverbookhistory')}>See All</button>
                     </div>
                     <div className="recent-rides-list">
                         {recentRides.length > 0 ? (
