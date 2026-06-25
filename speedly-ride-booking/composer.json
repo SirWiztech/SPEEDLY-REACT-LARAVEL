@@ -19,7 +19,8 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "pusher/pusher-php-server": "*",
-        "resend/resend-laravel": "^1.4"
+        "symfony/brevo-mailer": "*",
+        "symfony/http-client": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
