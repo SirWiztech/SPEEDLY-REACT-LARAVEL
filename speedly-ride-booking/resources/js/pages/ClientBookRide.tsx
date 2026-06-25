@@ -158,6 +158,28 @@ const ClientBookRide: React.FC = () => {
         });
     }, []);
 
+    // ── ADDED: clearLocation ────────────────────────────────────────────────────
+    const clearLocation = useCallback((type: 'pickup' | 'destination') => {
+        if (type === 'pickup') {
+            if (pickupMarkerRef.current) { pickupMarkerRef.current.setMap(null); pickupMarkerRef.current = null; }
+            setBooking(prev => ({ ...prev, pickup: { address: '', lat: null, lng: null, placeId: null } }));
+            setMode('pickup');
+        } else {
+            if (destMarkerRef.current) { destMarkerRef.current.setMap(null); destMarkerRef.current = null; }
+            setBooking(prev => ({ ...prev, destination: { address: '', lat: null, lng: null, placeId: null } }));
+        }
+    }, []);
+
+    // ── ADDED: confirmLocation ──────────────────────────────────────────────────
+    const confirmLocation = useCallback((type: 'pickup' | 'destination') => {
+        if (type === 'pickup') {
+            Swal.fire({ icon: 'success', title: 'Pickup Confirmed!', text: booking.pickup.address.substring(0, 50), timer: 1500, showConfirmButton: false, position: 'top', toast: true });
+            setMode('destination');
+        } else {
+            Swal.fire({ icon: 'success', title: 'Destination Confirmed!', text: booking.destination.address.substring(0, 50), timer: 1500, showConfirmButton: false, position: 'top', toast: true });
+        }
+    }, [booking.pickup.address, booking.destination.address]);
+
     const handleSelectPlace = useCallback((place: any) => {
         setShowDropdown(false);
         setSearchQuery(place.name);
@@ -212,6 +234,12 @@ const ClientBookRide: React.FC = () => {
         actionsRef.current.startWatchingPosition();
     }, []);
 
+    // ── ADDED: retryMapInit ─────────────────────────────────────────────────────
+    const retryMapInit = useCallback(() => {
+        mapInitRef.current = false;
+        setTimeout(() => initMap(), 500);
+    }, [initMap]);
+
     useEffect(() => {
         if (window.google?.maps) { setMapsApiReady(true); setMapLoaded(true); return; }
         loadGoogleMapsApi().then(() => { setMapsApiReady(true); setMapLoaded(true); }).catch(() => setTimeout(() => loadGoogleMapsApi().then(() => { setMapsApiReady(true); setMapLoaded(true); }), 2000));
@@ -244,37 +272,150 @@ const ClientBookRide: React.FC = () => {
     const selectDriver = (id: string) => { setSelectedDriverId(id); setBooking(prev => ({ ...prev, driverId: id, driverSelected: true })); Swal.fire({ icon: 'info', title: 'Private Ride', text: 'Driver notified.', timer: 3000, showConfirmButton: false, toast: true }); };
     const skipDriverSelection = () => { setSelectedDriverId(null); setBooking(prev => ({ ...prev, driverId: null, driverSelected: false })); Swal.fire({ icon: 'info', title: 'Public Ride', text: 'Visible to all nearby drivers.', timer: 3000, showConfirmButton: false, toast: true }); };
     const selectPayment = (p: string) => { setSelectedPayment(p); setBooking(prev => ({ ...prev, payment: p })); };
-    const confirmBooking = async () => {
-        if (!booking.pickup.address || !booking.destination.address || !booking.plan || !booking.payment) { Swal.fire({ icon: 'error', title: 'Incomplete', confirmButtonColor: '#ff5e00' }); return; }
-        if (booking.payment === 'wallet' && booking.fare > walletBalance) { Swal.fire({ icon: 'error', title: 'Insufficient Balance', html: `Wallet: ₦${walletBalance.toLocaleString()}<br>Required: ₦${booking.fare.toLocaleString()}`, showCancelButton: true, confirmButtonColor: '#ff5e00' }).then(r => { if (r.isConfirmed) router.visit('/wallet'); }); return; }
-        const result = await Swal.fire({ title: 'Confirm Booking', text: booking.driverId ? 'Private ride.' : 'Public ride.', icon: 'info', showCancelButton: true, confirmButtonColor: '#ff5e00', confirmButtonText: 'Book Now' });
-        if (result.isConfirmed) {
-            Swal.fire({ title: 'Booking...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            try {
-                const bookPayload: any = { pickup_location: booking.pickup.address, dropoff_location: booking.destination.address, pickup_lat: booking.pickup.lat || 0, pickup_lng: booking.pickup.lng || 0, dropoff_lat: booking.destination.lat || 0, dropoff_lng: booking.destination.lng || 0, ride_type: booking.plan, request_type: booking.driverSelected ? 'private' : 'public' };
-                if (booking.driverId) { bookPayload.driver_id = String(booking.driverId); }
-                const data = await api.rides.book(bookPayload);
-                Swal.close();
-                if (data.success) {
-                    const rideId = data.data?.id || '';
-                    console.log('[Book Ride] Success — rideId:', rideId, 'response:', data);
-                    if (rideId) {
-                        Swal.fire({ icon: 'success', title: 'Ride Booked!', html: `<p>Ride #${data.data?.ride_number || ''}</p><p>Fare: ₦${booking.fare.toLocaleString()}</p>`, confirmButtonColor: '#ff5e00', confirmButtonText: 'View Receipt' }).then(() => router.visit(`/generatereceipt?rideId=${rideId}`));
+
+    // ── ADDED: isBalanceSufficient ──────────────────────────────────────────────
+    const isBalanceSufficient = useCallback((): boolean => {
+        if (booking.payment === 'card') return true;
+        return walletBalance >= booking.fare;
+    }, [booking.payment, booking.fare, walletBalance]);
+
+    // ── ADDED: isNextDisabled ───────────────────────────────────────────────────
+    const isNextDisabled = useCallback((): boolean => {
+        if (step === 1) return !(booking.pickup.lat && booking.destination.lat);
+        if (step === 2) return !booking.plan;
+        if (step === 3) return false;
+        return !booking.payment || !isBalanceSufficient();
+    }, [step, booking, isBalanceSufficient]);
+
+    // ── ADDED: getButtonText ────────────────────────────────────────────────────
+    const getButtonText = useCallback((): string => {
+        if (step === 1) return 'Continue to Ride Plan';
+        if (step === 2) return 'Continue to Driver';
+        if (step === 3) return 'Continue to Payment';
+        return 'Confirm & Book Ride';
+    }, [step]);
+
+    // ── ADDED: getButtonIcon ────────────────────────────────────────────────────
+    const getButtonIcon = useCallback((): string => {
+        if (step < 4) return 'fas fa-arrow-right';
+        return 'fas fa-check';
+    }, [step]);
+
+    // ── REFACTORED: processBooking (API call layer, mirrors mobile exactly) ─────
+    const processBooking = useCallback(async () => {
+        Swal.fire({ title: 'Booking your ride...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const bookPayload: any = {
+                pickup_location: booking.pickup.address,
+                dropoff_location: booking.destination.address,
+                pickup_lat: booking.pickup.lat || 0,
+                pickup_lng: booking.pickup.lng || 0,
+                dropoff_lat: booking.destination.lat || 0,
+                dropoff_lng: booking.destination.lng || 0,
+                ride_type: booking.plan,
+                request_type: booking.driverSelected ? 'private' : 'public',
+            };
+            if (booking.driverId) { bookPayload.driver_id = String(booking.driverId); }
+
+            const data = await api.rides.book(bookPayload);
+            Swal.close();
+
+            if (data.success) {
+                const rideData = data.data;
+                const message = data.driver_assigned
+                    ? 'Your selected driver has been notified and will respond shortly.'
+                    : 'Nearby drivers have been notified and will respond shortly.';
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ride Booked!',
+                    html: `<div><p><strong>Ride #${rideData?.ride_number || ''}</strong></p><p>${message}</p><p>Fare: ₦${booking.fare.toLocaleString()}</p></div>`,
+                    confirmButtonColor: '#ff5e00',
+                    confirmButtonText: 'View Receipt'
+                }).then(() => {
+                    if (rideData?.id) {
+                        router.visit(`/generatereceipt?rideId=${rideData.id}`);
                     } else {
-                        Swal.fire({ icon: 'warning', title: 'Ride Booked', text: 'Ride created but could not load receipt. Check your ride history.', confirmButtonColor: '#ff5e00' }).then(() => router.visit('/clientridehistory'));
+                        router.visit('/clientridehistory');
                     }
-                } else {
-                    console.error('[Book Ride] Failed:', data);
-                    Swal.fire({ icon: 'error', title: 'Booking Failed', text: data.message || 'Unknown error', confirmButtonColor: '#ff5e00' });
-                }
-            } catch (e: any) {
-                Swal.close();
-                console.error('[Book Ride] Exception:', e);
-                Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed to book ride', confirmButtonColor: '#ff5e00' });
+                });
+            } else if (data.insufficient_balance) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Insufficient Balance',
+                    html: `<p>Current Balance: ₦${data.current_balance?.toLocaleString()}</p><p>Required: ₦${data.required_amount?.toLocaleString()}</p><p>Shortage: ₦${data.shortage?.toLocaleString()}</p>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Add Funds',
+                    confirmButtonColor: '#ff5e00'
+                }).then((result) => {
+                    if (result.isConfirmed) router.visit('/clientwallet');
+                });
+            } else {
+                console.error('[Book Ride] Failed:', data);
+                Swal.fire({ icon: 'error', title: 'Booking Failed', text: data.message || 'Unknown error', confirmButtonColor: '#ff5e00' });
             }
+        } catch (e: any) {
+            Swal.close();
+            console.error('[Book Ride] Exception:', e);
+            Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed to book ride', confirmButtonColor: '#ff5e00' });
         }
+    }, [booking, walletBalance]);
+
+    // ── REFACTORED: confirmBooking (guard layer only, calls processBooking) ──────
+    const confirmBooking = useCallback(async () => {
+        if (!booking.pickup.address || !booking.destination.address || !booking.plan || !booking.payment) {
+            Swal.fire({ icon: 'error', title: 'Incomplete Booking', text: 'Please complete all steps before booking.', confirmButtonColor: '#ff5e00' });
+            return;
+        }
+        if (booking.payment === 'wallet' && booking.fare > walletBalance) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Insufficient Balance',
+                html: `Your wallet balance (₦${walletBalance.toLocaleString()}) is insufficient.<br>Required: ₦${booking.fare.toLocaleString()}`,
+                showCancelButton: true,
+                confirmButtonText: 'Add Funds',
+                confirmButtonColor: '#ff5e00'
+            }).then((r) => { if (r.isConfirmed) router.visit('/clientwallet'); });
+            return;
+        }
+        const result = await Swal.fire({
+            title: 'Confirm Booking',
+            text: booking.driverId ? 'This will be a PRIVATE ride sent only to your selected driver. Continue?' : 'This will be a PUBLIC ride visible to all nearby drivers. Continue?',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#ff5e00',
+            confirmButtonText: 'Yes, Book Now',
+            cancelButtonText: 'Cancel'
+        });
+        if (result.isConfirmed) {
+            processBooking();
+        }
+    }, [booking, walletBalance, processBooking]);
+
+    // ── ADDED: handleNextAction ─────────────────────────────────────────────────
+    const handleNextAction = useCallback(() => {
+        if (step === 4) {
+            confirmBooking();
+        } else {
+            nextStep();
+        }
+    }, [step, confirmBooking]);
+
+    const checkNotifications = async () => {
+        try {
+            const d = await api.notifications.list();
+            const notifs = d.data?.data || [];
+            if (notifs.length > 0) {
+                let html = '<div style="text-align:left;max-height:400px;overflow-y:auto;">';
+                notifs.forEach((n: any) => { html += `<div style="padding:10px;border-bottom:1px solid #eee;"><p><strong>${n.title}</strong></p><p>${n.message}</p><p style="font-size:12px;color:#999;">${new Date(n.created_at).toLocaleString()}</p></div>`; });
+                html += '</div>';
+                const result = await Swal.fire({ icon: 'info', title: `Notifications (${notifs.length})`, html, confirmButtonColor: '#ff5e00', confirmButtonText: 'Close', showDenyButton: true, denyButtonText: 'Clear All' });
+                if (result.isDenied) { await api.notifications.clearAll(); setNotificationCount(0); }
+            } else {
+                Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' });
+            }
+        } catch { Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new notifications', confirmButtonColor: '#ff5e00' }); }
     };
-    const checkNotifications = async () => { try { const d = await api.notifications.list(); Swal.fire({ icon: 'info', title: 'Notifications', text: `${(d.data?.data || []).length} new`, confirmButtonColor: '#ff5e00' }); } catch { Swal.fire({ icon: 'info', title: 'Notifications', text: 'No new', confirmButtonColor: '#ff5e00' }); } };
+
     const nextStep = () => { if (step === 1 && (!booking.pickup.lat || !booking.destination.lat)) { Swal.fire({ icon: 'warning', title: 'Incomplete', text: 'Select pickup and destination', confirmButtonColor: '#ff5e00' }); return; } if (step === 2 && !booking.plan) { Swal.fire({ icon: 'warning', title: 'Incomplete', confirmButtonColor: '#ff5e00' }); return; } if (step < 4) { const n = step + 1; setStep(n); if (n === 3 && booking.pickup.lat && booking.pickup.lng) findNearbyDrivers(booking.pickup.lat, booking.pickup.lng, booking.plan); } };
     const prevStep = () => { if (step > 1) setStep(step - 1); };
 
@@ -332,18 +473,36 @@ const ClientBookRide: React.FC = () => {
                         </div>
                         <div className="book-ride-location-panel">
                             <h3>Selected Locations</h3>
-                            <div className="location-card"><div className="label"><i className="fas fa-circle text-green-600"></i> PICKUP</div><div className="address">{booking.pickup.address || 'Click map or search'}</div>{booking.pickup.lat && <button className="clear-btn" onClick={() => updatePickupLocation(0, 0, '', null)}>Clear</button>}</div>
-                            <div className="location-card destination"><div className="label"><i className="fas fa-map-marker-alt text-red-600"></i> DESTINATION</div><div className="address">{booking.destination.address || 'Click map or search'}</div>{booking.destination.lat && <button className="clear-btn" onClick={() => updateDestinationLocation(0, 0, '', null)}>Clear</button>}</div>
+                            <div className="location-card">
+                                <div className="label"><i className="fas fa-circle text-green-600"></i> PICKUP</div>
+                                <div className="address">{booking.pickup.address || 'Click map or search'}</div>
+                                {booking.pickup.lat && (
+                                    <div className="location-card-actions">
+                                        <button className="confirm-btn" onClick={() => confirmLocation('pickup')}><i className="fas fa-check"></i> Confirm</button>
+                                        <button className="clear-btn" onClick={() => clearLocation('pickup')}><i className="fas fa-times"></i> Clear</button>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="location-card destination">
+                                <div className="label"><i className="fas fa-map-marker-alt text-red-600"></i> DESTINATION</div>
+                                <div className="address">{booking.destination.address || 'Click map or search'}</div>
+                                {booking.destination.lat && (
+                                    <div className="location-card-actions">
+                                        <button className="confirm-btn" onClick={() => confirmLocation('destination')}><i className="fas fa-check"></i> Confirm</button>
+                                        <button className="clear-btn" onClick={() => clearLocation('destination')}><i className="fas fa-times"></i> Clear</button>
+                                    </div>
+                                )}
+                            </div>
                             {savedLocations.length > 0 && (<><h3 className="section-title">Saved Locations</h3><div className="saved-locations-grid">{savedLocations.map((l, i) => (<div key={i} className="saved-location-chip" onClick={() => useSavedLocation(l, mode)}><i className="fas fa-map-pin"></i><div className="name">{l.address.substring(0, 25)}</div></div>))}</div></>)}
                             <h3 className="section-title">Popular Locations</h3>
                             <div className="popular-locations-grid">{popularLocations.map(l => (<div key={l.name} className="popular-location-chip" onClick={() => usePopularLocation(l, mode)}><i className={`fas fa-${l.icon}`}></i><div className="name">{l.name}</div></div>))}</div>
-                            <button className="continue-btn" onClick={nextStep} disabled={!booking.pickup.lat || !booking.destination.lat}><i className="fas fa-arrow-right"></i> CONTINUE</button>
+                            <button className="continue-btn" onClick={handleNextAction} disabled={isNextDisabled()}><i className={getButtonIcon()}></i> {getButtonText()}</button>
                         </div>
                     </div>
                 )}
-                {step === 2 && (<div className="book-ride-plan-step"><h2>Choose Your Ride</h2><div className="plans-grid"><div className={`plan-card ${selectedPlan === 'economy' ? 'selected' : ''}`} onClick={() => selectPlan('economy')}><div className="plan-icon"><i className="fas fa-car"></i></div><h3>Economy</h3><ul><li><i className="fas fa-check"></i> Affordable rides</li><li><i className="fas fa-check"></i> 4 Seater</li><li><i className="fas fa-check"></i> Best value</li></ul><div className="plan-price font-roboto-number">₦1,000 <span>/km</span></div></div><div className={`plan-card ${selectedPlan === 'comfort' ? 'selected' : ''}`} onClick={() => selectPlan('comfort')}><div className="plan-icon"><i className="fas fa-car-side"></i></div><h3>Comfort</h3><ul><li><i className="fas fa-check"></i> Extra legroom</li><li><i className="fas fa-check"></i> Professional driver</li><li><i className="fas fa-check"></i> Premium service</li></ul><div className="plan-price font-roboto-number">₦1,500 <span>/km</span></div></div><div className={`plan-card ${selectedPlan === 'premium' ? 'selected' : ''}`} onClick={() => selectPlan('premium')}><div className="plan-icon"><i className="fas fa-car-side"></i></div><h3>Luxury</h3><ul><li><i className="fas fa-check"></i> Premium vehicle</li><li><i className="fas fa-check"></i> Top-rated driver</li><li><i className="fas fa-check"></i> VIP experience</li></ul><div className="plan-price font-roboto-number">₦2,500 <span>/km</span></div></div></div><div className="action-buttons"><button className="back-btn" onClick={prevStep}><i className="fas fa-arrow-left"></i> Back</button><button className="next-btn" onClick={nextStep} disabled={!booking.plan}><i className="fas fa-arrow-right"></i> Continue</button></div></div>)}
-                {step === 3 && (<div className="book-ride-driver-step"><h2>Available Drivers</h2><p className="driver-status"><span className="font-roboto-number">{drivers.length}</span> drivers nearby</p><div className="driver-selection-info"><i className="fas fa-info-circle"></i><div className="info-text"><strong>Ride Privacy</strong><p>Select a driver for PRIVATE RIDE or Skip for PUBLIC RIDE</p></div></div><div className="drivers-grid">{drivers.map(d => (<div key={d.id} className={`driver-card ${selectedDriverId === d.id ? 'selected' : ''}`} onClick={() => selectDriver(d.id)}><div className="driver-info"><div className="driver-avatar">{d.photo ? <img src={d.photo} alt={d.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : d.name.charAt(0)}</div><div className="driver-details"><h4>{d.name}</h4><div className="driver-rating">{'★'.repeat(Math.round(d.rating))}{'☆'.repeat(5 - Math.round(d.rating))} <span className="font-roboto-number">{d.rating}</span></div><div className="driver-car"><i className="fas fa-car"></i> {d.vehicle}</div></div></div><div className="driver-stats"><div><span className="stat-value font-roboto-number">{d.distance}</span><span className="stat-label">km</span></div><div><span className="stat-value font-roboto-number">{d.rating}</span><span className="stat-label">rating</span></div><div><span className="stat-value font-roboto-number">{d.rides}+</span><span className="stat-label">rides</span></div></div></div>))}</div><button className="skip-driver-btn" onClick={skipDriverSelection}><i className="fas fa-globe"></i> Skip - Public Ride</button><div className="action-buttons"><button className="back-btn" onClick={prevStep}><i className="fas fa-arrow-left"></i> Back</button><button className="next-btn" onClick={nextStep}><i className="fas fa-arrow-right"></i> Continue</button></div></div>)}
-                {step === 4 && (<div className="book-ride-payment-step"><h2>Payment</h2><div className="payment-grid"><div className={`payment-card ${selectedPayment === 'wallet' ? 'selected' : ''}`} onClick={() => { setSelectedPayment('wallet'); setBooking(prev => ({ ...prev, payment: 'wallet' })); }}><i className="fas fa-wallet"></i><h4>Wallet</h4><p>Balance: <span className="font-roboto-number">{formatCurrency(walletBalance)}</span></p></div></div>{booking.distance > 0 && (<div className="fare-summary"><h3>Fare Summary</h3><div className="fare-item"><span>Distance</span><span className="font-roboto-number">{booking.distance.toFixed(1)} km</span></div><div className="fare-item"><span>Rate/km</span><span className="font-roboto-number">₦{booking.plan === 'economy' ? '1,000' : booking.plan === 'premium' ? '2,500' : '1,500'}</span></div><div className="fare-item"><span>Base</span><span className="font-roboto-number">₦{booking.plan === 'economy' ? '500' : booking.plan === 'premium' ? '1,500' : '800'}</span></div><div className="fare-item total"><span>Total</span><span className="font-roboto-number">₦{booking.fare.toLocaleString()}</span></div>{booking.fare > walletBalance && <div className="insufficient-warning">⚠️ Insufficient balance</div>}</div>)}<div className="action-buttons"><button className="back-btn" onClick={prevStep}><i className="fas fa-arrow-left"></i> Back</button><button className="book-btn" onClick={confirmBooking} disabled={booking.fare > walletBalance}><i className="fas fa-check"></i> Confirm & Book</button></div></div>)}
+                {step === 2 && (<div className="book-ride-plan-step"><h2>Choose Your Ride</h2><div className="plans-grid"><div className={`plan-card ${selectedPlan === 'economy' ? 'selected' : ''}`} onClick={() => selectPlan('economy')}><div className="plan-icon"><i className="fas fa-car"></i></div><h3>Economy</h3><ul><li><i className="fas fa-check"></i> Affordable rides</li><li><i className="fas fa-check"></i> 4 Seater</li><li><i className="fas fa-check"></i> Best value</li></ul><div className="plan-price font-roboto-number">₦1,000 <span>/km</span></div></div><div className={`plan-card ${selectedPlan === 'comfort' ? 'selected' : ''}`} onClick={() => selectPlan('comfort')}><div className="plan-icon"><i className="fas fa-car-side"></i></div><h3>Comfort</h3><ul><li><i className="fas fa-check"></i> Extra legroom</li><li><i className="fas fa-check"></i> Professional driver</li><li><i className="fas fa-check"></i> Premium service</li></ul><div className="plan-price font-roboto-number">₦1,500 <span>/km</span></div></div><div className={`plan-card ${selectedPlan === 'premium' ? 'selected' : ''}`} onClick={() => selectPlan('premium')}><div className="plan-icon"><i className="fas fa-car-side"></i></div><h3>Luxury</h3><ul><li><i className="fas fa-check"></i> Premium vehicle</li><li><i className="fas fa-check"></i> Top-rated driver</li><li><i className="fas fa-check"></i> VIP experience</li></ul><div className="plan-price font-roboto-number">₦2,500 <span>/km</span></div></div></div><div className="action-buttons"><button className="back-btn" onClick={prevStep}><i className="fas fa-arrow-left"></i> Back</button><button className="next-btn" onClick={handleNextAction} disabled={isNextDisabled()}><i className={getButtonIcon()}></i> {getButtonText()}</button></div></div>)}
+                {step === 3 && (<div className="book-ride-driver-step"><h2>Available Drivers</h2><p className="driver-status"><span className="font-roboto-number">{drivers.length}</span> drivers nearby</p><div className="driver-selection-info"><i className="fas fa-info-circle"></i><div className="info-text"><strong>Ride Privacy</strong><p>Select a driver for PRIVATE RIDE or Skip for PUBLIC RIDE</p></div></div><div className="drivers-grid">{drivers.map(d => (<div key={d.id} className={`driver-card ${selectedDriverId === d.id ? 'selected' : ''}`} onClick={() => selectDriver(d.id)}><div className="driver-info"><div className="driver-avatar">{d.photo ? <img src={d.photo} alt={d.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : d.name.charAt(0)}</div><div className="driver-details"><h4>{d.name}</h4><div className="driver-rating">{'★'.repeat(Math.round(d.rating))}{'☆'.repeat(5 - Math.round(d.rating))} <span className="font-roboto-number">{d.rating}</span></div><div className="driver-car"><i className="fas fa-car"></i> {d.vehicle}</div></div></div><div className="driver-stats"><div><span className="stat-value font-roboto-number">{d.distance}</span><span className="stat-label">km</span></div><div><span className="stat-value font-roboto-number">{d.rating}</span><span className="stat-label">rating</span></div><div><span className="stat-value font-roboto-number">{d.rides}+</span><span className="stat-label">rides</span></div></div></div>))}</div><button className="skip-driver-btn" onClick={skipDriverSelection}><i className="fas fa-globe"></i> Skip - Public Ride</button><div className="action-buttons"><button className="back-btn" onClick={prevStep}><i className="fas fa-arrow-left"></i> Back</button><button className="next-btn" onClick={handleNextAction} disabled={isNextDisabled()}><i className={getButtonIcon()}></i> {getButtonText()}</button></div></div>)}
+                {step === 4 && (<div className="book-ride-payment-step"><h2>Payment</h2><div className="payment-grid"><div className={`payment-card ${selectedPayment === 'wallet' ? 'selected' : ''}`} onClick={() => selectPayment('wallet')}><i className="fas fa-wallet"></i><h4>Wallet</h4><p>Balance: <span className="font-roboto-number">{formatCurrency(walletBalance)}</span></p></div></div>{booking.distance > 0 && (<div className="fare-summary"><h3>Fare Summary</h3><div className="fare-item"><span>Distance</span><span className="font-roboto-number">{booking.distance.toFixed(1)} km</span></div><div className="fare-item"><span>Rate/km</span><span className="font-roboto-number">₦{booking.plan === 'economy' ? '1,000' : booking.plan === 'premium' ? '2,500' : '1,500'}</span></div><div className="fare-item"><span>Base</span><span className="font-roboto-number">₦{booking.plan === 'economy' ? '500' : booking.plan === 'premium' ? '1,500' : '800'}</span></div><div className="fare-item total"><span>Total</span><span className="font-roboto-number">₦{booking.fare.toLocaleString()}</span></div>{!isBalanceSufficient() && booking.payment && <div className="insufficient-warning">⚠️ Insufficient balance. <button className="add-funds-link" onClick={() => router.visit('/clientwallet')}>Add Funds</button></div>}</div>)}<div className="action-buttons"><button className="back-btn" onClick={prevStep}><i className="fas fa-arrow-left"></i> Back</button><button className="book-btn" onClick={handleNextAction} disabled={isNextDisabled()}><i className={getButtonIcon()}></i> {getButtonText()}</button></div></div>)}
             </div>
         </div>
     );

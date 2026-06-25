@@ -845,7 +845,7 @@ const DriverDashboardMobile: React.FC = () => {
 
     return (
         <div className="mobile-driver-dashboard-container">
-            <div className="mobile-driver-dashboard-view">
+           <div className="mobile-driver-dashboard-view">
                 {/* Header */}
                 <div className="mobile-driver-header">
                     <div className="mobile-driver-user-info">

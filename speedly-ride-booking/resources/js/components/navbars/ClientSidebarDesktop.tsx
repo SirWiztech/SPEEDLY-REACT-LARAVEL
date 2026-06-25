@@ -48,7 +48,7 @@ const ClientSidebarDesktop: React.FC<ClientSidebarDesktopProps> = ({
     <div className="desktop-sidebar">
       <div className="logo">
         <img 
-          src="/main-assets/logo-no-background.png" 
+          src="/main-assets/logo-no-background.webp" 
           alt="Speedly Logo" 
           className="logo-image"
         />
