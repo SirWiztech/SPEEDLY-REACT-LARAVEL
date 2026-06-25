@@ -260,7 +260,6 @@ export default function Home({ isLoggedIn = false }) {
                         <Link href="/login" className="auth-btn">
                             <i className='bx bx-user'></i>
                             <span className="auth-btn-text-full">Register / Login</span>
-                            <span className="auth-btn-text-short">Login</span>
                         </Link>
                     )}
                 </div>
