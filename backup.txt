@@ -103,15 +103,6 @@ const ClientDashboard: React.FC = () => {
     const notificationIntervalRef = useRef<number | null>(null);
     const isMobile = useMobile();
 
-    // ============================================
-    // FIX: Add the missing cancelSpeech function
-    // ============================================
-    const cancelSpeech = () => {
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-        }
-    };
-
     // Get status color
     const getStatusColor = (status: string): string => {
         const colors: Record<string, string> = {
@@ -746,13 +737,9 @@ const ClientDashboard: React.FC = () => {
         });
     };
 
-    // ============================================
-    // FIX: Updated releaseFunds to use cancelSpeech
-    // ============================================
+    // Release funds
     const releaseFunds = async (rideId: string) => {
-        // Cancel any ongoing speech
-        cancelSpeech();
-        
+        cancelSpeech(); // Stop speaking immediately
         const result = await Swal.fire({
             title: 'Release Payment?',
             text: 'This will transfer the fare to the driver. This action cannot be undone.',
@@ -771,29 +758,14 @@ const ClientDashboard: React.FC = () => {
             const data = await api.rides.releaseFunds(rideId);
             Swal.close();
             if (data.success) {
-                Swal.fire({ 
-                    icon: 'success', 
-                    title: 'Funds Released!', 
-                    text: 'Payment has been sent to the driver.', 
-                    confirmButtonColor: '#ff5e00' 
-                });
+                Swal.fire({ icon: 'success', title: 'Funds Released!', text: 'Payment has been sent to the driver.', confirmButtonColor: '#ff5e00' });
                 fetchDashboardData();
             } else {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'Failed', 
-                    text: data.message || 'Could not release funds', 
-                    confirmButtonColor: '#ff5e00' 
-                });
+                Swal.fire({ icon: 'error', title: 'Failed', text: data.message || 'Could not release funds', confirmButtonColor: '#ff5e00' });
             }
         } catch (error: any) {
             Swal.close();
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'Error', 
-                text: error?.message || 'Failed to release funds', 
-                confirmButtonColor: '#ff5e00' 
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: error?.message || 'Failed to release funds', confirmButtonColor: '#ff5e00' });
         }
     };
 
