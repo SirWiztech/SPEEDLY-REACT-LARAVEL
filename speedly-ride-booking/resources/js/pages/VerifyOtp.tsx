@@ -61,11 +61,7 @@ export default function VerifyOtp() {
             if (data.success) {
                 showToast('success', 'Verification Successful', 'Your email has been verified successfully!');
                 setTimeout(() => {
-                    setToken(data.data.token);
-                    const role = data.data.user.role;
-                    if (role === 'client') window.location.href = '/clientdashboard';
-                    else if (role === 'driver') window.location.href = '/driverdashboard';
-                    else window.location.href = '/home';
+window.location.href="/login"
                 }, 1500);
             } else {
                 showToast('error', 'Verification Failed', data.message || 'Invalid OTP. Please try again.');
