@@ -533,11 +533,11 @@ const DriverProfile: React.FC = () => {
                 <div className="driver-profile-sidebar">
                     <div className="profile-pic-container">
                         <div className="profile-pic-placeholder">
-                            {userInitial}
+                            {driverData?.profile_picture_url?<img src={driverData.profile_picture_url} alt="Profile" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/>:userInitial}
                         </div>
                         <label className="upload-pic-btn">
                             <i className="fas fa-camera"></i>
-                            <input type="file" accept="image/*" style={{ display: 'none' }} />
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePictureUpload} />
                         </label>
                     </div>
                     <h3>{driverData?.fullname || driverData?.full_name}</h3>

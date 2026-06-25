@@ -214,8 +214,16 @@ const ClientProfile: React.FC = () => {
                 <div className="client-profile-sidebar">
                     <div className="profile-pic-container">
                         <div className="profile-pic-placeholder">
-                            {userInitial}
+                            {userData?.profile_picture_url ? (
+                                <img src={userData.profile_picture_url} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                            ) : (
+                                userInitial
+                            )}
                         </div>
+                        <label className="upload-pic-btn">
+                            <i className="fas fa-camera"></i>
+                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleProfilePictureUpload} />
+                        </label>
                     </div>
                     <h3>{userData?.full_name}</h3>
                     <p className="profile-email">{userData?.email}</p>
