@@ -541,12 +541,23 @@ class WalletController extends Controller
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:100',
+            'password' => 'required|string',
             'bank_name' => 'required|string|max:100',
+            'bank_code' => 'nullable|string|max:20',
             'account_number' => 'required|string|max:20',
             'account_name' => 'required|string|max:255',
         ]);
 
         $user = $request->user();
+
+        if (!Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Incorrect password',
+                'data' => null,
+            ], 401);
+        }
+
         $clientProfile = ClientProfile::where('user_id', $user->id)->first();
 
         if (!$clientProfile) {
@@ -578,6 +589,7 @@ class WalletController extends Controller
                 'client_id' => $clientProfile->id,
                 'amount' => $amount,
                 'bank_name' => $validated['bank_name'],
+                'bank_code' => $validated['bank_code'] ?? null,
                 'account_number' => $validated['account_number'],
                 'account_name' => $validated['account_name'],
                 'status' => 'pending',
