@@ -337,8 +337,8 @@ export default function Home({ isLoggedIn = false }) {
                             <span>New: Speedly Pro is here</span>
                         </div>
                         <h1 className="hero-title">
-                            We accelerate the<br />
-                            <span className="gradient-text">city's movement</span>
+                            A Ride Booking<br />
+                            <span className="gradient-text">Website</span>
                         </h1>
                         <p className="hero-description">
                             At Speedly, we focus on routes where efficiency, reliability, and speed unlock seamless travel and drive urban connection.
