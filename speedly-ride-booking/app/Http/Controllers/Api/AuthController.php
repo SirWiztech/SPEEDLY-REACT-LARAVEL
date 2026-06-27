@@ -75,14 +75,23 @@ class AuthController extends Controller
                 'expires_at' => Carbon::now()->addMinutes(10),
             ]);
 
-            try {
-                Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('OTP email failed: ' . $e->getMessage());
-            }
-
             return $user;
         });
+
+        // Send OTP outside DB transaction so failure doesn't roll back user creation
+        try {
+            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('OTP email failed to ' . $user->email . ': ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Account created but we failed to send the verification email. Please use the Resend OTP option, or contact support.',
+                'debug' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
@@ -244,7 +253,12 @@ class AuthController extends Controller
         try {
             Mail::to($user->email)->send(new OtpMail($otp, $user->full_name ?? $user->name));
         } catch (\Exception $e) {
-            // Log email failure
+            \Illuminate\Support\Facades\Log::error('OTP resend failed to ' . $user->email . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resend OTP. Please try again later or contact support.',
+                'debug' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
 
         return response()->json([
@@ -322,7 +336,12 @@ class AuthController extends Controller
         try {
             Mail::to($user->email)->send(new PasswordResetMail($token, $user->full_name ?? $user->name, $resetUrl));
         } catch (\Exception $e) {
-            // Log email failure
+            \Illuminate\Support\Facades\Log::error('Password reset email failed to ' . $user->email . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send password reset email. Please try again later.',
+                'debug' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
 
         return response()->json([
