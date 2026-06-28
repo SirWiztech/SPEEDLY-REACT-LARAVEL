@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoApiTransport;
+use App\Mail\Transport\BrevoCurlTransport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Mail::extend('brevo', function (array $config) {
-            return new BrevoApiTransport(
+            return new BrevoCurlTransport(
                 config('services.brevo.key')
             );
         });
