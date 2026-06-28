@@ -29,9 +29,14 @@ class BrevoCurlTransport extends AbstractTransport
             $sender['name'] = $fromAddr->getName();
         }
 
-        // Build recipients
+        // Collect recipients: envelope recipients first, then fall back to email To headers
+        $recipients = $envelope->getRecipients();
+        if (empty($recipients)) {
+            $recipients = $email->getTo();
+        }
+
         $to = [];
-        foreach ($this->getRecipients($email, $envelope) as $recipient) {
+        foreach ($recipients as $recipient) {
             $entry = ['email' => $recipient->getEncodedAddress()];
             if ($recipient->getName()) {
                 $entry['name'] = $recipient->getName();
@@ -76,7 +81,6 @@ class BrevoCurlTransport extends AbstractTransport
                 'Content-Type: application/json',
                 'Accept: application/json',
             ],
-            // Try to find CA bundle — but silence any path warning
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
         ]);
