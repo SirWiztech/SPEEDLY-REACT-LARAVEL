@@ -20,16 +20,14 @@ class BrevoCurlTransport extends AbstractTransport
         $email = MessageConverter::toEmail($message->getOriginalMessage());
         $envelope = $message->getEnvelope();
 
-        // Build sender
+        // Build sender — use getAddress() (Symfony 8.x), not getEncodedAddress() (removed)
         $fromAddr = $envelope->getSender();
-        $sender = [
-            'email' => $fromAddr->getEncodedAddress(),
-        ];
+        $sender = ['email' => $fromAddr->getAddress()];
         if ($fromAddr->getName()) {
             $sender['name'] = $fromAddr->getName();
         }
 
-        // Collect recipients: envelope recipients first, then fall back to email To headers
+        // Collect recipients
         $recipients = $envelope->getRecipients();
         if (empty($recipients)) {
             $recipients = $email->getTo();
@@ -37,7 +35,7 @@ class BrevoCurlTransport extends AbstractTransport
 
         $to = [];
         foreach ($recipients as $recipient) {
-            $entry = ['email' => $recipient->getEncodedAddress()];
+            $entry = ['email' => $recipient->getAddress()];
             if ($recipient->getName()) {
                 $entry['name'] = $recipient->getName();
             }
@@ -60,9 +58,7 @@ class BrevoCurlTransport extends AbstractTransport
         // Reply-To
         if ($replyTo = $email->getReplyTo()) {
             $addr = $replyTo[0];
-            $payload['replyTo'] = [
-                'email' => $addr->getEncodedAddress(),
-            ];
+            $payload['replyTo'] = ['email' => $addr->getAddress()];
             if ($addr->getName()) {
                 $payload['replyTo']['name'] = $addr->getName();
             }
@@ -86,20 +82,17 @@ class BrevoCurlTransport extends AbstractTransport
         ]);
 
         // Try common CA bundle paths
-        $caPaths = [
+        foreach ([
             '/etc/ssl/certs/ca-certificates.crt',
             '/etc/ssl/certs/ca-bundle.crt',
             '/etc/pki/tls/certs/ca-bundle.crt',
             '/etc/ssl/ca-bundle.pem',
             '/etc/ssl/cert.pem',
             '/usr/local/share/certs/ca-root-nss.crt',
-            '/opt/render/project/.ssl/cacert.pem',
             '/etc/ssl/certs/cacert.pem',
             ini_get('curl.cainfo'),
             ini_get('openssl.cafile'),
-        ];
-
-        foreach ($caPaths as $path) {
+        ] as $path) {
             if ($path && file_exists($path)) {
                 curl_setopt($ch, CURLOPT_CAINFO, $path);
                 break;
