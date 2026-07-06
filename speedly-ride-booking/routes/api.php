@@ -50,14 +50,32 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Profile picture upload (shared by all authenticated users)
     Route::post('/upload-profile-picture', function (Request $request) {
+        $user = $request->user();
+
+        // Debug: log the upload attempt
+        \Illuminate\Support\Facades\Log::info('Upload attempt', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'has_file' => $request->hasFile('profile_picture'),
+            'file_valid' => $request->file('profile_picture') ? $request->file('profile_picture')->isValid() : false,
+            'storage_disk' => 'public',
+            'storage_root' => config('filesystems.disks.public.root'),
+        ]);
+
         $request->validate([
             'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
-        $user = $request->user();
         $file = $request->file('profile_picture');
         $filename = 'profile_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs('profile_pictures', $filename, 'public');
+
+        \Illuminate\Support\Facades\Log::info('Upload stored', [
+            'user_id' => $user->id,
+            'filename' => $filename,
+            'path' => $path,
+            'exists' => $path ? \Illuminate\Support\Facades\Storage::disk('public')->exists($path) : false,
+        ]);
 
         if (!$path) {
             return response()->json([
@@ -71,6 +89,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // Update user's profile_picture_url
         $user->profile_picture_url = $url;
         $user->save();
+
+        \Illuminate\Support\Facades\Log::info('Upload complete', [
+            'user_id' => $user->id,
+            'profile_picture_url' => $user->profile_picture_url,
+            'asset_url' => $url,
+        ]);
 
         return response()->json([
             'success' => true,

@@ -2,6 +2,7 @@
 
 namespace App\Mail\Transport;
 
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Symfony\Component\Mime\Address;
@@ -20,7 +21,7 @@ class BrevoCurlTransport extends AbstractTransport
         $email = MessageConverter::toEmail($message->getOriginalMessage());
         $envelope = $message->getEnvelope();
 
-        // Build sender — use getAddress() (Symfony 8.x), not getEncodedAddress() (removed)
+        // Build sender — use getAddress() (Symfony 8.x)
         $fromAddr = $envelope->getSender();
         $sender = ['email' => $fromAddr->getAddress()];
         if ($fromAddr->getName()) {
@@ -55,7 +56,6 @@ class BrevoCurlTransport extends AbstractTransport
             $payload['textContent'] = $email->getTextBody();
         }
 
-        // Reply-To
         if ($replyTo = $email->getReplyTo()) {
             $addr = $replyTo[0];
             $payload['replyTo'] = ['email' => $addr->getAddress()];
@@ -63,6 +63,16 @@ class BrevoCurlTransport extends AbstractTransport
                 $payload['replyTo']['name'] = $addr->getName();
             }
         }
+
+        // --- DEBUG: Log outgoing payload (mask key, log full recipients) ---
+        Log::info('BrevoCurlTransport: sending', [
+            'sender'      => $sender['email'],
+            'recipients'  => array_column($to, 'email'),
+            'subject'     => $payload['subject'],
+            'api_key_pre' => substr($this->apiKey, 0, 8) . '...',
+            'has_html'    => !empty($payload['htmlContent']),
+            'has_text'    => !empty($payload['textContent']),
+        ]);
 
         $ch = curl_init();
 
@@ -82,6 +92,7 @@ class BrevoCurlTransport extends AbstractTransport
         ]);
 
         // Try common CA bundle paths
+        $caFound = false;
         foreach ([
             '/etc/ssl/certs/ca-certificates.crt',
             '/etc/ssl/certs/ca-bundle.crt',
@@ -95,14 +106,30 @@ class BrevoCurlTransport extends AbstractTransport
         ] as $path) {
             if ($path && file_exists($path)) {
                 curl_setopt($ch, CURLOPT_CAINFO, $path);
+                $caFound = $path;
                 break;
             }
+        }
+        if (!$caFound) {
+            Log::warning('BrevoCurlTransport: no CA bundle found, SSL verify disabled');
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         }
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error    = curl_error($ch);
+        $curlInfo = curl_getinfo($ch);
         curl_close($ch);
+
+        // --- DEBUG: Log response ---
+        Log::info('BrevoCurlTransport: response', [
+            'http_code'       => $httpCode,
+            'curl_error'      => $error,
+            'response_body'   => $response,
+            'response_time_ms'=> $curlInfo['total_time'] * 1000,
+            'ca_bundle'       => $caFound ?: 'none',
+        ]);
 
         if ($error) {
             throw new \Symfony\Component\Mailer\Exception\TransportException(
@@ -121,6 +148,9 @@ class BrevoCurlTransport extends AbstractTransport
 
         if (!empty($data['messageId'])) {
             $message->setMessageId($data['messageId']);
+            Log::info('BrevoCurlTransport: success', ['messageId' => $data['messageId']]);
+        } else {
+            Log::warning('BrevoCurlTransport: no messageId in 201 response', ['data' => $data]);
         }
     }
 
