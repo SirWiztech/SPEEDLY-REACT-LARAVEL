@@ -96,7 +96,11 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Registration successful. Please verify OTP.',
-            'data' => ['redirect' => 'verify-otp', 'email' => $user->email, 'otp' => $otp]
+            'data' => [
+                'redirect' => 'verify-otp',
+                'email' => $user->email,
+                'otp' => app()->isLocal() ? $otp : null, // Only expose OTP in local/dev
+            ]
         ]);
     }
 
@@ -277,6 +281,18 @@ class AuthController extends Controller
 
         $user = User::where('email', $data['email'])->first();
 
+        // OTP brute-force protection: track failed attempts via cache
+        $cacheKey = 'otp_attempts:' . $user->id;
+        $failedAttempts = (int) cache()->get($cacheKey, 0);
+
+        if ($failedAttempts >= 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many failed OTP attempts. Please request a new code in 15 minutes.',
+                'data' => null,
+            ], 429);
+        }
+
         $reset = PasswordReset::where('user_id', $user->id)
             ->where('token', $data['otp'])
             ->whereNull('used_at')
@@ -284,12 +300,16 @@ class AuthController extends Controller
             ->first();
 
         if (!$reset) {
+            cache()->put($cacheKey, $failedAttempts + 1, now()->addMinutes(15));
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid or expired OTP',
                 'data' => null
             ], 400);
         }
+
+        // Clear failed attempts on success
+        cache()->forget($cacheKey);
 
         $user->update(['is_verified' => true]);
         $reset->update(['used_at' => Carbon::now()]);

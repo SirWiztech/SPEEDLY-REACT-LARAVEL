@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\TrustProxies::class,
             \App\Http\Middleware\CacheControl::class,
+            \App\Http\Middleware\CspHeaders::class,
             \App\Http\Middleware\SeoMiddleware::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,

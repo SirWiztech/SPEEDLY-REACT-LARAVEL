@@ -17,16 +17,16 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Public Auth Routes
+| Public Auth Routes (rate-limited to prevent brute force)
 |--------------------------------------------------------------------------
 */
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/admin/login', [AuthController::class, 'adminLogin']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:3,1');       // 3 attempts per minute
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');             // 5 attempts per minute
+Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('throttle:5,1');   // 5 attempts per minute
 
-Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
-Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:1,2');    // 1 attempt per 2 minutes
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:5,1');    // 5 attempts per minute
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:2,5'); // 2 attempts per 5 minutes
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle']);

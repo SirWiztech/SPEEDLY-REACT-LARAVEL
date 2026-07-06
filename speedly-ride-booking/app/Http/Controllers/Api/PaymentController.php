@@ -538,15 +538,25 @@ class PaymentController extends Controller
         $secretKey = $this->getKorapaySecretKey();
         $signature = $request->header('x-korapay-signature');
 
-        if ($signature && !empty($secretKey)) {
-            $expectedSignature = hash_hmac('sha256', $payload, $secretKey);
-            if (!hash_equals($expectedSignature, $signature)) {
-                \Illuminate\Support\Facades\Log::warning('Invalid webhook signature received');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid webhook signature',
-                ], 401);
-            }
+        // Enforce signature verification — reject unsigned webhooks
+        if (empty($signature) || empty($secretKey)) {
+            \Illuminate\Support\Facades\Log::warning('Webhook received without signature or secret key missing');
+            return response()->json([
+                'success' => false,
+                'message' => 'Missing webhook signature',
+            ], 401);
+        }
+
+        $expectedSignature = hash_hmac('sha256', $payload, $secretKey);
+        if (!hash_equals($expectedSignature, $signature)) {
+            \Illuminate\Support\Facades\Log::warning('Invalid webhook signature received', [
+                'expected' => substr($expectedSignature, 0, 16) . '...',
+                'received' => substr($signature, 0, 16) . '...',
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid webhook signature',
+            ], 401);
         }
 
         if (!$reference) {

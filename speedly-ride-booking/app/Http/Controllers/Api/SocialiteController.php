@@ -61,6 +61,19 @@ class SocialiteController extends Controller
         Auth::guard('web')->login($user);
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return redirect()->away('/form?token=' . urlencode($token) . '&role=' . $user->role);
+        // Store token in a one-time cookie, redirect without exposing it in the URL
+        $cookie = cookie(
+            'auth_redirect_token',
+            $token,
+            2, // 2 minutes — enough for the frontend to pick it up
+            '/',
+            null,
+            config('app.env') === 'production',
+            true, // httponly
+            false,
+            'lax'
+        );
+
+        return redirect('/form')->withCookie($cookie);
     }
 }

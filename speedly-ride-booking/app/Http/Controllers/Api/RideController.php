@@ -285,6 +285,16 @@ class RideController extends Controller
             return response()->json(['success' => false, 'message' => 'Ride not found'], 404);
         }
 
+        // Ownership check — only participants or admin can view ride details
+        $user = $request->user();
+        if ($user && $user->role !== 'admin') {
+            $isClient = $ride->client && $ride->client->user_id === $user->id;
+            $isDriver = $ride->driver && $ride->driver->user_id === $user->id;
+            if (!$isClient && !$isDriver) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
         $rideData = $ride->toArray();
         $rideData['user_rating'] = null;
 
