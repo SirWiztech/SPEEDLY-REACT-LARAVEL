@@ -176,73 +176,42 @@ const ClientWallet: React.FC = () => {
 
         // Inject inline styles for the withdrawal modal
         const styleEl = document.createElement('style');
-        styleEl.textContent = `
-            .withdrawal-container { padding: 0 4px; }
-            .withdrawal-balance { background: linear-gradient(135deg, #ff5e00, #ff8c38); border-radius: 16px; padding: 20px; margin-bottom: 20px; color: white; text-align: center; }
-            .withdrawal-balance .label { font-size: 12px; opacity: 0.9; margin-bottom: 4px; }
-            .withdrawal-balance .amount { font-size: 28px; font-weight: 800; font-family: 'Roboto', sans-serif; }
-            .withdrawal-balance .sub { font-size: 12px; opacity: 0.8; margin-top: 4px; }
-            .withdrawal-section { margin-bottom: 16px; }
-            .withdrawal-section-title { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-            .quick-amounts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-            .quick-amount-btn { background: #f5f5f5; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; }
-            .quick-amount-btn:hover { background: #fff3ea; border-color: #ff5e00; color: #ff5e00; }
-            .withdrawal-input { width: 100%; padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s; box-sizing: border-box; margin-bottom: 8px; }
-            .withdrawal-input:focus { border-color: #ff5e00; }
-            .withdrawal-input.readonly { background: #f9f9f9; color: #666; }
-            .withdrawal-select { width: 100%; padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; outline: none; background: white; cursor: pointer; box-sizing: border-box; margin-bottom: 8px; }
-            .withdrawal-select:focus { border-color: #ff5e00; }
-            .verification-status { font-size: 12px; margin-top: 4px; padding: 6px 10px; border-radius: 8px; display: flex; align-items: center; gap: 6px; }
-            .verification-status.loading { background: #fff8e1; color: #f57f17; }
-            .verification-status.success { background: #e8f5e9; color: #2e7d32; }
-            .verification-status.error { background: #ffebee; color: #c62828; }
-            .save-bank-checkbox { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; color: #555; cursor: pointer; }
-            .save-bank-checkbox input { width: 16px; height: 16px; accent-color: #ff5e00; cursor: pointer; }
-            .withdrawal-info { margin-top: 12px; padding: 12px; background: #fff8f0; border-radius: 10px; font-size: 12px; color: #888; text-align: center; }
-        `;
+        styleEl.textContent = '.withdrawal-container { padding: 0 4px; } .withdrawal-balance { background: linear-gradient(135deg, #ff5e00, #ff8c38); border-radius: 16px; padding: 20px; margin-bottom: 20px; color: white; text-align: center; } .withdrawal-balance .with-label { font-size: 12px; opacity: 0.9; margin-bottom: 4px; } .withdrawal-balance .with-amount { font-size: 28px; font-weight: 800; font-family: 'Roboto', sans-serif; } .withdrawal-balance .with-sub { font-size: 12px; opacity: 0.8; margin-top: 4px; } .with-section { margin-bottom: 16px; } .with-section-t { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; } .quick-amounts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; } .quick-amount-btn { background: #f5f5f5; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; } .quick-amount-btn:hover { background: #fff3ea; border-color: #ff5e00; color: #ff5e00; } .with-input { width: 100%; padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s; box-sizing: border-box; margin-bottom: 8px; } .with-input:focus { border-color: #ff5e00; } .with-input.readonly { background: #f9f9f9; color: #666; } .with-select { width: 100%; padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; outline: none; background: white; cursor: pointer; box-sizing: border-box; margin-bottom: 8px; } .with-select:focus { border-color: #ff5e00; } .verify-status { font-size: 12px; margin-top: 4px; padding: 6px 10px; border-radius: 8px; display: flex; align-items: center; gap: 6px; } .verify-status.loading { background: #fff8e1; color: #f57f17; } .verify-status.success { background: #e8f5e9; color: #2e7d32; } .verify-status.error { background: #ffebee; color: #c62828; } .with-info { margin-top: 12px; padding: 12px; background: #fff8f0; border-radius: 10px; font-size: 12px; color: #888; text-align: center; } .with-success-card { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 16px; padding: 24px; margin-bottom: 16px; } .with-success-amount { font-size: 32px; font-weight: 800; color: #1b5e20; font-family: 'Roboto', sans-serif; }';
         document.head.appendChild(styleEl);
 
         Swal.fire({
             title: 'Withdraw Funds',
-            html: `
-                <div class="withdrawal-container">
-                    <div class="withdrawal-balance">
-                        <div class="label">Available Balance</div>
-                        <div class="amount">₦\${walletBalance.toLocaleString()}</div>
-                        <div class="sub">Minimum withdrawal: ₦100</div>
-                    </div>
-
-                    <div class="withdrawal-section">
-                        <div class="withdrawal-section-title"><i class="fas fa-coins"></i> Amount</div>
-                        <div class="quick-amounts">
-                            <button type="button" class="quick-amount-btn" data-amount="5000">₦5,000</button>
-                            <button type="button" class="quick-amount-btn" data-amount="10000">₦10,000</button>
-                            <button type="button" class="quick-amount-btn" data-amount="25000">₦25,000</button>
-                            <button type="button" class="quick-amount-btn" data-amount="50000">₦50,000</button>
-                        </div>
-                        <input type="number" id="withdraw-amount" class="withdrawal-input" placeholder="Enter custom amount" min="100" max="${walletBalance}" step="100">
-                    </div>
-
-                    <div class="withdrawal-section">
-                        <div class="withdrawal-section-title"><i class="fas fa-university"></i> Bank Account</div>
-                        <select id="bank-name" class="withdrawal-select">
-                            <option value="">Loading banks...</option>
-                        </select>
-                        <input type="text" id="account-number" class="withdrawal-input" placeholder="Account Number" maxlength="10" inputmode="numeric">
-                        <div id="account-verification-status" class="verification-status"></div>
-                        <input type="text" id="account-name" class="withdrawal-input readonly" placeholder="Account Name (auto-verified)" readonly>
-                    </div>
-
-                    <div class="withdrawal-section">
-                        <div class="withdrawal-section-title"><i class="fas fa-lock"></i> Confirm Password</div>
-                        <input type="password" id="withdraw-password" class="withdrawal-input" placeholder="Enter your password to confirm">
-                    </div>
-
-                    <div class="withdrawal-info">
-                        <i class="fas fa-clock" style="color: #ff5e00;"></i> Withdrawals are processed within 24-48 hours after admin approval
-                    </div>
-                </div>
-            `,
+            html: '<div class="withdrawal-container">' +
+                '<div class="withdrawal-balance">' +
+                    '<div class="with-label">Available Balance</div>' +
+                    '<div class="with-amount">₦' + walletBalance.toLocaleString() + '</div>' +
+                    '<div class="with-sub">Minimum withdrawal: ₦100</div>' +
+                '</div>' +
+                '<div class="with-section">' +
+                    '<div class="with-section-t"><i class="fas fa-coins"></i> Amount</div>' +
+                    '<div class="quick-amounts">' +
+                        '<button type="button" class="quick-amount-btn" data-amount="5000">₦5,000</button>' +
+                        '<button type="button" class="quick-amount-btn" data-amount="10000">₦10,000</button>' +
+                        '<button type="button" class="quick-amount-btn" data-amount="25000">₦25,000</button>' +
+                        '<button type="button" class="quick-amount-btn" data-amount="50000">₦50,000</button>' +
+                    '</div>' +
+                    '<input type="number" id="withdraw-amount" class="with-input" placeholder="Enter custom amount" min="100" max="' + walletBalance + '" step="100">' +
+                '</div>' +
+                '<div class="with-section">' +
+                    '<div class="with-section-t"><i class="fas fa-university"></i> Bank Account</div>' +
+                    '<select id="bank-name" class="with-select"><option value="">Loading banks...</option></select>' +
+                    '<input type="text" id="account-number" class="with-input" placeholder="Account Number" maxlength="10" inputmode="numeric">' +
+                    '<div id="account-verification-status" class="verify-status"></div>' +
+                    '<input type="text" id="account-name" class="with-input readonly" placeholder="Account Name (auto-verified)" readonly>' +
+                '</div>' +
+                '<div class="with-section">' +
+                    '<div class="with-section-t"><i class="fas fa-lock"></i> Confirm Password</div>' +
+                    '<input type="password" id="withdraw-password" class="with-input" placeholder="Enter your password to confirm">' +
+                '</div>' +
+                '<div class="with-info">' +
+                    '<i class="fas fa-clock" style="color:#ff5e00;"></i> Withdrawals are processed within 24-48 hours after admin approval' +
+                '</div>' +
+            '</div>',
             showCancelButton: true,
             confirmButtonText: '<i class="fas fa-check"></i> Withdraw',
             confirmButtonColor: '#ff5e00',
@@ -264,7 +233,7 @@ const ClientWallet: React.FC = () => {
                     const select = document.getElementById('bank-name') as HTMLSelectElement;
                     if (select) {
                         select.innerHTML = '<option value="">Select Bank</option>' +
-                            banks.map((b) => {
+                            banks.map((b: any) => {
                                 const name = b.name || b.bank_name;
                                 const code = b.code || b.bank_code || '';
                                 return '<option value="' + name + '" data-code="' + code + '">' + name + '</option>';
@@ -280,100 +249,63 @@ const ClientWallet: React.FC = () => {
                         { name: 'Stanbic IBTC', code: '221' }
                     ];
                     const select = document.getElementById('bank-name') as HTMLSelectElement;
-                    if (select) {
-                        select.innerHTML = '<option value="">Select Bank</option>' +
-                            fallback.map(b => '<option value="' + b.name + '" data-code="' + b.code + '">' + b.name + '</option>').join('');
-                    }
+                    if (select) select.innerHTML = '<option value="">Select Bank</option>' +
+                        fallback.map(b => '<option value="' + b.name + '" data-code="' + b.code + '">' + b.name + '</option>').join('');
                 });
 
                 // Auto-verify account on 10-digit input
-                let verifyTimer;
-                const accountInput = document.getElementById('account-number') as HTMLInputElement;
-                if (accountInput) {
-                    accountInput.addEventListener('input', () => {
-                        clearTimeout(verifyTimer);
-                        const statusEl = document.getElementById('account-verification-status');
-                        const nameInput = document.getElementById('account-name') as HTMLInputElement;
-                        if (!statusEl || !nameInput) return;
-
-                        const val = accountInput.value.replace(/\D/g, '');
-                        accountInput.value = val;
-
+                let vt: ReturnType<typeof setTimeout>;
+                const acct = document.getElementById('account-number') as HTMLInputElement;
+                if (acct) {
+                    acct.addEventListener('input', () => {
+                        clearTimeout(vt);
+                        const vs = document.getElementById('account-verification-status');
+                        const nm = document.getElementById('account-name') as HTMLInputElement;
+                        if (!vs || !nm) return;
+                        const val = acct.value.replace(/\D/g, '');
+                        acct.value = val;
                         if (val.length === 10) {
-                            statusEl.className = 'verification-status loading';
-                            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying account...';
-                            nameInput.value = '';
-                            nameInput.setAttribute('readonly', 'readonly');
-
-                            verifyTimer = setTimeout(async () => {
-                                const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
-                                const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || '';
-                                const bankName = bankSelect?.value || '';
-
-                                if (!bankCode || !bankName) {
-                                    statusEl.className = 'verification-status error';
-                                    statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Select a bank first';
-                                    return;
-                                }
-
+                            vs.className = 'verify-status loading';
+                            vs.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying account...';
+                            nm.value = '';
+                            nm.setAttribute('readonly', 'readonly');
+                            vt = setTimeout(async () => {
+                                const bs = document.getElementById('bank-name') as HTMLSelectElement;
+                                const bc = bs?.selectedOptions?.[0]?.getAttribute('data-code') || '';
+                                if (!bc) { vs.className = 'verify-status error'; vs.innerHTML = '<i class="fas fa-exclamation-circle"></i> Select a bank first'; return; }
                                 try {
-                                    const res = await api.payment.verifyAccount({ bank_code: bankCode, account_number: val });
-                                    if (res.account_name) {
-                                        nameInput.value = res.account_name;
-                                        nameInput.setAttribute('readonly', 'readonly');
-                                        statusEl.className = 'verification-status success';
-                                        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Account verified: ' + res.account_name;
+                                    const r = await api.payment.verifyAccount({ bank_code: bc, account_number: val });
+                                    if (r.account_name) {
+                                        nm.value = r.account_name; nm.setAttribute('readonly', 'readonly');
+                                        vs.className = 'verify-status success';
+                                        vs.innerHTML = '<i class="fas fa-check-circle"></i> Account verified: ' + r.account_name;
                                     } else {
-                                        nameInput.removeAttribute('readonly');
-                                        statusEl.className = 'verification-status error';
-                                        statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Could not verify. Enter name manually.';
+                                        nm.removeAttribute('readonly');
+                                        vs.className = 'verify-status error'; vs.innerHTML = '<i class="fas fa-exclamation-circle"></i> Could not verify. Enter name manually.';
                                     }
                                 } catch {
-                                    nameInput.removeAttribute('readonly');
-                                    statusEl.className = 'verification-status error';
-                                    statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Verification failed. Enter name manually.';
+                                    nm.removeAttribute('readonly');
+                                    vs.className = 'verify-status error'; vs.innerHTML = '<i class="fas fa-exclamation-circle"></i> Verification failed. Enter name manually.';
                                 }
                             }, 1000);
-                        } else {
-                            statusEl.className = 'verification-status';
-                            statusEl.innerHTML = '';
-                            nameInput.value = '';
-                        }
+                        } else { vs.className = 'verify-status'; vs.innerHTML = ''; nm.value = ''; }
                     });
                 }
             },
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
-                const bankName = (document.getElementById('bank-name') as HTMLSelectElement)?.value;
-                const bankCode = (document.getElementById('bank-name') as HTMLSelectElement)?.selectedOptions?.[0]?.getAttribute('data-code') || '';
+                const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
+                const bankName = bankSelect?.value;
+                const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || '';
                 const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
                 const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
                 const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
-
-                if (!amount || isNaN(amount) || amount < 100) {
-                    Swal.showValidationMessage('Minimum withdrawal is ₦100');
-                    return false;
-                }
-                if (amount > walletBalance) {
-                    Swal.showValidationMessage('Insufficient balance');
-                    return false;
-                }
-                if (!bankName) {
-                    Swal.showValidationMessage('Please select a bank');
-                    return false;
-                }
-                if (!account || account.length !== 10 || !/^\d+$/.test(account)) {
-                    Swal.showValidationMessage('Please enter a valid 10-digit account number');
-                    return false;
-                }
-                if (!name || name.trim().length < 3) {
-                    Swal.showValidationMessage('Please enter a valid account name');
-                    return false;
-                }
-                if (!password) {
-                    Swal.showValidationMessage('Please enter your password to confirm');
-                    return false;
-                }
+                if (!amount || isNaN(amount) || amount < 100) { Swal.showValidationMessage('Minimum withdrawal is ₦100'); return false; }
+                if (amount > walletBalance) { Swal.showValidationMessage('Insufficient balance'); return false; }
+                if (!bankName) { Swal.showValidationMessage('Please select a bank'); return false; }
+                if (!account || account.length !== 10 || !/^\d+$/.test(account)) { Swal.showValidationMessage('Please enter a valid 10-digit account number'); return false; }
+                if (!name || name.trim().length < 3) { Swal.showValidationMessage('Please enter a valid account name'); return false; }
+                if (!password) { Swal.showValidationMessage('Please enter your password to confirm'); return false; }
                 return { amount, bankName, bankCode, account, name, password };
             }
         }).then(async (result) => {
@@ -393,35 +325,32 @@ const ClientWallet: React.FC = () => {
                         Swal.fire({
                             icon: 'success',
                             title: 'Withdrawal Request Submitted',
-                            html: `
-                                <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
-                                    <div style="font-size: 12px; color: #2e7d32; margin-bottom: 4px;">Amount Requested</div>
-                                    <div style="font-size: 32px; font-weight: 800; color: #1b5e20; font-family: 'Roboto', sans-serif;">₦\${result.value.amount.toLocaleString()}</div>
-                                </div>
-                                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                                    <tr><td style="padding: 6px 0; color: #888;">Bank</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">\${result.value.bankName}</td></tr>
-                                    <tr><td style="padding: 6px 0; color: #888;">Account</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">\${result.value.account}</td></tr>
-                                    <tr><td style="padding: 6px 0; color: #888;">Account Name</td><td style="padding: 6px 0; font-weight: 600; text-align: right;">\${result.value.name}</td></tr>
-                                </table>
-                                <p style="margin-top: 16px; font-size: 13px; color: #666; text-align: center;">
-                                    <i class="fas fa-clock" style="color: #ff5e00;"></i> Funds will be sent within 24-48 hours
-                                </p>
-                            `,
+                            html: '' +
+                                '<div class="with-success-card">' +
+                                    '<div style="font-size:12px;color:#2e7d32;margin-bottom:4px;">Amount Requested</div>' +
+                                    '<div class="with-success-amount">₦' + result.value.amount.toLocaleString() + '</div>' +
+                                '</div>' +
+                                '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+                                    '<tr><td style="padding:6px 0;color:#888;">Bank</td><td style="padding:6px 0;font-weight:600;text-align:right;">' + result.value.bankName + '</td></tr>' +
+                                    '<tr><td style="padding:6px 0;color:#888;">Account</td><td style="padding:6px 0;font-weight:600;text-align:right;">' + result.value.account + '</td></tr>' +
+                                    '<tr><td style="padding:6px 0;color:#888;">Account Name</td><td style="padding:6px 0;font-weight:600;text-align:right;">' + result.value.name + '</td></tr>' +
+                                '</table>' +
+                                '<p style="margin-top:16px;font-size:13px;color:#666;text-align:center;">' +
+                                    '<i class="fas fa-clock" style="color:#ff5e00;"></i> Funds will be sent within 24-48 hours' +
+                                '</p>',
                             confirmButtonColor: '#ff5e00',
                             confirmButtonText: 'Done'
                         }).then(() => fetchWalletData());
                     } else {
                         Swal.fire({ icon: 'error', title: 'Withdrawal Failed', text: res.message || 'Something went wrong', confirmButtonColor: '#ff5e00' });
                     }
-                } catch (err) {
+                } catch (err: any) {
                     Swal.close();
                     Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed to submit withdrawal', confirmButtonColor: '#ff5e00' });
                 } finally {
-                    // Cleanup injected styles
                     if (styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
                 }
             } else {
-                // Cleanup injected styles on cancel
                 if (styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
             }
         });

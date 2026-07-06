@@ -198,72 +198,64 @@ const ClientWalletMobile: React.FC = () => {
         }
         Swal.fire({
             title: 'Request Withdrawal',
-            html: `
-                <p style="margin-bottom: 12px;text-align:center;">Balance: <strong style="color:#ff5e00;font-size:18px;">N${walletBalance.toLocaleString()}</strong></p>
-                <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Amount" min="100" max="${walletBalance}" step="100">
-                <select id="bank-name" class="swal2-input"><option value="">Loading banks...</option></select>
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" inputmode="numeric">
-                <div id="verify-status" style="font-size:12px;margin:4px 0;text-align:center;"></div>
-                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name" readonly style="background:#f9f9f9;">
-                <input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password">
-                <p style="margin-top:8px;font-size:12px;color:#888;text-align:center;"><i class="fas fa-clock" style="color:#ff5e00;"></i> Processed within 24-48 hours</p>
-            `,
+            html: '<p style="margin-bottom:12px;text-align:center;">Balance: <strong style="color:#ff5e00;font-size:18px;">N' + walletBalance.toLocaleString() + '</strong></p>' +
+                '<input type="number" id="withdraw-amount" class="swal2-input" placeholder="Amount" min="100" max="' + walletBalance + '" step="100">' +
+                '<select id="bank-name" class="swal2-input"><option value="">Loading banks...</option></select>' +
+                '<input type="text" id="account-number" class="swal2-input" placeholder="Account Number" maxlength="10" inputmode="numeric">' +
+                '<div id="verify-status" style="font-size:12px;margin:4px 0;text-align:center;"></div>' +
+                '<input type="text" id="account-name" class="swal2-input" placeholder="Account Name" readonly style="background:#f9f9f9;">' +
+                '<input type="password" id="withdraw-password" class="swal2-input" placeholder="Enter your password">' +
+                '<p style="margin-top:8px;font-size:12px;color:#888;text-align:center;"><i class="fas fa-clock" style="color:#ff5e00;"></i> Processed within 24-48 hours</p>',
             showCancelButton: true,
             confirmButtonText: 'Withdraw',
             confirmButtonColor: '#ff5e00',
             didOpen: () => {
-                // Load banks
                 api.payment.getBanks('NGN').then(r => {
                     const banks = r.data || [];
                     const s = document.getElementById('bank-name');
-                    if (s) s.innerHTML = '<option value="">Select Bank</option>' + banks.map(b => '<option value="' + (b.name || b.bank_name) + '" data-code="' + (b.code || b.bank_code || '') + '">' + (b.name || b.bank_name) + '</option>').join('');
+                    if (s) s.innerHTML = '<option value="">Select Bank</option>' +
+                        banks.map(b => '<option value="' + (b.name || b.bank_name) + '" data-code="' + (b.code || b.bank_code || '') + '">' + (b.name || b.bank_name) + '</option>').join('');
                 }).catch(() => {
                     const fb = [{ name: 'Access Bank', code: '044' }, { name: 'GTBank', code: '058' }, { name: 'First Bank', code: '011' }, { name: 'UBA', code: '033' }, { name: 'Zenith Bank', code: '057' }];
                     const s = document.getElementById('bank-name');
                     if (s) s.innerHTML = '<option value="">Select Bank</option>' + fb.map(b => '<option value="' + b.name + '" data-code="' + b.code + '">' + b.name + '</option>').join('');
                 });
-                // Auto-verify account
                 const acct = document.getElementById('account-number');
                 const vs = document.getElementById('verify-status');
                 const nm = document.getElementById('account-name');
                 let vt;
-                if (acct) {
-                    acct.addEventListener('input', () => {
-                        clearTimeout(vt);
-                        const val = acct.value.replace(/\D/g, '');
-                        acct.value = val;
-                        if (val.length === 10) {
-                            if (vs) vs.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-                            vt = setTimeout(async () => {
-                                const bs = document.getElementById('bank-name');
-                                const bc = bs ? bs.selectedOptions[0]?.getAttribute('data-code') || '' : '';
-                                if (!bc) { if (vs) { vs.innerHTML = 'Select a bank first'; vs.style.color = '#c62828'; } return; }
-                                try {
-                                    const r = await api.payment.verifyAccount({ bank_code: bc, account_number: val });
-                                    if (r.account_name) {
-                                        if (nm) { nm.value = r.account_name; nm.setAttribute('readonly', 'readonly'); }
-                                        if (vs) { vs.innerHTML = '<i class="fas fa-check-circle"></i> ' + r.account_name; vs.style.color = '#2e7d32'; }
-                                    } else {
-                                        if (nm) nm.removeAttribute('readonly');
-                                        if (vs) { vs.innerHTML = 'Verify failed - enter name manually'; vs.style.color = '#c62828'; }
-                                    }
-                                } catch {
+                if (acct) acct.addEventListener('input', () => {
+                    clearTimeout(vt);
+                    const val = acct.value.replace(/\D/g, '');
+                    acct.value = val;
+                    if (val.length === 10) {
+                        if (vs) vs.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+                        vt = setTimeout(async () => {
+                            const bs = document.getElementById('bank-name');
+                            const bc = bs ? bs.selectedOptions[0]?.getAttribute('data-code') || '' : '';
+                            if (!bc) { if (vs) { vs.innerHTML = 'Select a bank first'; vs.style.color = '#c62828'; } return; }
+                            try {
+                                const r = await api.payment.verifyAccount({ bank_code: bc, account_number: val });
+                                if (r.account_name) {
+                                    if (nm) { nm.value = r.account_name; nm.setAttribute('readonly', 'readonly'); }
+                                    if (vs) { vs.innerHTML = '<i class="fas fa-check-circle"></i> ' + r.account_name; vs.style.color = '#2e7d32'; }
+                                } else {
                                     if (nm) nm.removeAttribute('readonly');
-                                    if (vs) { vs.innerHTML = 'Verification failed'; vs.style.color = '#c62828'; }
+                                    if (vs) { vs.innerHTML = 'Verify failed - enter name manually'; vs.style.color = '#c62828'; }
                                 }
-                            }, 1000);
-                        } else {
-                            if (vs) vs.innerHTML = '';
-                            if (nm) { nm.value = ''; nm.setAttribute('readonly', 'readonly'); }
-                        }
-                    });
-                }
+                            } catch {
+                                if (nm) nm.removeAttribute('readonly');
+                                if (vs) { vs.innerHTML = 'Verification failed'; vs.style.color = '#c62828'; }
+                            }
+                        }, 1000);
+                    } else { if (vs) vs.innerHTML = ''; if (nm) { nm.value = ''; nm.setAttribute('readonly', 'readonly'); } }
+                });
             },
             preConfirm: () => {
                 const amount = parseFloat(document.getElementById('withdraw-amount')?.value);
-                const bankSelect = document.getElementById('bank-name');
-                const bankName = bankSelect ? bankSelect.value : '';
-                const bankCode = bankSelect && bankSelect.selectedOptions[0] ? bankSelect.selectedOptions[0].getAttribute('data-code') || '' : '';
+                const bs = document.getElementById('bank-name');
+                const bankName = bs ? bs.value : '';
+                const bankCode = bs && bs.selectedOptions[0] ? bs.selectedOptions[0].getAttribute('data-code') || '' : '';
                 const account = document.getElementById('account-number') ? document.getElementById('account-number').value : '';
                 const name = document.getElementById('account-name') ? document.getElementById('account-name').value : '';
                 const password = document.getElementById('withdraw-password') ? document.getElementById('withdraw-password').value : '';
@@ -280,23 +272,21 @@ const ClientWalletMobile: React.FC = () => {
                 Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 try {
                     const res = await api.client.withdraw({
-                        amount: result.value.amount,
-                        password: result.value.password,
-                        bank_name: result.value.bankName,
-                        bank_code: result.value.bankCode || undefined,
-                        account_number: result.value.account,
-                        account_name: result.value.name
+                        amount: result.value.amount, password: result.value.password,
+                        bank_name: result.value.bankName, bank_code: result.value.bankCode || undefined,
+                        account_number: result.value.account, account_name: result.value.name
                     });
                     Swal.close();
                     if (res.success) {
-                        Swal.fire({ icon: 'success', title: 'Withdrawal Submitted', html: '<p>Amount: <strong>' + result.value.amount.toLocaleString() + '</strong></p><p>Funds sent within 24-48 hours</p>', confirmButtonColor: '#ff5e00' }).then(() => fetchWalletData());
+                        Swal.fire({
+                            icon: 'success', title: 'Withdrawal Submitted',
+                            html: '<p>Amount: <strong>N' + result.value.amount.toLocaleString() + '</strong></p><p>Funds sent within 24-48 hours</p>',
+                            confirmButtonColor: '#ff5e00'
+                        }).then(() => fetchWalletData());
                     } else {
                         Swal.fire({ icon: 'error', title: 'Failed', text: res.message || 'Error', confirmButtonColor: '#ff5e00' });
                     }
-                } catch (err) {
-                    Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed', confirmButtonColor: '#ff5e00' });
-                }
+                } catch (err) { Swal.close(); Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed', confirmButtonColor: '#ff5e00' }); }
             }
         });
     };
