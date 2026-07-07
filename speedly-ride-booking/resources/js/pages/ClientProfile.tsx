@@ -199,7 +199,7 @@ const ClientProfile: React.FC = () => {
     }
 
     return (
-        <div style={{ background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)', minHeight: '100vh', padding: '20px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)', minHeight: '100vh', padding: '20px', overflowY: 'auto' }}>
         <div className="client-profile-container">
             {/* Header */}
             <div className="client-profile-header">
