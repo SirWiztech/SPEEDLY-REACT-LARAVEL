@@ -12,6 +12,9 @@ fi
 # Run migrations
 php artisan migrate --force
 
+# Create storage symlink (needed for profile pictures, file uploads)
+php artisan storage:link --force 2>/dev/null || true
+
 # Clear caches
 php artisan config:clear
 php artisan route:clear
