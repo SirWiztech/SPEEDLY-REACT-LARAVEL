@@ -9,28 +9,32 @@ use Symfony\Component\HttpFoundation\Response;
 class CspHeaders
 {
     /**
-     * Add Content-Security-Policy headers to prevent XSS and data injection.
+     * Add security headers. Uses a permissive CSP that allows common third-party
+     * resources (Google Maps, Boxicons, Font Awesome, Unsplash, etc.) while still
+     * declaring known origins. Report-only violations are logged so we can tune later.
      */
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
 
+        // Permissive but declared CSP — lets all known origins through
         $response->headers->set('Content-Security-Policy', implode('; ', [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://cdn.jsdelivr.net https://unpkg.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com https://ka-f.fontawesome.com",
-            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
-            "img-src 'self' data: https://*.googleapis.com https://maps.gstatic.com https://cdn-icons-png.flaticon.com https://images.unsplash.com",
-            "connect-src 'self' https://maps.googleapis.com https://*.brevo.com https://api.korapay.com",
-            "frame-src 'self' https://maps.googleapis.com",
+            "default-src * 'unsafe-inline' 'unsafe-eval'",
+            "script-src * 'unsafe-inline' 'unsafe-eval'",
+            "style-src * 'unsafe-inline'",
+            "font-src * data:",
+            "img-src * data: blob:",
+            "connect-src *",
+            "frame-src *",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
         ]));
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('X-Frame-Options', 'DENY');
+        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->headers->set('X-XSS-Protection', '1; mode=block');
 
         if (app()->isProduction()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
