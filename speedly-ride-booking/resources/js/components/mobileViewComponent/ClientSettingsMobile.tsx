@@ -558,8 +558,12 @@ const ClientSettingsMobile: React.FC = () => {
                     {/* Profile Section */}
                     <div className="mobile-profile-section">
                         <div className="mobile-profile-avatar">
-                            {userInitial}
-                            <button className="edit-btn" onClick={editProfile}>
+                            {userData?.profile_picture_url ? (
+                                <img src={userData.profile_picture_url} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                            ) : (
+                                userInitial
+                            )}
+                            <button className="edit-btn" onClick={() => router.visit('/client-profile')}>
                                 <i className="fas fa-camera"></i>
                             </button>
                         </div>
@@ -579,7 +583,7 @@ const ClientSettingsMobile: React.FC = () => {
                                 <h2>Account Settings</h2>
                             </div>
                             
-                            <div className="mobile-settings-item" onClick={editProfile}>
+                            <div className="mobile-settings-item" onClick={() => router.visit('/client-profile')}>
                                 <div className="mobile-item-info">
                                     <div className="mobile-item-icon"><i className="fas fa-user"></i></div>
                                     <div className="mobile-item-details">
