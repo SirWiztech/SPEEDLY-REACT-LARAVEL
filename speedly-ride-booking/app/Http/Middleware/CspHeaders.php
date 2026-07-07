@@ -17,10 +17,10 @@ class CspHeaders
 
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://cdn.jsdelivr.net",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
-            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-            "img-src 'self' data: https://*.googleapis.com https://maps.gstatic.com https://cdn-icons-png.flaticon.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://cdn.jsdelivr.net https://unpkg.com",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com https://ka-f.fontawesome.com",
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
+            "img-src 'self' data: https://*.googleapis.com https://maps.gstatic.com https://cdn-icons-png.flaticon.com https://images.unsplash.com",
             "connect-src 'self' https://maps.googleapis.com https://*.brevo.com https://api.korapay.com",
             "frame-src 'self' https://maps.googleapis.com",
             "object-src 'none'",

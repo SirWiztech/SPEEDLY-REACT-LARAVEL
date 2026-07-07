@@ -65,7 +65,7 @@ self.addEventListener('fetch', function(event) {
     // Everything else (assets, pages) — network-first, cache fallback
     event.respondWith(
         fetch(request).then(function(response) {
-            if (response.ok && response.type === 'basic') {
+            if (response.ok && response.status === 200 && response.type === 'basic') {
                 var clone = response.clone();
                 caches.open(CACHE_NAME).then(function(cache) { cache.put(request, clone); });
             }
