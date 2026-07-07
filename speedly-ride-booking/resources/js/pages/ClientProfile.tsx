@@ -373,5 +373,6 @@ const ClientProfile: React.FC = () => {
                     )}
                 </div>
             </div>
-        </div></div>
+        </div>
+        </div>
     );
