@@ -345,7 +345,7 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
                                     <div className="comet-dot"></div>
                                 </div>
                             </div>
-                            <img src="/main-assets/logo.webp" alt="Speedly Logo" />
+                            <img src="/main-assets/logo.png" alt="Speedly Logo" />
                         </div>
                         <h2 className="brand-title">SPEEDLY</h2>
                         <p className="brand-subtitle">
@@ -360,7 +360,7 @@ export default function Form({ onLoginSuccess, onRegisterSuccess }: FormProps) {
                                     <div className="comet-dot"></div>
                                 </div>
                             </div>
-                            <img src="/main-assets/logo.webp" alt="Speedly Logo" />
+                            <img src="/main-assets/logo.png" alt="Speedly Logo" />
                         </div>
                         <h2 className="brand-title">START TODAY</h2>
                         <p className="brand-subtitle">

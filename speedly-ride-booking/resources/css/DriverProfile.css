@@ -2,20 +2,32 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap');
 
-* {
+.driver-profile-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    overflow: visible;
+    animation: slideUp 0.6s ease-out;
+    position: relative;
+    min-height: 100vh;
+}
+
+.driver-profile-container * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
+.driver-profile-container body {
     background: linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%);
     min-height: 100vh;
     padding: 20px;
     font-family: 'Outfit', sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
+.driver-profile-container h1, .driver-profile-container h2, .driver-profile-container h3, .driver-profile-container h4, .driver-profile-container h5, .driver-profile-container h6 {
     font-family: 'Syne', sans-serif;
 }
 
@@ -153,6 +165,14 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     border: 4px solid white;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.profile-pic-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .upload-pic-btn {

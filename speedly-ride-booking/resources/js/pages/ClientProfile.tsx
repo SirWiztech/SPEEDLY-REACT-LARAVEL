@@ -199,6 +199,7 @@ const ClientProfile: React.FC = () => {
     }
 
     return (
+        <div style={{ background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)', minHeight: '100vh', padding: '20px' }}>
         <div className="client-profile-container">
             {/* Header */}
             <div className="client-profile-header">
@@ -215,7 +216,7 @@ const ClientProfile: React.FC = () => {
                     <div className="profile-pic-container">
                         <div className="profile-pic-placeholder">
                             {userData?.profile_picture_url ? (
-                                <img src={userData.profile_picture_url} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                <img src={userData.profile_picture_url} alt="Profile" />
                             ) : (
                                 userInitial
                             )}
@@ -372,8 +373,5 @@ const ClientProfile: React.FC = () => {
                     )}
                 </div>
             </div>
-        </div>
+        </div></div>
     );
-};
-
-export default ClientProfile;

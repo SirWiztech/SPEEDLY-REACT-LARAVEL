@@ -1,12 +1,12 @@
 /* Client Profile Styles - Fully Responsive */
 
-* {
+.client-profile-container * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
+.client-profile-wrapper {
     background: linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%);
     min-height: 100vh;
     padding: 20px;
@@ -18,7 +18,6 @@ body {
     background: white;
     border-radius: 30px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
     animation: slideUp 0.6s ease-out;
 }
 
@@ -90,6 +89,7 @@ body {
     width: 120px;
     height: 120px;
     margin: 0 auto 20px;
+    position: relative;
 }
 
 .profile-pic-placeholder {
@@ -105,6 +105,37 @@ body {
     font-weight: 600;
     border: 4px solid white;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.profile-pic-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.upload-pic-btn {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 36px;
+    height: 36px;
+    background: #ff5e00;
+    border: 2px solid white;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.upload-pic-btn:hover {
+    transform: scale(1.1);
+    background: #e55500;
 }
 
 .client-profile-sidebar h3 {

@@ -533,7 +533,11 @@ const DriverProfile: React.FC = () => {
                 <div className="driver-profile-sidebar">
                     <div className="profile-pic-container">
                         <div className="profile-pic-placeholder">
-                            {driverData?.profile_picture_url?<img src={driverData.profile_picture_url} alt="Profile" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/>:userInitial}
+                            {(driverData?.profile_picture_url) ? (
+                                <img src={driverData.profile_picture_url} alt="Profile" />
+                            ) : (
+                                userInitial
+                            )}
                         </div>
                         <label className="upload-pic-btn">
                             <i className="fas fa-camera"></i>
