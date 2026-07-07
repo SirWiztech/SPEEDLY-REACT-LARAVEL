@@ -547,7 +547,11 @@ const ClientSettings: React.FC = () => {
                     {/* Profile Section */}
                     <div className="settings-profile-section">
                         <div className="settings-profile-avatar">
-                            {userInitial}
+                            {userData?.profile_picture_url ? (
+                                <img src={userData.profile_picture_url} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                            ) : (
+                                userInitial
+                            )}
                             <button className="edit-btn" onClick={() => {
                                 Swal.fire({
                                     title: 'Edit Profile',
