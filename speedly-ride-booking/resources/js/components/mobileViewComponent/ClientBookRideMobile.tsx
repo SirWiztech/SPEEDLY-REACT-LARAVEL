@@ -653,7 +653,7 @@ const ClientBookRideMobile: React.FC = () => {
     }, [loading, mapLoaded, mapInitError, initMap]);
 
     // Keep actionsRef synced with latest handlers so map listeners always get current state
-    useEffect(() => { actionsRef.current = { mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition, handleSelectPlace }; });
+    useEffect(() => { actionsRef.current = { mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition, handleSelectPlace }; }, [mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition, handleSelectPlace]);
 
     // Use saved location
     const useSavedLocation = useCallback((location: SavedLocation) => {
