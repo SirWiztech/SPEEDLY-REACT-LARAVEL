@@ -31,32 +31,54 @@ export default function Home({ isLoggedIn = false }) {
             return;
         }
 
-        if (platform === 'android' && deferredPromptRef.current) {
-            // Trigger native Android PWA install prompt
-            deferredPromptRef.current.prompt();
-            deferredPromptRef.current.userChoice.then((choiceResult: any) => {
-                if (choiceResult.outcome === 'accepted') {
-                    Swal.fire({ icon: 'success', title: 'Installing...', text: 'Speedly is being added to your home screen.', timer: 2000, showConfirmButton: false });
-                }
-                deferredPromptRef.current = null;
-            });
-        } else if (platform === 'android') {
-            // Fallback: open the app in Chrome so user can use the browser menu to install
+        if (platform === 'android') {
+            // Try native install prompt first (works on Chrome for Android)
+            if (deferredPromptRef.current) {
+                deferredPromptRef.current.prompt();
+                deferredPromptRef.current.userChoice.then((choiceResult: any) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        Swal.fire({ icon: 'success', title: 'Installing...', text: 'Speedly is being added to your home screen.', timer: 2000, showConfirmButton: false });
+                    }
+                    deferredPromptRef.current = null;
+                });
+                return;
+            }
+
+            // Fallback: open PWA Builder to generate/download Android APK/AAB
+            const appUrl = window.location.origin;
+            const pwabuilderUrl = 'https://pwabuilder.com/?url=' + encodeURIComponent(appUrl + '/favicon/site.webmanifest');
+            
             Swal.fire({
                 icon: 'info',
-                title: 'Install Speedly',
-                html: '<p>Open this page in <strong>Google Chrome</strong> on your Android device.</p><p>Tap the <strong>⋮ menu</strong> in Chrome and select <strong>"Add to Home Screen"</strong> to install Speedly.</p>',
+                title: 'Download Speedly for Android',
+                html: '<div style="text-align:left;">' +
+                    '<p style="margin-bottom:12px;">Tap the button below to <strong>generate and download</strong> the Speedly Android app:</p>' +
+                    '<div style="background:#f5f5f5;border-radius:10px;padding:12px;margin-bottom:12px;text-align:center;">' +
+                        '<a href="' + pwabuilderUrl + '" target="_blank" rel="noopener" style="display:inline-block;background:#ff5e00;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">' +
+                            '<i class="fab fa-android"></i> Generate Android App' +
+                        '</a>' +
+                    '</div>' +
+                    '<p style="font-size:12px;color:#888;">This opens PWABuilder which creates an APK from your app — then tap <strong>Download</strong> on the generated package.</p>' +
+                '</div>',
                 confirmButtonColor: '#ff5e00',
                 confirmButtonText: 'Got it'
             });
         } else if (platform === 'ios') {
-            // iOS: show instructions for Safari "Add to Home Screen"
+            // iOS: guide to Safari "Add to Home Screen" (Apple doesn't allow PWAs from outside App Store)
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
             if (isSafari) {
                 Swal.fire({
                     icon: 'info',
                     title: 'Install Speedly on iOS',
-                    html: '<p>Tap the <strong style="font-size:18px;">↗ Share</strong> button at the bottom of Safari, then scroll down and tap <strong>"Add to Home Screen"</strong>.</p><p style="font-size:12px;color:#888;">Look for this icon: <span style="display:inline-block;border:1px solid #aaa;border-radius:4px;padding:2px 6px;">⬆</span></p>',
+                    html: '<div style="text-align:left;">' +
+                        '<p style="margin-bottom:8px;"><strong>You are on Safari — ready to install!</strong></p>' +
+                        '<ol style="padding-left:18px;line-height:1.8;font-size:14px;">' +
+                            '<li>Tap the <strong>Share</strong> button <span style="display:inline-block;border:1px solid #aaa;border-radius:4px;padding:1px 6px;font-size:18px;">&#8593;</span> at the bottom of Safari</li>' +
+                            '<li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>' +
+                            '<li>Tap <strong>"Add"</strong> in the top right corner</li>' +
+                        '</ol>' +
+                        '<p style="font-size:12px;color:#888;margin-top:8px;">Speedly will appear on your home screen like a native app.</p>' +
+                    '</div>',
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'Got it'
                 });
@@ -64,7 +86,15 @@ export default function Home({ isLoggedIn = false }) {
                 Swal.fire({
                     icon: 'info',
                     title: 'Install Speedly on iOS',
-                    html: '<p>Open this page in <strong>Safari</strong> on your iPhone or iPad.</p><p>Tap the <strong>Share button</strong> and select <strong>"Add to Home Screen"</strong> to install Speedly.</p>',
+                    html: '<div style="text-align:left;">' +
+                        '<p style="margin-bottom:8px;">You need to open this page in <strong>Safari</strong> to install.</p>' +
+                        '<div style="background:#f5f5f5;border-radius:10px;padding:12px;margin-bottom:12px;text-align:center;">' +
+                            '<a href="' + window.location.href + '" style="display:inline-block;background:#007aff;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">' +
+                                '<i class="fab fa-safari"></i> Open in Safari' +
+                            '</a>' +
+                        '</div>' +
+                        '<p style="font-size:12px;color:#888;">Then tap the Share button and select "Add to Home Screen".</p>' +
+                    '</div>',
                     confirmButtonColor: '#ff5e00',
                     confirmButtonText: 'Got it'
                 });
