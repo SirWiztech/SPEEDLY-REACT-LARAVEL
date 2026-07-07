@@ -376,3 +376,6 @@ const ClientProfile: React.FC = () => {
         </div>
         </div>
     );
+};
+
+export default ClientProfile;
