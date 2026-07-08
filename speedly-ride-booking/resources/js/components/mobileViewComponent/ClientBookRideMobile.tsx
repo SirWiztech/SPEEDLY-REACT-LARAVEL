@@ -75,12 +75,6 @@ const ClientBookRideMobile: React.FC = () => {
     const [currentLng, setCurrentLng] = useState<string>('--');
     const [mapInitError, setMapInitError] = useState<boolean>(false);
     const [retryCount, setRetryCount] = useState<number>(0);
-    const [searchQuery, setSearchQuery] = useState<string>('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [showDropdown, setShowDropdown] = useState<boolean>(false);
-    const [searching, setSearching] = useState<boolean>(false);
-    const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -142,51 +136,6 @@ const ClientBookRideMobile: React.FC = () => {
             console.error('Error fetching saved locations:', error);
         }
     }, []);
-
-
-    // Search handler (database-backed, not Google Places)
-    const handleSearchInput = useCallback((value: string) => {
-        setSearchQuery(value);
-        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-        if (value.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
-        setSearching(true);
-        searchTimerRef.current = setTimeout(async () => {
-            try {
-                const data = await api.location.suggestions(value);
-                if (data.success) {
-                    setSearchResults(data.data?.suggestions || []);
-                    setShowDropdown(true);
-                }
-            } catch {} finally { setSearching(false); }
-        }, 300);
-    }, []);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-                searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
-                setShowDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const handleSelectPlace = useCallback((place: any) => {
-        setShowDropdown(false);
-        setSearchQuery('');
-        if (searchBoxRef.current) searchBoxRef.current.value = '';
-        const lat = parseFloat(place.lat);
-        const lng = parseFloat(place.lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-            mapInstanceRef.current?.setCenter({ lat, lng });
-            mapInstanceRef.current?.setZoom(16);
-            const address = place.full_address || place.name;
-            if (mode === 'pickup') updatePickupLocation(lat, lng, address, null);
-            else updateDestinationLocation(lat, lng, address, null);
-        }
-    }, [mode, updatePickupLocation, updateDestinationLocation]);
 
     // Reverse geocode with Nominatim fallback
     const reverseGeocode = async (lat: number, lng: number): Promise<{ address: string; placeId: string }> => {
@@ -541,7 +490,34 @@ const ClientBookRideMobile: React.FC = () => {
                 }
             });
 
-            // Search box is now handled by the database-backed dropdown (handleSearchInput)
+            // Setup search box
+            if (searchBoxRef.current) {
+                autocompleteRef.current = new google.maps.places.Autocomplete(searchBoxRef.current, {
+                    componentRestrictions: { country: 'ng' },
+                    fields: ['place_id', 'geometry', 'formatted_address', 'name']
+                });
+                
+                autocompleteRef.current.addListener('place_changed', () => {
+                    const place = autocompleteRef.current?.getPlace();
+                    if (place?.geometry?.location) {
+                        const lat = place.geometry.location.lat();
+                        const lng = place.geometry.location.lng();
+                        const address = place.formatted_address || '';
+                        
+                        mapInstanceRef.current?.setCenter({ lat, lng });
+                        mapInstanceRef.current?.setZoom(16);
+                        
+                        const currentMode = actionsRef.current.mode || 'pickup';
+                        if (currentMode === 'pickup') {
+                            actionsRef.current.updatePickupLocation(lat, lng, address, place.place_id);
+                        } else {
+                            actionsRef.current.updateDestinationLocation(lat, lng, address, place.place_id);
+                        }
+                        
+                        if (searchBoxRef.current) searchBoxRef.current.value = '';
+                    }
+                });
+            }
 
             // Initialize directions renderer
             directionsRendererRef.current = new google.maps.DirectionsRenderer({
@@ -653,7 +629,7 @@ const ClientBookRideMobile: React.FC = () => {
     }, [loading, mapLoaded, mapInitError, initMap]);
 
     // Keep actionsRef synced with latest handlers so map listeners always get current state
-    useEffect(() => { actionsRef.current = { mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition, handleSelectPlace }; }, [mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition, handleSelectPlace]);
+    useEffect(() => { actionsRef.current = { mode, handleMapClick, updatePickupLocation, updateDestinationLocation, startWatchingPosition }; });
 
     // Use saved location
     const useSavedLocation = useCallback((location: SavedLocation) => {
@@ -1083,61 +1059,9 @@ const ClientBookRideMobile: React.FC = () => {
                                         <i className="fas fa-map-marker-alt"></i> Destination
                                     </button>
                                 </div>
-                                <div className="mobile-search-box" ref={dropdownRef} style={{ position: 'relative' }}>
+                                <div className="mobile-search-box">
                                     <i className="fas fa-search"></i>
-                                    <input 
-                                        type="text" 
-                                        ref={searchBoxRef} 
-                                        placeholder="Search for a location..." 
-                                        onChange={e => handleSearchInput(e.target.value)}
-                                        onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
-                                    />
-                                    {showDropdown && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            right: 0,
-                                            background: 'white',
-                                            borderRadius: '8px',
-                                            boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
-                                            zIndex: 99999,
-                                            maxHeight: '300px',
-                                            overflowY: 'auto',
-                                            marginTop: '4px',
-                                        }}>
-                                            {searching ? (
-                                                <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
-                                                    <i className="fas fa-spinner fa-spin"></i> Searching...
-                                                </div>
-                                            ) : searchResults.length > 0 ? (
-                                                searchResults.map((r, i) => (
-                                                    <div 
-                                                        key={r.id || i} 
-                                                        style={{
-                                                            padding: '12px 16px',
-                                                            borderBottom: '1px solid #f0f0f0',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '10px'
-                                                        }}
-                                                        onClick={() => handleSelectPlace(r)}
-                                                    >
-                                                        <span style={{ fontSize: '18px' }}>
-                                                            {r.feature_code === 'PPL' ? '🏘️' : r.feature_code === 'RD' ? '🛣️' : r.feature_code === 'SCH' ? '🎓' : '📍'}
-                                                        </span>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{r.name}</div>
-                                                            <div style={{ color: '#888', fontSize: '12px' }}>{r.state ? (r.state + ', Nigeria') : r.full_address}</div>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>No results found</div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <input type="text" ref={searchBoxRef} placeholder="Search for a location..." />
                                 </div>
                             </div>
 

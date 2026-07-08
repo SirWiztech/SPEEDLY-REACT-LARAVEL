@@ -469,7 +469,7 @@ const ClientBookRide: React.FC = () => {
                                 </div>
                             </div>
                             <div ref={mapRef} className="book-ride-map"></div>
-                            <button className="center-location-btn" onClick={centerOnUser}><i className="fas fa-crosshairs"></i></button>
+                            {/* <button className="center-location-btn" onClick={centerOnUser}><i className="fas fa-crosshairs"></i></button> */}
                         </div>
                         <div className="book-ride-location-panel">
                             <h3>Selected Locations</h3>
