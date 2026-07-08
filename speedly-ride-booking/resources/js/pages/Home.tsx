@@ -31,24 +31,35 @@ export default function Home({ isLoggedIn = false }) {
             return;
         }
 
-        if (platform === 'android' && deferredPromptRef.current) {
-            // Trigger native Android PWA install prompt
-            deferredPromptRef.current.prompt();
-            deferredPromptRef.current.userChoice.then((choiceResult: any) => {
-                if (choiceResult.outcome === 'accepted') {
-                    Swal.fire({ icon: 'success', title: 'Installing...', text: 'Speedly is being added to your home screen.', timer: 2000, showConfirmButton: false });
-                }
-                deferredPromptRef.current = null;
-            });
-        } else if (platform === 'android') {
-            // Fallback: open the app in Chrome so user can use the browser menu to install
+        if (platform === 'android') {
+            // Try native install prompt first
+            if (deferredPromptRef.current) {
+                deferredPromptRef.current.prompt();
+                deferredPromptRef.current.userChoice.then((choiceResult: any) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        Swal.fire({ icon: 'success', title: 'Installing...', text: 'Speedly is being added to your home screen.', timer: 2000, showConfirmButton: false });
+                    }
+                    deferredPromptRef.current = null;
+                });
+                return;
+            }
+
+            // Direct APK download
+            const link = document.createElement('a');
+            link.href = '/Speedly.apk';
+            link.download = 'Speedly.apk';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             Swal.fire({
-                icon: 'info',
-                title: 'Install Speedly',
-                html: '<p>Open this page in <strong>Google Chrome</strong> on your Android device.</p><p>Tap the <strong>⋮ menu</strong> in Chrome and select <strong>"Add to Home Screen"</strong> to install Speedly.</p>',
+                icon: 'success',
+                title: 'Downloading Speedly',
+                text: 'The APK should start downloading shortly. Open the file to install Speedly on your device.',
                 confirmButtonColor: '#ff5e00',
-                confirmButtonText: 'Got it'
+                timer: 5000,
+                showConfirmButton: true
             });
+            return;
         } else if (platform === 'ios') {
             // iOS: show instructions for Safari "Add to Home Screen"
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
