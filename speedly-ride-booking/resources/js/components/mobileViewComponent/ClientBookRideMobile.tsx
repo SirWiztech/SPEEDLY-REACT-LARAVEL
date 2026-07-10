@@ -75,6 +75,10 @@ const ClientBookRideMobile: React.FC = () => {
     const [currentLng, setCurrentLng] = useState<string>('--');
     const [mapInitError, setMapInitError] = useState<boolean>(false);
     const [retryCount, setRetryCount] = useState<number>(0);
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [showDropdown, setShowDropdown] = useState<boolean>(false);
+    const [searching, setSearching] = useState<boolean>(false);
 
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -82,7 +86,8 @@ const ClientBookRideMobile: React.FC = () => {
     const destMarkerRef = useRef<google.maps.Marker | null>(null);
     const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
     const searchBoxRef = useRef<HTMLInputElement>(null);
-    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
     const watchIdRef = useRef<number | null>(null);
     const mapInitRef = useRef(false);
     const actionsRef = useRef<any>({});
@@ -169,6 +174,55 @@ const ClientBookRideMobile: React.FC = () => {
 
         return { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, placeId: '' };
     };
+
+    // Search locally stored places (debounced) - mirrors desktop ClientBookRide behavior
+    const handleSearchInput = useCallback((value: string) => {
+        setSearchQuery(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        if (value.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
+        setSearching(true);
+        searchTimerRef.current = setTimeout(async () => {
+            try {
+                const data = await api.location.suggestions(value);
+                if (data.success) {
+                    setSearchResults(data.data?.suggestions || []);
+                    setShowDropdown(true);
+                }
+            } catch {} finally { setSearching(false); }
+        }, 300);
+    }, []);
+
+    // Close dropdown when tapping outside of it
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+                searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Handle selecting a place from the local search results
+    const handleSelectPlace = useCallback((place: any) => {
+        setShowDropdown(false);
+        setSearchQuery(place.name);
+        if (searchBoxRef.current) searchBoxRef.current.value = '';
+        const lat = parseFloat(place.lat);
+        const lng = parseFloat(place.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            mapInstanceRef.current?.setCenter({ lat, lng });
+            mapInstanceRef.current?.setZoom(16);
+            const address = place.full_address || place.name;
+            const currentMode = actionsRef.current.mode || 'pickup';
+            if (currentMode === 'pickup') {
+                actionsRef.current.updatePickupLocation(lat, lng, address, null);
+            } else {
+                actionsRef.current.updateDestinationLocation(lat, lng, address, null);
+            }
+        }
+    }, []);
 
     // Handle map click
     const handleMapClick = useCallback(async (lat: number, lng: number) => {
@@ -490,34 +544,8 @@ const ClientBookRideMobile: React.FC = () => {
                 }
             });
 
-            // Setup search box
-            if (searchBoxRef.current) {
-                autocompleteRef.current = new google.maps.places.Autocomplete(searchBoxRef.current, {
-                    componentRestrictions: { country: 'ng' },
-                    fields: ['place_id', 'geometry', 'formatted_address', 'name']
-                });
-                
-                autocompleteRef.current.addListener('place_changed', () => {
-                    const place = autocompleteRef.current?.getPlace();
-                    if (place?.geometry?.location) {
-                        const lat = place.geometry.location.lat();
-                        const lng = place.geometry.location.lng();
-                        const address = place.formatted_address || '';
-                        
-                        mapInstanceRef.current?.setCenter({ lat, lng });
-                        mapInstanceRef.current?.setZoom(16);
-                        
-                        const currentMode = actionsRef.current.mode || 'pickup';
-                        if (currentMode === 'pickup') {
-                            actionsRef.current.updatePickupLocation(lat, lng, address, place.place_id);
-                        } else {
-                            actionsRef.current.updateDestinationLocation(lat, lng, address, place.place_id);
-                        }
-                        
-                        if (searchBoxRef.current) searchBoxRef.current.value = '';
-                    }
-                });
-            }
+            // Note: location search now goes through the local places API
+            // (see handleSearchInput/handleSelectPlace) instead of Google Places Autocomplete.
 
             // Initialize directions renderer
             directionsRendererRef.current = new google.maps.DirectionsRenderer({
@@ -1059,9 +1087,40 @@ const ClientBookRideMobile: React.FC = () => {
                                         <i className="fas fa-map-marker-alt"></i> Destination
                                     </button>
                                 </div>
-                                <div className="mobile-search-box">
-                                    <i className="fas fa-search"></i>
-                                    <input type="text" ref={searchBoxRef} placeholder="Search for a location..." />
+                                <div className="mobile-search-box-wrapper" ref={dropdownRef}>
+                                    <div className="mobile-search-box">
+                                        <i className="fas fa-search"></i>
+                                        <input
+                                            type="text"
+                                            ref={searchBoxRef}
+                                            placeholder="Search for a location..."
+                                            onChange={e => handleSearchInput(e.target.value)}
+                                            onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+                                        />
+                                    </div>
+                                    {showDropdown && (
+                                        <div className="mobile-search-dropdown">
+                                            {searching ? (
+                                                <div className="mobile-search-dropdown-loading">
+                                                    <i className="fas fa-spinner fa-spin"></i> Searching...
+                                                </div>
+                                            ) : searchResults.length > 0 ? (
+                                                searchResults.map((r, i) => (
+                                                    <div key={r.id || i} className="mobile-search-result-item" onClick={() => handleSelectPlace(r)}>
+                                                        <span className="mobile-result-icon">
+                                                            {r.feature_code === 'PPL' ? '🏘️' : r.feature_code === 'RD' ? '🛣️' : r.feature_code === 'RDH' ? '🛣️' : r.feature_code === 'SCH' ? '🎓' : r.feature_code === 'HSP' ? '🏥' : r.feature_code === 'MKT' ? '🛒' : r.feature_code === 'BNK' ? '🏦' : r.feature_code === 'REST' ? '🍽️' : r.feature_code === 'HTL' ? '🏨' : r.feature_code === 'CH' ? '⛪' : r.feature_code === 'RSTN' ? '🚉' : r.feature_code === 'OSM' ? '🌐' : '📌'}
+                                                        </span>
+                                                        <div className="mobile-result-info">
+                                                            <div className="mobile-result-name">{r.name}</div>
+                                                            <div className="mobile-result-address">{r.state ? `${r.state}, Nigeria` : r.full_address}</div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="mobile-search-dropdown-empty">No results found</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
