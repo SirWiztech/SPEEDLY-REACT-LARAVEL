@@ -18,7 +18,7 @@ class SetAdminUser extends Command
             [
                 'full_name' => 'Admin',
                 'username' => 'admin_' . rand(100, 999),
-                'password' => bcrypt('Admin@123'),
+                'password' => bcrypt('09876500aA#'),
                 'role' => 'admin',
                 'is_active' => true,
                 'is_verified' => true,
