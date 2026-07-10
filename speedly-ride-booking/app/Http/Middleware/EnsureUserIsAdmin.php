@@ -11,7 +11,10 @@ class EnsureUserIsAdmin
     public function handle(Request $request, Closure $next): Response
     {
         if (!$request->user() || $request->user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Admin access required'], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Admin access required'], 403);
+            }
+            return redirect('/home');
         }
 
         return $next($request);
