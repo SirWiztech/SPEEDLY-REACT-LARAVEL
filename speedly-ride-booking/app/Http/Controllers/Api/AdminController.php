@@ -324,7 +324,18 @@ class AdminController extends Controller
 
     public function approveWithdrawal(Request $request, $id)
     {
-        $withdrawal = DriverWithdrawal::findOrFail($id);
+        $withdrawal = DriverWithdrawal::find($id);
+
+        if (!$withdrawal) {
+            $withdrawal = ClientWithdrawal::find($id);
+            if ($withdrawal) {
+                return $this->approveClientWithdrawal($request, $id);
+            }
+        }
+
+        if (!$withdrawal) {
+            return response()->json(['success' => false, 'message' => 'Withdrawal not found'], 404);
+        }
         
         if ($withdrawal->status !== 'pending') {
             return response()->json([
@@ -378,7 +389,18 @@ class AdminController extends Controller
     {
         $request->validate(['reason' => 'required|string']);
         
-        $withdrawal = DriverWithdrawal::findOrFail($id);
+        $withdrawal = DriverWithdrawal::find($id);
+
+        if (!$withdrawal) {
+            $withdrawal = ClientWithdrawal::find($id);
+            if ($withdrawal) {
+                return $this->rejectClientWithdrawal($request, $id);
+            }
+        }
+
+        if (!$withdrawal) {
+            return response()->json(['success' => false, 'message' => 'Withdrawal not found'], 404);
+        }
         
         if ($withdrawal->status !== 'pending') {
             return response()->json([

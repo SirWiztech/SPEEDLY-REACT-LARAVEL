@@ -992,7 +992,7 @@ const AdminDashboard: React.FC = () => {
             {/* Desktop Sidebar - same as before */}
             <div className="admin-sidebar">
                 <div className="sidebar-logo">
-                    <img src="/main-assets/logo-no-background.png" alt="Speedly" className="logo-image" />
+                    <img src="/main-assets/logo-no-background.webp" alt="Speedly" className="logo-image" />
                 </div>
                 
                 <nav className="sidebar-nav">
