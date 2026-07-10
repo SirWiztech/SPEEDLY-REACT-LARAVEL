@@ -267,30 +267,58 @@ class AdminController extends Controller
 
     public function withdrawals(Request $request)
     {
-        $query = DriverWithdrawal::with(['driver.user']);
-        
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-        
-        $withdrawals = $query->orderBy('created_at', 'desc')->paginate(15);
-        
-        $withdrawals->getCollection()->transform(function ($w) {
-            return [
+        $driverWithdrawals = DriverWithdrawal::with(['driver.user'])
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn($w) => [
                 'id' => $w->id,
-                'driver_name' => $w->driver?->user?->full_name ?? 'Unknown',
+                'type' => 'driver',
+                'name' => $w->driver?->user?->full_name ?? 'Unknown',
                 'amount' => $w->amount ?? 0,
                 'bank_name' => $w->bank_name ?? '',
                 'account_number' => $w->account_number ?? '',
+                'account_name' => $w->account_name ?? '',
                 'status' => $w->status,
                 'created_at' => $w->created_at,
-            ];
-        });
-        
+            ]);
+
+        $clientWithdrawals = ClientWithdrawal::with(['client.user'])
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn($w) => [
+                'id' => $w->id,
+                'type' => 'client',
+                'name' => $w->client?->user?->full_name ?? 'Unknown',
+                'amount' => $w->amount ?? 0,
+                'bank_name' => $w->bank_name ?? '',
+                'account_number' => $w->account_number ?? '',
+                'account_name' => $w->account_name ?? '',
+                'status' => $w->status,
+                'created_at' => $w->created_at,
+            ]);
+
+        $allWithdrawals = $driverWithdrawals->concat($clientWithdrawals)
+            ->sortByDesc('created_at')
+            ->values();
+
+        // Manual pagination
+        $page = (int) $request->get('page', 1);
+        $perPage = 15;
+        $total = $allWithdrawals->count();
+        $items = $allWithdrawals->forPage($page, $perPage);
+
         return response()->json([
             'success' => true,
             'message' => 'Withdrawals retrieved successfully',
-            'data' => $withdrawals
+            'data' => [
+                'data' => $items->values(),
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => (int) ceil($total / $perPage),
+            ],
         ]);
     }
 
