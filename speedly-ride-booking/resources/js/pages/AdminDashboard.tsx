@@ -1164,7 +1164,7 @@ const AdminDashboard: React.FC = () => {
                                 <tbody>
                                     {searchUsers().map(user => (
                                         <tr key={user.id}>
-                                            <td>{user.id.substring(0, 8)}...</td>
+                                            <td>{String(user.id).substring(0, 8)}...</td>
                                             <td>{user.full_name}</td>
                                             <td>{user.email}</td>
                                             <td>{user.phone_number}</td>
@@ -1531,130 +1531,8 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* Reports Page */}
-                {activePage === 'reports' && (
-                    <div className="reports-page">
-                        <div className="page-header">
-                            <h2>Reports</h2>
-                        </div>
-                        <div className="reports-grid">
-                            <div className="card">
-                                <div className="card-header"><h3>Rides Per Day</h3></div>
-                                <div className="card-body" style={{ padding: '16px' }}>
-                                    {reportsData?.rides_per_day?.length > 0 ? (
-                                        <table className="data-table">
-                                            <thead><tr><th>Date</th><th>Count</th></tr></thead>
-                                            <tbody>
-                                                {reportsData.rides_per_day.slice(0, 10).map((r: any, i: number) => (
-                                                    <tr key={i}><td>{r.date}</td><td>{r.count}</td></tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    ) : (
-                                        <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>{reportsLoading ? 'Loading...' : 'No ride data'}</p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="card">
-                                <div className="card-header"><h3>Revenue Per Day</h3></div>
-                                <div className="card-body" style={{ padding: '16px' }}>
-                                    {reportsData?.revenue_per_day?.length > 0 ? (
-                                        <table className="data-table">
-                                            <thead><tr><th>Date</th><th>Revenue</th></tr></thead>
-                                            <tbody>
-                                                {reportsData.revenue_per_day.slice(0, 10).map((r: any, i: number) => (
-                                                    <tr key={i}><td>{r.date}</td><td>{formatCurrency(r.total || 0)}</td></tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    ) : (
-                                        <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>{reportsLoading ? 'Loading...' : 'No revenue data'}</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Settings Page */}
-                {activePage === 'settings' && (
-                    <div className="settings-page">
-                        <div className="page-header">
-                            <h2>System Settings</h2>
-                        </div>
-                        <div className="card">
-                            <div className="card-body" style={{ padding: '24px' }}>
-                                {settingsLoading ? (
-                                    <p style={{ textAlign: 'center', color: '#999' }}>Loading settings...</p>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        {Object.entries(settings).map(([key, value]) => (
-                                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                <label style={{ fontWeight: 600, fontSize: '13px', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</label>
-                                                <input
-                                                    type="text"
-                                                    value={String(value)}
-                                                    onChange={(e) => setSettings(prev => ({ ...prev, [key]: e.target.value }))}
-                                                    style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                                                />
-                                            </div>
-                                        ))}
-                                        <button
-                                            className="btn-premium"
-                                            style={{ marginTop: '12px', alignSelf: 'flex-start' }}
-                                            onClick={async () => {
-                                                try {
-                                                    const data = await api.admin.saveSettings(settings);
-                                                    if (data.success) {
-                                                        Swal.fire({ icon: 'success', title: 'Saved', text: 'Settings saved successfully', timer: 1500, showConfirmButton: false });
-                                                    }
-                                                } catch (error) {
-                                                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save settings', confirmButtonColor: '#ff5e00' });
-                                                }
-                                            }}
-                                        >
-                                            <i className="fas fa-save"></i> Save Settings
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Activity Log Page */}
-                {activePage === 'activity' && (
-                    <div className="activity-page">
-                        <div className="page-header">
-                            <h2>Activity Log</h2>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead>
-                                    <tr><th>Admin</th><th>Action</th><th>Details</th><th>IP Address</th><th>Date</th></tr>
-                                </thead>
-                                <tbody>
-                                    {activityLogs.length > 0 ? activityLogs.map((log: any) => (
-                                        <tr key={log.id}>
-                                            <td>{log.admin?.name || log.admin?.full_name || 'System'}</td>
-                                            <td style={{ textTransform: 'capitalize' }}>{log.action || log.type}</td>
-                                            <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.details || log.description || '-'}</td>
-                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{log.ip_address || '-'}</td>
-                                            <td style={{ fontSize: '12px' }}>{log.created_at ? new Date(log.created_at).toLocaleString() : '-'}</td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
-                                                {activityLoading ? 'Loading...' : 'No activity logs found'}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                
+                
 
                 {/* Disputes Page */}
                 {activePage === 'disputes' && (
