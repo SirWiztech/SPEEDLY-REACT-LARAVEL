@@ -55,7 +55,8 @@ interface Ride {
 
 interface Withdrawal {
     id: string;
-    driver_name: string;
+    name: string;
+    type?: string;
     amount: number;
     bank_name: string;
     account_number: string;
@@ -692,19 +693,28 @@ const AdminDashboard: React.FC = () => {
     };
 
     const handleRejectWithdrawal = async (withdrawalId: string) => {
-        const result = await Swal.fire({
+        const { value: reason } = await Swal.fire({
             title: 'Reject Withdrawal?',
-            text: 'Are you sure you want to reject this withdrawal?',
-            icon: 'question',
+            text: 'Please provide a reason for rejection:',
+            input: 'textarea',
+            inputLabel: 'Rejection Reason',
+            inputPlaceholder: 'Enter the reason for rejection...',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Yes, reject',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Reject',
+            cancelButtonText: 'Cancel',
+            preConfirm: (value) => {
+                if (!value || !value.trim()) {
+                    Swal.showValidationMessage('Please enter a rejection reason');
+                    return false;
+                }
+                return value.trim();
+            }
         });
 
-        if (result.isConfirmed) {
+        if (reason) {
             try {
-                const data = await api.admin.rejectWithdrawal(withdrawalId, { reason: 'Rejected by admin' });
+                const data = await api.admin.rejectWithdrawal(withdrawalId, { reason });
                 if (data.success) {
                     Swal.fire({ icon: 'success', title: 'Rejected', text: data.message, timer: 2000, showConfirmButton: false });
                     fetchFullWithdrawals();
@@ -1112,7 +1122,7 @@ const AdminDashboard: React.FC = () => {
                                     {withdrawals.slice(0, 5).map(w => (
                                         <div key={w.id} className="withdrawal-item">
                                             <div>
-                                                <h4>{w.driver_name}</h4>
+                                                <h4>{w.name}</h4>
                                                 <p>Requested: {formatCurrency(w.amount)}</p>
                                             </div>
                                             <span className={getStatusBadgeClass(w.status)}>{w.status}</span>
@@ -1497,12 +1507,12 @@ const AdminDashboard: React.FC = () => {
                         <div className="table-container">
                             <table className="data-table">
                                 <thead>
-                                    <tr><th>Driver</th><th>Amount</th><th>Bank</th><th>Account</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+                                    <tr><th>User</th><th>Amount</th><th>Bank</th><th>Account</th><th>Status</th><th>Date</th><th>Actions</th></tr>
                                 </thead>
                                 <tbody>
                                     {withdrawals.length > 0 ? withdrawals.map((w: any) => (
                                         <tr key={w.id}>
-                                            <td>{w.driver_name || 'Unknown'}</td>
+                                            <td>{w.name || 'Unknown'}{w.type && <span style={{ fontSize: '10px', marginLeft: '6px', padding: '2px 6px', borderRadius: '8px', background: w.type === 'driver' ? '#e3f2fd' : '#fce4ec', color: w.type === 'driver' ? '#1565c0' : '#c62828', textTransform: 'capitalize' }}>{w.type}</span>}</td>
                                             <td style={{ fontWeight: 600 }}>{formatCurrency(w.amount || 0)}</td>
                                             <td>{w.bank_name || '-'}</td>
                                             <td>{w.account_number || '-'}</td>

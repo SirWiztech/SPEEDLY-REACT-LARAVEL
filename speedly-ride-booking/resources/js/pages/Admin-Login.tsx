@@ -114,7 +114,7 @@ const AdminLogin: React.FC = () => {
             <div className="admin-login-card">
                 <div className="login-header">
                     <div className="logo-wrapper">
-                        <img src="/main-assets/logo-no-background.png" alt="Speedly" className="logo-image" />
+                        <img src="/main-assets/logo-no-background.webp" alt="Speedly" className="logo-image" />
                     </div>
                     <h1>Admin Dashboard</h1>
                     <p>Sign in to manage your platform</p>

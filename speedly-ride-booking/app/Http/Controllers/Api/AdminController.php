@@ -34,8 +34,10 @@ class AdminController extends Controller
         $activeRides = Ride::whereIn('status', ['accepted', 'driver_assigned', 'driver_arrived', 'ongoing'])->count();
         $completedRides = Ride::where('status', 'completed')->count();
         $totalRevenue = Ride::where('status', 'completed')->sum('platform_commission');
-        $pendingWithdrawalsAmount = DriverWithdrawal::where('status', 'pending')->sum('amount');
-        $pendingWithdrawalsCount = DriverWithdrawal::where('status', 'pending')->count();
+        $pendingWithdrawalsAmount = DriverWithdrawal::where('status', 'pending')->sum('amount')
+            + ClientWithdrawal::where('status', 'pending')->sum('amount');
+        $pendingWithdrawalsCount = DriverWithdrawal::where('status', 'pending')->count()
+            + ClientWithdrawal::where('status', 'pending')->count();
 
         $users = User::where('role', 'client')->orderBy('created_at', 'desc')->limit(10)->get()->toArray();
         $drivers = User::where('role', 'driver')->with('driverProfile.vehicle')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($u) {
@@ -70,17 +72,37 @@ class AdminController extends Controller
             ];
         })->toArray();
 
-        $withdrawals = DriverWithdrawal::with('driver.user')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($w) {
+        $driverWds = DriverWithdrawal::with('driver.user')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($w) {
             return [
                 'id' => $w->id,
-                'driver_name' => $w->driver->user->full_name ?? 'Unknown',
+                'type' => 'driver',
+                'name' => $w->driver->user->full_name ?? 'Unknown',
                 'amount' => $w->amount ?? 0,
                 'bank_name' => $w->bank_name ?? '',
                 'account_number' => $w->account_number ?? '',
                 'status' => $w->status,
                 'created_at' => $w->created_at,
             ];
-        })->toArray();
+        });
+
+        $clientWds = ClientWithdrawal::with('client.user')->orderBy('created_at', 'desc')->limit(10)->get()->map(function ($w) {
+            return [
+                'id' => $w->id,
+                'type' => 'client',
+                'name' => $w->client->user->full_name ?? 'Unknown',
+                'amount' => $w->amount ?? 0,
+                'bank_name' => $w->bank_name ?? '',
+                'account_number' => $w->account_number ?? '',
+                'status' => $w->status,
+                'created_at' => $w->created_at,
+            ];
+        });
+
+        $withdrawals = $driverWds->concat($clientWds)
+            ->sortByDesc('created_at')
+            ->take(10)
+            ->values()
+            ->toArray();
 
         $kycDocuments = DriverKycDocument::with('driver.user')
             ->orderBy('created_at', 'desc')
@@ -189,19 +211,15 @@ class AdminController extends Controller
 
     public function wallets(Request $request)
     {
-        $users = User::with(['walletTransactions'])->paginate(15);
+        $users = User::paginate(15);
         
         $users->getCollection()->transform(function ($user) {
-            $balance = $user->walletTransactions()
-                ->select(DB::raw("SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE -amount END) as balance"))
-                ->first()->balance ?? 0;
-                
             return [
                 'id' => $user->id,
                 'name' => $user->full_name ?? $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
-                'balance' => $balance,
+                'balance' => $this->computeBalance($user->id),
             ];
         });
         
@@ -619,9 +637,7 @@ class AdminController extends Controller
     {
         $user = User::with(['clientProfile', 'driverProfile.vehicle', 'walletTransactions'])->findOrFail($id);
         
-        $balance = $user->walletTransactions()
-            ->select(DB::raw('SUM(CASE WHEN transaction_type = "credit" THEN amount ELSE -amount END) as balance'))
-            ->first()->balance ?? 0;
+        $balance = $this->computeBalance($user->id);
             
         $clientProfile = ClientProfile::where('user_id', $user->id)->first();
         $driverProfile = DriverProfile::where('user_id', $user->id)->first();

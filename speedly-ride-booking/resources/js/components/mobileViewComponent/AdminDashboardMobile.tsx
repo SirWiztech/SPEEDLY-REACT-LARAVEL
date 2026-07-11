@@ -48,7 +48,8 @@ interface Ride {
 
 interface Withdrawal {
     id: string;
-    driver_name: string;
+    name: string;
+    type?: string;
     amount: number;
     bank_name: string;
     account_number: string;
@@ -226,7 +227,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                 {withdrawals.slice(0, 3).map(w => (
                     <div key={w.id} className="mobile-activity-item">
                         <div className="activity-info">
-                            <p className="activity-title">{w.driver_name}</p>
+                            <p className="activity-title">{w.name}</p>
                             <p className="activity-amount">{formatCurrency(w.amount)}</p>
                         </div>
                         <span className={getStatusBadgeClass(w.status)}>{w.status}</span>
@@ -331,7 +332,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                 {withdrawals.map(w => (
                     <div key={w.id} className="mobile-withdrawal-card">
                         <div className="withdrawal-info">
-                            <h4>{w.driver_name}</h4>
+                            <h4>{w.name}</h4>
                             <p>{w.bank_name} • ****{w.account_number?.slice(-4)}</p>
                             <p className="withdrawal-date">{new Date(w.created_at).toLocaleDateString()}</p>
                         </div>
