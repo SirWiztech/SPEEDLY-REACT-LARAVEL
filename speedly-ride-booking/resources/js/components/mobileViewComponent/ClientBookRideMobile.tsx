@@ -1099,25 +1099,25 @@ const ClientBookRideMobile: React.FC = () => {
                                         />
                                     </div>
                                     {showDropdown && (
-                                        <div className="mobile-search-dropdown">
+                                        <div className="mobile-suggestions-dropdown">
                                             {searching ? (
-                                                <div className="mobile-search-dropdown-loading">
+                                                <div className="mobile-suggestion-loading">
                                                     <i className="fas fa-spinner fa-spin"></i> Searching...
                                                 </div>
                                             ) : searchResults.length > 0 ? (
                                                 searchResults.map((r, i) => (
-                                                    <div key={r.id || i} className="mobile-search-result-item" onClick={() => handleSelectPlace(r)}>
+                                                    <div key={r.id || i} className="mobile-suggestion-item" onClick={() => handleSelectPlace(r)}>
                                                         <span className="mobile-result-icon">
                                                             {r.feature_code === 'PPL' ? '🏘️' : r.feature_code === 'RD' ? '🛣️' : r.feature_code === 'RDH' ? '🛣️' : r.feature_code === 'SCH' ? '🎓' : r.feature_code === 'HSP' ? '🏥' : r.feature_code === 'MKT' ? '🛒' : r.feature_code === 'BNK' ? '🏦' : r.feature_code === 'REST' ? '🍽️' : r.feature_code === 'HTL' ? '🏨' : r.feature_code === 'CH' ? '⛪' : r.feature_code === 'RSTN' ? '🚉' : r.feature_code === 'OSM' ? '🌐' : '📌'}
                                                         </span>
                                                         <div className="mobile-result-info">
-                                                            <div className="mobile-result-name">{r.name}</div>
-                                                            <div className="mobile-result-address">{r.state ? `${r.state}, Nigeria` : r.full_address}</div>
+                                                            <div className="mobile-suggestion-name">{r.name}</div>
+                                                            <div className="mobile-suggestion-detail">{r.state ? `${r.state}, Nigeria` : r.full_address}</div>
                                                         </div>
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="mobile-search-dropdown-empty">No results found</div>
+                                                <div className="mobile-suggestion-empty">No results found</div>
                                             )}
                                         </div>
                                     )}

@@ -125,7 +125,15 @@ const DriverProfile: React.FC = () => {
             }
             if (statsData.success || statsData.data) {
                 const s = statsData.data || statsData;
-                setStats(s.stats || s);
+                const rawStats = s.stats || s;
+                setStats({
+                    total_rides: rawStats.total_rides ?? 0,
+                    total_earnings: rawStats.total_earnings ?? 0,
+                    wallet_balance: rawStats.wallet_balance ?? 0,
+                    avg_rating: rawStats.avg_rating ?? 0,
+                    completed_rides: rawStats.completed_rides ?? 0,
+                    cancelled_rides: rawStats.cancelled_rides ?? 0,
+                });
             }
         } catch (error) {
             console.error('Error fetching driver data:', error);
@@ -569,7 +577,7 @@ const DriverProfile: React.FC = () => {
                     {/* Rating Badge */}
                     <div className="rating-badge">
                         <i className="fas fa-star"></i>
-                        <span className="font-roboto-number">{stats.avg_rating.toFixed(1)}</span>
+                        <span className="font-roboto-number">{(stats.avg_rating ?? 0).toFixed(1)}</span>
                         <span className="rating-count">(<span className="font-roboto-number">{stats.total_rides}</span> rides)</span>
                     </div>
                     

@@ -503,23 +503,14 @@ const AdminDashboard: React.FC = () => {
         }
     }, [activePage, loading]);
 
+    // Refetch when filter status changes
     useEffect(() => {
-        if (activePage === 'reports' && !loading) {
-            fetchReports();
+        if (activePage === 'withdrawals' && !loading) {
+            fetchFullWithdrawals();
         }
-    }, [activePage, loading]);
+    }, [filterStatus]);
 
-    useEffect(() => {
-        if (activePage === 'settings' && !loading) {
-            fetchSettings();
-        }
-    }, [activePage, loading]);
-
-    useEffect(() => {
-        if (activePage === 'activity' && !loading) {
-            fetchActivityLogs();
-        }
-    }, [activePage, loading]);
+    
 
     useEffect(() => {
         if (activePage === 'places' && !loading) {
@@ -593,7 +584,6 @@ const AdminDashboard: React.FC = () => {
                 rides={rides}
                 withdrawals={withdrawals}
                 kycDocuments={kycDocuments}
-                disputes={disputes}
                 supportTickets={supportTickets}
                 openTicketsCount={openTicketsCount}
                 notificationCount={notificationCount}
@@ -619,10 +609,6 @@ const AdminDashboard: React.FC = () => {
         { id: 'withdrawals', label: 'Withdrawals', icon: 'fa-hand-holding-usd' },
         { id: 'wallets', label: 'Wallets', icon: 'fa-wallet' },
         { id: 'kyc', label: 'KYC Approvals', icon: 'fa-file-alt' },
-        { id: 'disputes', label: 'Disputes', icon: 'fa-exclamation-triangle' },
-        { id: 'reports', label: 'Reports', icon: 'fa-chart-line' },
-        { id: 'settings', label: 'Settings', icon: 'fa-cog' },
-        { id: 'activity', label: 'Activity Log', icon: 'fa-history' },
         { id: 'support', label: 'Support Tickets', icon: 'fa-headset' },
         { id: 'places', label: 'Manage Places', icon: 'fa-map-marker-alt' }
     ];
@@ -1498,10 +1484,10 @@ const AdminDashboard: React.FC = () => {
                         <div className="page-header">
                             <h2>Withdrawal Management</h2>
                             <div className="filter-tabs">
-                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => { setFilterStatus('all'); fetchFullWithdrawals(); }}>All</button>
-                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => { setFilterStatus('pending'); fetchFullWithdrawals(); }}>Pending</button>
-                                <button className={`filter-tab ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => { setFilterStatus('completed'); fetchFullWithdrawals(); }}>Approved</button>
-                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => { setFilterStatus('rejected'); fetchFullWithdrawals(); }}>Rejected</button>
+                                <button className={`filter-tab ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>All</button>
+                                <button className={`filter-tab ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Pending</button>
+                                <button className={`filter-tab ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => setFilterStatus('completed')}>Approved</button>
+                                <button className={`filter-tab ${filterStatus === 'rejected' ? 'active' : ''}`} onClick={() => setFilterStatus('rejected')}>Rejected</button>
                             </div>
                         </div>
                         <div className="table-container">
@@ -1543,50 +1529,6 @@ const AdminDashboard: React.FC = () => {
 
                 
                 
-
-                {/* Disputes Page */}
-                {activePage === 'disputes' && (
-                    <div className="disputes-page">
-                        <div className="page-header">
-                            <h2>Disputes & Reports</h2>
-                        </div>
-                        <div className="table-container">
-                            <table className="data-table">
-                                <thead>
-                                    <tr><th>Ticket #</th><th>Raised By</th><th>Type</th><th>Priority</th><th>Messages</th><th>Status</th><th>Actions</th></tr>
-                                </thead>
-                                <tbody>
-                                    {disputes.length > 0 ? disputes.map((d: any) => (
-                                        <tr key={d.id}>
-                                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{d.dispute_number}</td>
-                                            <td>{d.raised_by}</td>
-                                            <td style={{ textTransform: 'capitalize' }}>{d.type}</td>
-                                            <td>
-                                                <span style={{
-                                                    padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
-                                                    background: d.priority === 'high' ? '#fef2f2' : d.priority === 'low' ? '#f0fdf4' : '#fefce8',
-                                                    color: d.priority === 'high' ? '#ef4444' : d.priority === 'low' ? '#10b981' : '#f59e0b'
-                                                }}>{d.priority}</span>
-                                            </td>
-                                            <td><i className="fas fa-comment"></i> {d.message_count}</td>
-                                            <td><span className={getStatusBadgeClass(d.status)}>{d.status}</span></td>
-                                            <td className="actions-cell">
-                                                <button className="action-btn" title="View"><i className="fas fa-eye"></i></button>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
-                                                No disputes or reports found
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
 
                 {/* Manage Places Page */}
                 {activePage === 'places' && (
