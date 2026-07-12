@@ -59,6 +59,7 @@ const DriverLocationMobile: React.FC = () => {
     const mapInitRef = useRef(false);
     const lastGeocodedRef = useRef<{ lat: number; lng: number } | null>(null);
     const bestAccuracyRef = useRef<number>(Infinity);
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
     const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
         const R = 6371000;
@@ -98,6 +99,27 @@ const DriverLocationMobile: React.FC = () => {
 
         infoWindowRef.current = new google.maps.InfoWindow();
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
+
+        // Google Maps bakes its pixel<->lat/lng projection from the container's size
+        // at creation time. On mobile the map container's height is driven by vh/flex
+        // CSS that can still be settling right after mount, so the map is often built
+        // against a stale size — shifting the "you are here" pointer away from its real
+        // coordinate even though the lat/lng itself is correct. Re-triggering Maps'
+        // resize handling whenever the container's actual size changes fixes this for
+        // any layout/timing, instead of guessing a fixed delay is "long enough".
+        if (mapRef.current && !resizeObserverRef.current) {
+            resizeObserverRef.current = new ResizeObserver(() => {
+                if (!mapInstanceRef.current) return;
+                google.maps.event.trigger(mapInstanceRef.current, 'resize');
+                const center = mapInstanceRef.current.getCenter();
+                if (center) mapInstanceRef.current.setCenter(center);
+                if (markerRef.current) {
+                    const pos = markerRef.current.getPosition();
+                    if (pos) markerRef.current.setPosition(pos);
+                }
+            });
+            resizeObserverRef.current.observe(mapRef.current);
+        }
     }, []);
 
     // Load Google Maps shared instance
@@ -468,6 +490,9 @@ const DriverLocationMobile: React.FC = () => {
         return () => {
             if (watchIdRef.current) {
                 navigator.geolocation.clearWatch(watchIdRef.current);
+            }
+            if (resizeObserverRef.current) {
+                resizeObserverRef.current.disconnect();
             }
         };
     }, []);

@@ -65,6 +65,8 @@ const DriverLocation: React.FC = () => {
     const directionArrowRef = useRef<HTMLDivElement>(null);
     const mapInitRef = useRef(false);
     const lastGeocodedRef = useRef<{ lat: number; lng: number } | null>(null);
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
+    const initTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
     const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
         const R = 6371000;
@@ -105,6 +107,27 @@ const DriverLocation: React.FC = () => {
 
         infoWindowRef.current = new google.maps.InfoWindow();
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current);
+
+        // Google Maps computes its pixel<->lat/lng projection from the container's
+        // size at the moment the map is created. If this map is built while the
+        // container is still 0px or mid-transition (e.g. right as the preloader
+        // unmounts), the projection is baked in wrong and every marker — including
+        // the "you are here" pointer — renders offset from its real coordinate.
+        // Watching the container and forcing Maps to recompute on any size change
+        // fixes this regardless of layout/animation timing.
+        if (mapRef.current && !resizeObserverRef.current) {
+            resizeObserverRef.current = new ResizeObserver(() => {
+                if (!mapInstanceRef.current) return;
+                google.maps.event.trigger(mapInstanceRef.current, 'resize');
+                const center = mapInstanceRef.current.getCenter();
+                if (center) mapInstanceRef.current.setCenter(center);
+                if (markerRef.current) {
+                    const pos = markerRef.current.getPosition();
+                    if (pos) markerRef.current.setPosition(pos);
+                }
+            });
+            resizeObserverRef.current.observe(mapRef.current);
+        }
     }, []);
 
     const preloaderLoading = usePreloader(0);
@@ -123,10 +146,17 @@ const DriverLocation: React.FC = () => {
         load();
     }, [initMap]);
 
+    // Defer map creation until the container has settled into its final layout size
+    // (matches ClientLocation.tsx, the reference implementation where the pointer
+    // renders correctly) instead of creating it the instant the preloader clears.
     useEffect(() => {
         if (!preloaderLoading) {
-            initMap();
+            initTimeoutRef.current = setTimeout(() => {
+                const idle = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 1));
+                idle(() => initMap());
+            }, 100);
         }
+        return () => { if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current); };
     }, [preloaderLoading, initMap]);
 
     const fetchUserData = useCallback(async () => {
@@ -445,6 +475,9 @@ const DriverLocation: React.FC = () => {
         return () => {
             if (watchIdRef.current) {
                 navigator.geolocation.clearWatch(watchIdRef.current);
+            }
+            if (resizeObserverRef.current) {
+                resizeObserverRef.current.disconnect();
             }
         };
     }, []);

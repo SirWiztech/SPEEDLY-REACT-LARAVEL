@@ -49,7 +49,7 @@ const AdminLogin: React.FC = () => {
             try {
                 const data = await api.auth.me();
                 if (data.data?.user?.role === 'admin') {
-                    router.visit('/admin-dashboard');
+                    router.visit('/admindashboard');
                 }
             } catch (error) {
                 console.error('Session check failed:', error);

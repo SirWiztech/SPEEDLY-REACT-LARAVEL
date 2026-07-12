@@ -100,27 +100,65 @@ const DriverWalletMobile: React.FC = () => {
                 <input type="number" id="withdraw-amount" class="swal2-input" placeholder="Amount" min="100" max="${stats.wallet_balance}">
                 <input type="password" id="withdraw-password" class="swal2-input" placeholder="Your password" style="margin-top: 8px;">
                 <select id="bank-name" class="swal2-input" style="margin-top: 8px;">
-                    <option value="">Select Bank</option>
-                    <option value="Access Bank" data-code="044">Access Bank</option>
-                    <option value="GTBank" data-code="058">GTBank</option>
-                    <option value="First Bank of Nigeria" data-code="011">First Bank</option>
-                    <option value="UBA" data-code="033">UBA</option>
-                    <option value="Zenith Bank" data-code="057">Zenith Bank</option>
+                    <option value="">Loading banks...</option>
                 </select>
-                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number (10 digits)" maxlength="10" style="margin-top: 8px;">
-                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name" style="margin-top: 8px;">
+                <input type="text" id="account-number" class="swal2-input" placeholder="Account Number (10 digits)" maxlength="10" inputmode="numeric" style="margin-top: 8px;">
+                <div id="verify-status" style="font-size:12px;margin:4px 0;text-align:center;"></div>
+                <input type="text" id="account-name" class="swal2-input" placeholder="Account Name (auto-verified)" readonly style="margin-top: 8px;background:#f9f9f9;">
             `,
             showCancelButton: true,
             confirmButtonText: 'Withdraw',
             confirmButtonColor: '#ff5e00',
+            didOpen: () => {
+                api.payment.getBanks('NGN').then((r: any) => {
+                    const banks = r.data || [];
+                    const s = document.getElementById('bank-name') as HTMLSelectElement;
+                    if (s) s.innerHTML = '<option value="">Select Bank</option>' +
+                        banks.map((b: any) => '<option value="' + (b.name || b.bank_name) + '" data-code="' + (b.code || b.bank_code || '') + '">' + (b.name || b.bank_name) + '</option>').join('');
+                }).catch(() => {
+                    const fb = [{ name: 'Access Bank', code: '044' }, { name: 'GTBank', code: '058' }, { name: 'First Bank', code: '011' }, { name: 'UBA', code: '033' }, { name: 'Zenith Bank', code: '057' }, { name: 'Fidelity Bank', code: '070' }];
+                    const s = document.getElementById('bank-name') as HTMLSelectElement;
+                    if (s) s.innerHTML = '<option value="">Select Bank</option>' + fb.map(b => '<option value="' + b.name + '" data-code="' + b.code + '">' + b.name + '</option>').join('');
+                });
+                const acct = document.getElementById('account-number') as HTMLInputElement;
+                const vs = document.getElementById('verify-status');
+                const nm = document.getElementById('account-name') as HTMLInputElement;
+                let vt: ReturnType<typeof setTimeout>;
+                if (acct) acct.addEventListener('input', () => {
+                    clearTimeout(vt);
+                    const val = acct.value.replace(/\D/g, '');
+                    acct.value = val;
+                    if (val.length === 10) {
+                        if (vs) vs.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+                        vt = setTimeout(async () => {
+                            const bs = document.getElementById('bank-name') as HTMLSelectElement;
+                            const bc = bs ? bs.selectedOptions[0]?.getAttribute('data-code') || '' : '';
+                            if (!bc) { if (vs) { vs.innerHTML = 'Select a bank first'; vs.style.color = '#c62828'; } return; }
+                            try {
+                                const r = await api.payment.verifyAccount({ bank_code: bc, account_number: val });
+                                if (r.account_name) {
+                                    if (nm) { nm.value = r.account_name; nm.setAttribute('readonly', 'readonly'); }
+                                    if (vs) { vs.innerHTML = '<i class="fas fa-check-circle"></i> ' + r.account_name; vs.style.color = '#2e7d32'; }
+                                } else {
+                                    if (nm) nm.removeAttribute('readonly');
+                                    if (vs) { vs.innerHTML = 'Verify failed - enter name manually'; vs.style.color = '#c62828'; }
+                                }
+                            } catch {
+                                if (nm) nm.removeAttribute('readonly');
+                                if (vs) { vs.innerHTML = 'Verification failed'; vs.style.color = '#c62828'; }
+                            }
+                        }, 1000);
+                    } else { if (vs) vs.innerHTML = ''; if (nm) { nm.value = ''; nm.setAttribute('readonly', 'readonly'); } }
+                });
+            },
             preConfirm: () => {
                 const amount = parseFloat((document.getElementById('withdraw-amount') as HTMLInputElement)?.value);
-                const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
-                const bankSelect = document.getElementById('bank-name') as HTMLSelectElement;
-                const bank = bankSelect?.value;
-                const bankCode = bankSelect?.selectedOptions?.[0]?.getAttribute('data-code') || '';
+                const bs = document.getElementById('bank-name') as HTMLSelectElement;
+                const bank = bs?.value;
+                const bankCode = bs?.selectedOptions?.[0]?.getAttribute('data-code') || '';
                 const account = (document.getElementById('account-number') as HTMLInputElement)?.value;
                 const name = (document.getElementById('account-name') as HTMLInputElement)?.value;
+                const password = (document.getElementById('withdraw-password') as HTMLInputElement)?.value;
                 
                 if (!amount || amount < 100) {
                     Swal.showValidationMessage('Minimum withdrawal is ₦100');

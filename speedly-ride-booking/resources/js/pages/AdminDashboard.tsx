@@ -584,6 +584,7 @@ const AdminDashboard: React.FC = () => {
                 rides={rides}
                 withdrawals={withdrawals}
                 kycDocuments={kycDocuments}
+                disputes={disputes}
                 supportTickets={supportTickets}
                 openTicketsCount={openTicketsCount}
                 notificationCount={notificationCount}

@@ -521,7 +521,11 @@ const DriverSettings: React.FC = () => {
                 {/* Driver Status Card */}
                 <div className="driver-status-card">
                     <div className="driver-avatar-large">
-                        {userInitial}
+                        {driverData?.profile_picture_url ? (
+                            <img src={driverData.profile_picture_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                            userInitial
+                        )}
                     </div>
                     <div className="driver-info">
                         <h2>{driverData?.full_name}</h2>
@@ -560,11 +564,14 @@ const DriverSettings: React.FC = () => {
                         </div>
                         <div className="settings-list">
                             <div className="settings-item" onClick={() => {
+                                const profilePicHtml = driverData?.profile_picture_url
+                                    ? `<img src="${driverData.profile_picture_url}" alt="Profile" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin:0 auto;">`
+                                    : `<div class="profile-avatar-large">${userInitial}</div>`;
                                 Swal.fire({
                                     title: 'Driver Profile',
                                     html: `
                                         <div class="text-center mb-4">
-                                            <div class="profile-avatar-large">${userInitial}</div>
+                                            ${profilePicHtml}
                                             <p class="text-sm text-gray-500 mt-2">${driverData?.full_name}</p>
                                         </div>
                                         <div class="info-row"><strong>Email:</strong> ${driverData?.email}</div>

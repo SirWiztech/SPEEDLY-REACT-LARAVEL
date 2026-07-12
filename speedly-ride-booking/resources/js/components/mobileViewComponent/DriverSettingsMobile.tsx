@@ -38,6 +38,8 @@ const DriverSettingsMobile: React.FC = () => {
     const [licenseExpiry, setLicenseExpiry] = useState<string>('');
     const [vehicleModel, setVehicleModel] = useState<string>('');
     const [plateNumber, setPlateNumber] = useState<string>('');
+    const [insuranceExpiry, setInsuranceExpiry] = useState<string>('');
+    const [roadWorthinessExpiry, setRoadWorthinessExpiry] = useState<string>('');
     const [bankAccounts, setBankAccounts] = useState<BankDetails[]>([]);
     const [todayEarnings, setTodayEarnings] = useState<number>(0);
     const [totalEarnings, setTotalEarnings] = useState<number>(0);
@@ -67,6 +69,8 @@ const DriverSettingsMobile: React.FC = () => {
                     setLicenseExpiry(d.license?.license_expiry || '');
                     setVehicleModel(d.vehicle?.vehicle_model || '');
                     setPlateNumber(d.vehicle?.plate_number || '');
+                    setInsuranceExpiry(d.vehicle?.insurance_expiry || '');
+                    setRoadWorthinessExpiry(d.vehicle?.road_worthiness_expiry || '');
                     setTodayEarnings(d.today_earnings || 0);
                     setTotalEarnings(d.total_earnings || 0);
                     setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
@@ -220,6 +224,47 @@ const DriverSettingsMobile: React.FC = () => {
                 } catch (error) {
                     Swal.close();
                     Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update vehicle', timer: 1500, showConfirmButton: false });
+                }
+            }
+        });
+    };
+
+    // Save insurance documents
+    const saveInsurance = () => {
+        Swal.fire({
+            title: 'Insurance & Documents',
+            html: `
+                <input type="date" id="insurance-expiry" class="swal2-input" placeholder="Insurance Expiry" value="${insuranceExpiry}">
+                <input type="date" id="road-worthiness" class="swal2-input" placeholder="Road Worthiness Expiry" value="${roadWorthinessExpiry}">
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Save Documents',
+            confirmButtonColor: '#ff5e00',
+            preConfirm: () => {
+                const insurance = (document.getElementById('insurance-expiry') as HTMLInputElement)?.value;
+                const roadWorthiness = (document.getElementById('road-worthiness') as HTMLInputElement)?.value;
+                return { insurance, road_worthiness: roadWorthiness };
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                try {
+                    const data = await api.driver.updateVehicle({
+                        insurance_expiry: result.value.insurance,
+                        road_worthiness_expiry: result.value.road_worthiness,
+                    });
+                    Swal.close();
+                    if (data.success) {
+                        setInsuranceExpiry(result.value.insurance);
+                        setRoadWorthinessExpiry(result.value.road_worthiness);
+                        Swal.fire({ icon: 'success', title: 'Documents Saved', timer: 1500, showConfirmButton: false });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Failed to save documents', confirmButtonColor: '#ff5e00' });
+                    }
+                } catch (error) {
+                    Swal.close();
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'An error occurred', confirmButtonColor: '#ff5e00' });
                 }
             }
         });
@@ -557,7 +602,11 @@ const DriverSettingsMobile: React.FC = () => {
                     {/* Profile Summary */}
                     <div className="mobile-profile-summary">
                         <div className="profile-avatar">
-                            {userInitial}
+                            {driverData?.profile_picture_url ? (
+                                <img src={driverData.profile_picture_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                                userInitial
+                            )}
                         </div>
                         <div className="profile-info">
                             <h2>{driverData?.full_name}</h2>
@@ -571,7 +620,7 @@ const DriverSettingsMobile: React.FC = () => {
                                 </span>
                             </div>
                         </div>
-                        <button className="edit-profile-btn" onClick={saveDriverProfile}>
+                        <button className="edit-profile-btn" onClick={() => (window.location.href = '/driverprofile')}>
                             <i className="fas fa-edit"></i>
                         </button>
                     </div>
@@ -621,15 +670,15 @@ const DriverSettingsMobile: React.FC = () => {
 
                             
 
-                            {/* Bank Accounts List */}
-                            {bankAccounts.length > 1 && (
+                            {/* Bank Accounts List - Show ALL accounts */}
+                            {bankAccounts.length > 0 && (
                                 <div className="bank-accounts-list">
-                                    {bankAccounts.slice(1).map((bank) => (
+                                    {bankAccounts.map((bank) => (
                                         <div key={bank.id} className="bank-item">
                                             <div className="bank-info">
                                                 <i className="fas fa-university"></i>
                                                 <div>
-                                                    <div className="bank-name">{bank.bank_name}</div>
+                                                    <div className="bank-name">{bank.bank_name} {bank.is_default ? <span style={{ fontSize: '10px', color: '#ff5e00', fontWeight: 600 }}>DEFAULT</span> : ''}</div>
                                                     <div className="bank-number">****{bank.account_number.slice(-4)}</div>
                                                 </div>
                                             </div>
@@ -666,9 +715,72 @@ const DriverSettingsMobile: React.FC = () => {
                                 </div>
                                 <div className="item-action"><i className="fas fa-chevron-right"></i></div>
                             </div>
+
+                            <div className="settings-item" onClick={saveInsurance}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-shield-alt"></i></div>
+                                    <div className="item-details">
+                                        <h3>Insurance & Documents</h3>
+                                        <p>{insuranceExpiry ? `Expires ${new Date(insuranceExpiry).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'Not added'}</p>
+                                    </div>
+                                </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
                         </div>
 
-            
+            {/* Notifications */}
+            <div className="settings-section">
+                <div className="section-header">
+                    <i className="fas fa-bell"></i>
+                    <h2>Notifications</h2>
+                </div>
+
+                <div className="settings-toggle-item">
+                    <div className="toggle-info">
+                        <i className="fas fa-car"></i>
+                        <h3>New Ride Requests</h3>
+                    </div>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={notificationSettings.ride_requests}
+                            onChange={(e) => toggleSetting('ride_requests', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div className="settings-toggle-item">
+                    <div className="toggle-info">
+                        <i className="fas fa-money-bill"></i>
+                        <h3>Earnings Updates</h3>
+                    </div>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={notificationSettings.earnings_notif}
+                            onChange={(e) => toggleSetting('earnings_notif', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div className="settings-toggle-item">
+                    <div className="toggle-info">
+                        <i className="fas fa-volume-up"></i>
+                        <h3>Sound Alerts</h3>
+                    </div>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={notificationSettings.sound_alerts}
+                            onChange={(e) => toggleSetting('sound_alerts', e.target.checked)}
+                        />
+                        <span className="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
                         
 
                         {/* Support */}
