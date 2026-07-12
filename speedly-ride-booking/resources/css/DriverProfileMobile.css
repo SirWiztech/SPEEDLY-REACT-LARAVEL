@@ -1,0 +1,352 @@
+/* ==========================================================================
+   DriverProfileMobile.css
+   Responsive styles for the Driver Profile mobile view.
+   Import this AFTER DriverProfile.css so these rules can safely override
+   any desktop-oriented base styles for the mobile-specific markup.
+   ========================================================================== */
+
+:root {
+    --dpm-bg: #f5f6f8;
+    --dpm-card-bg: #ffffff;
+    --dpm-text-primary: #1a1a1a;
+    --dpm-text-secondary: #6b7280;
+    --dpm-border: #e5e7eb;
+    --dpm-accent: #0f62fe;
+    --dpm-radius: 16px;
+    --dpm-radius-sm: 10px;
+    --dpm-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    --dpm-nav-height: 64px;
+    --dpm-safe-top: env(safe-area-inset-top, 0px);
+    --dpm-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --dpm-safe-left: env(safe-area-inset-left, 0px);
+    --dpm-safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ==========================================================================
+   Base / Reset for the mobile container
+   ========================================================================== */
+
+.mobile-container {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: calc(12px + var(--dpm-safe-top)) 16px
+        calc(var(--dpm-nav-height) + 24px + var(--dpm-safe-bottom)) 16px;
+    background: var(--dpm-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-x: hidden;
+}
+
+.mobile-container * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.mobile-header {
+    padding: 4px 4px 0 4px;
+}
+
+.mobile-header h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 5vw, 1.5rem);
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--dpm-text-primary);
+}
+
+/* ==========================================================================
+   Profile card
+   ========================================================================== */
+
+.profile-card {
+    width: 100%;
+    background: var(--dpm-card-bg);
+    border-radius: var(--dpm-radius);
+    box-shadow: var(--dpm-shadow);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Avatar + basic info */
+
+.profile-avatar-section {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+}
+
+.avatar-wrapper {
+    flex: 0 0 auto;
+    width: clamp(64px, 20vw, 84px);
+    height: clamp(64px, 20vw, 84px);
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--dpm-border);
+    background: var(--dpm-bg);
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.profile-info {
+    flex: 1 1 auto;
+    min-width: 0; /* allow text truncation inside flex */
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.profile-info h2 {
+    margin: 0;
+    font-size: clamp(1.05rem, 4.5vw, 1.25rem);
+    font-weight: 600;
+    color: var(--dpm-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-info p {
+    margin: 0;
+    font-size: clamp(0.8rem, 3.4vw, 0.9rem);
+    color: var(--dpm-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Stats row
+   ========================================================================== */
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--dpm-border);
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: var(--dpm-radius-sm);
+    min-width: 0;
+}
+
+.stat-value {
+    font-size: clamp(0.95rem, 4vw, 1.15rem);
+    font-weight: 700;
+    color: var(--dpm-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.stat-label {
+    font-size: clamp(0.7rem, 3vw, 0.78rem);
+    color: var(--dpm-text-secondary);
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Bottom navigation
+   ========================================================================== */
+
+.mobile-nav-container {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 100%;
+    padding-bottom: var(--dpm-safe-bottom);
+    padding-left: var(--dpm-safe-left);
+    padding-right: var(--dpm-safe-right);
+    background: var(--dpm-card-bg);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   Breakpoints
+   Mobile-first: base styles above target ~360px-428px phones.
+   Adjust down for very small devices and up for large phones / small tablets.
+   ========================================================================== */
+
+/* Extra small phones (older iPhones, small Android) */
+@media (max-width: 340px) {
+    .mobile-container {
+        padding-left: 12px;
+        padding-right: 12px;
+        gap: 12px;
+    }
+
+    .profile-card {
+        padding: 16px 12px;
+        gap: 16px;
+    }
+
+    .profile-avatar-section {
+        gap: 10px;
+    }
+
+    .profile-stats {
+        gap: 4px;
+    }
+
+    .stat-item {
+        padding: 6px 2px;
+    }
+}
+
+/* Small phones (iPhone SE, compact Android) */
+@media (min-width: 341px) and (max-width: 380px) {
+    .profile-stats {
+        gap: 6px;
+    }
+}
+
+/* Large phones (Pro Max, Plus, most Android flagships) */
+@media (min-width: 428px) and (max-width: 599px) {
+    .mobile-container {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .profile-card {
+        padding: 24px 20px;
+    }
+
+    .avatar-wrapper {
+        width: 88px;
+        height: 88px;
+    }
+}
+
+/* Small tablets / large phones in landscape, phablets */
+@media (min-width: 600px) and (max-width: 767px) {
+    .mobile-container {
+        max-width: 560px;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
+    .mobile-nav-container {
+        max-width: 560px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .profile-card {
+        padding: 28px 24px;
+    }
+
+    .profile-stats {
+        gap: 12px;
+    }
+}
+
+/* Landscape orientation on phones: reduce vertical bulk */
+@media (max-height: 420px) and (orientation: landscape) {
+    .mobile-container {
+        padding-top: calc(8px + var(--dpm-safe-top));
+        gap: 10px;
+    }
+
+    .mobile-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .profile-card {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    .avatar-wrapper {
+        width: 56px;
+        height: 56px;
+    }
+
+    .profile-stats {
+        padding-top: 10px;
+    }
+}
+
+/* Foldables / very narrow inner screens */
+@media (max-width: 280px) {
+    .profile-info h2 {
+        font-size: 0.95rem;
+    }
+
+    .stat-value {
+        font-size: 0.85rem;
+    }
+
+    .stat-label {
+        font-size: 0.62rem;
+    }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .mobile-container,
+    .profile-card,
+    .stat-item {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* Dark mode support (only if the app toggles a class / uses prefers-color-scheme) */
+@media (prefers-color-scheme: dark) {
+    .mobile-container {
+        background: #0f1115;
+    }
+
+    .profile-card,
+    .mobile-nav-container {
+        background: #1a1c22;
+        box-shadow: none;
+        border: 1px solid #2a2d35;
+    }
+
+    .mobile-header h1,
+    .profile-info h2,
+    .stat-value {
+        color: #f5f6f8;
+    }
+
+    .profile-info p,
+    .stat-label {
+        color: #9ca3af;
+    }
+
+    .profile-stats {
+        border-top-color: #2a2d35;
+    }
+
+    .avatar-wrapper {
+        border-color: #2a2d35;
+        background: #0f1115;
+    }
+}

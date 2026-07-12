@@ -7,9 +7,16 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    max-width: 100%;
+}
+
+html, body {
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .admin-mobile-container {
+    width: 100%;
     min-height: 100vh;
     background: #f8f9fa;
     font-family: 'Syne', 'Segoe UI', sans-serif;
@@ -19,6 +26,10 @@
     -webkit-overflow-scrolling: touch;
     position: relative;
     
+}
+
+.admin-mobile-container img {
+    max-width: 100%;
 }
 
 /* Visible Vertical Scrollbar for Mobile */
@@ -60,6 +71,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     padding: 12px 16px;
     border-bottom: 1px solid #f1f3f5;
     z-index: 100;
@@ -67,6 +79,7 @@
 }
 
 .menu-toggle {
+    flex-shrink: 0;
     width: 40px;
     height: 40px;
     background: linear-gradient(135deg, #ff4500, #ff6a30);
@@ -88,11 +101,16 @@
 .mobile-logo {
     height: 36px;
     width: auto;
+    max-width: 40vw;
+    object-fit: contain;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .header-right {
     display: flex;
     gap: 12px;
+    flex-shrink: 0;
 }
 
 .mobile-notification-btn,
@@ -155,7 +173,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
+    width: min(280px, 85vw);
     height: 100vh;
     background: #ffffff;
     z-index: 201;
@@ -877,6 +895,26 @@
 }
 
 /* Responsive Breakpoints */
+@media (min-width: 600px) {
+    .mobile-stats-grid {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .mobile-stat-card {
+        flex: 1 1 calc(50% - 6px);
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .mobile-user-card,
+    .mobile-driver-card {
+        flex-wrap: wrap;
+    }
+}
+
 @media (max-width: 480px) {
     .mobile-main-content {
         padding: 76px 12px 30px;

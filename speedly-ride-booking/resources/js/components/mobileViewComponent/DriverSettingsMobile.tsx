@@ -620,7 +620,7 @@ const DriverSettingsMobile: React.FC = () => {
                                 </span>
                             </div>
                         </div>
-                        <button className="edit-profile-btn" onClick={() => (window.location.href = '/driverprofile')}>
+                        <button className="edit-profile-btn" onClick={() => (window.location.href = '/driver-profile')}>
                             <i className="fas fa-edit"></i>
                         </button>
                     </div>

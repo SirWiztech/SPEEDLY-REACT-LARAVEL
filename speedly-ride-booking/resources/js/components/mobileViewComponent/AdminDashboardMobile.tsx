@@ -132,6 +132,8 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
 
     const handleTabChange = (tab: string) => {
         setActiveTab(tab);
+        setFilterStatus('all');
+        setSearchTerm('');
         onTabChange?.(tab);
     };
 
@@ -145,6 +147,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
         { id: 'wallets', label: 'Wallets', icon: 'fa-wallet', color: '#f59e0b' },
         { id: 'kyc', label: 'KYC', icon: 'fa-file-alt', color: '#8b5cf6' },
         { id: 'support', label: 'Support', icon: 'fa-headset', color: '#06b6d4' },
+        { id: 'disputes', label: 'Disputes', icon: 'fa-exclamation-triangle', color: '#ef4444' },
     ];
 
     const getFilteredUsers = () => {
