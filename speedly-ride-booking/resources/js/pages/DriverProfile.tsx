@@ -5,6 +5,7 @@ import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import DriverProfileMobile from '../components/mobileViewComponent/DriverProfileMobile';
 import '../../css/DriverProfile.css';
 
 interface DriverData {
@@ -635,6 +636,11 @@ const DriverProfile: React.FC = () => {
 
     if (loading || preloaderLoading) {
         return <DesktopPreloader />;
+    }
+
+    // Render mobile view after loading is complete
+    if (isMobile) {
+        return <DriverProfileMobile />;
     }
 
     const getKycStatusBadge = () => {

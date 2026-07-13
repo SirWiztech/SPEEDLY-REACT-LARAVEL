@@ -34,6 +34,7 @@ interface Driver {
     vehicle: string;
     plate: string;
     type: string;
+    photo?: string;
 }
 
 interface SavedLocation {
@@ -383,7 +384,8 @@ const ClientBookRideMobile: React.FC = () => {
                     distance: d.distance ? Math.round(d.distance * 10) / 10 : 0,
                     vehicle: d.vehicle?.vehicle_type || 'Standard',
                     plate: d.vehicle?.plate_number || '',
-                    type: d.vehicle?.vehicle_type || 'standard'
+                    type: d.vehicle?.vehicle_type || 'standard',
+                    photo: d.user?.profile_picture_url || undefined
                 })));
             }
         } catch (error) {
@@ -1289,7 +1291,12 @@ const ClientBookRideMobile: React.FC = () => {
                                 drivers.map(driver => (
                                     <div key={driver.id} className={`mobile-driver-card ${selectedDriverId === driver.id ? 'selected' : ''}`} onClick={() => selectDriver(driver.id)}>
                                         <div className="mobile-driver-info">
-                                            <div className="mobile-driver-avatar">{driver.name.charAt(0)}</div>
+                                            <div className="mobile-driver-avatar">
+    {driver.photo
+        ? <img src={driver.photo} alt={driver.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : driver.name.charAt(0)
+    }
+</div>
                                             <div className="mobile-driver-details">
                                                 <h4>{driver.name}</h4>
                                                 <div className="mobile-driver-rating">
