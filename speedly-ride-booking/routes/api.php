@@ -208,6 +208,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/payments', [AdminController::class, 'payments']);
         Route::get('/wallets', [AdminController::class, 'wallets']);
         Route::get('/reports', [AdminController::class, 'reports']);
+        Route::get('/earnings', [AdminController::class, 'earnings']);
         Route::get('/activity-logs', [AdminController::class, 'activityLogs']);
         Route::get('/withdrawals', [AdminController::class, 'withdrawals']);
         Route::post('/withdrawals/{id}/approve', [AdminController::class, 'approveWithdrawal']);

@@ -1028,4 +1028,101 @@ class AdminController extends Controller
             'data' => $place,
         ]);
     }
+
+    public function earnings()
+    {
+        $totalEarnings = Ride::where('status', 'completed')->sum('platform_commission');
+        $todayEarnings = Ride::where('status', 'completed')
+            ->whereDate('completed_at', today())
+            ->sum('platform_commission');
+        $weekEarnings = Ride::where('status', 'completed')
+            ->whereBetween('completed_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->sum('platform_commission');
+        $monthEarnings = Ride::where('status', 'completed')
+            ->whereMonth('completed_at', now()->month)
+            ->whereYear('completed_at', now()->year)
+            ->sum('platform_commission');
+        $totalRides = Ride::where('status', 'completed')->count();
+        $avgCommission = $totalRides > 0 ? round($totalEarnings / $totalRides, 2) : 0;
+
+        $monthlyBreakdown = Ride::where('status', 'completed')
+            ->where('completed_at', '>=', now()->subMonths(12))
+            ->selectRaw('SUM(platform_commission) as total, MONTH(completed_at) as month, YEAR(completed_at) as year')
+            ->groupBy('year', 'month')
+            ->orderBy('year')
+            ->orderBy('month')
+            ->get();
+
+        $earningsByType = Ride::where('status', 'completed')
+            ->selectRaw('SUM(platform_commission) as total, ride_type')
+            ->groupBy('ride_type')
+            ->get();
+
+        $last30Days = collect();
+        for ($i = 29; $i >= 0; $i--) {
+            $day = now()->subDays($i);
+            $dayTotal = Ride::where('status', 'completed')
+                ->whereDate('completed_at', $day)
+                ->sum('platform_commission');
+            $last30Days->push([
+                'date' => $day->format('Y-m-d'),
+                'label' => $day->format('M d'),
+                'total' => (float) $dayTotal,
+            ]);
+        }
+
+        $topDrivers = Ride::where('status', 'completed')
+            ->whereNotNull('driver_id')
+            ->selectRaw('SUM(platform_commission) as total_commission, driver_id')
+            ->groupBy('driver_id')
+            ->orderByDesc('total_commission')
+            ->take(10)
+            ->with('driver.user')
+            ->get()
+            ->map(function ($ride) {
+                return [
+                    'driver_name' => $ride->driver?->user?->full_name ?? 'Unknown',
+                    'total_commission' => (float) $ride->total_commission,
+                    'ride_count' => Ride::where('status', 'completed')
+                        ->where('driver_id', $ride->driver_id)
+                        ->count(),
+                ];
+            });
+
+        $recentRides = Ride::where('status', 'completed')
+            ->orderByDesc('completed_at')
+            ->take(20)
+            ->with(['client.user', 'driver.user'])
+           ->get()
+            ->map(function ($ride) {
+                return [
+                    'id' => $ride->id,
+                    'ride_number' => $ride->ride_number,
+                    'client_name' => $ride->client?->user?->full_name ?? 'Unknown',
+                    'driver_name' => $ride->driver?->user?->full_name ?? 'Unknown',
+                    'total_fare' => (float) $ride->total_fare,
+                    'platform_commission' => (float) $ride->platform_commission,
+                    'driver_payout' => (float) $ride->driver_payout,
+                    'ride_type' => $ride->ride_type,
+                    'completed_at' => $ride->completed_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_earnings' => (float) $totalEarnings,
+                'today_earnings' => (float) $todayEarnings,
+                'week_earnings' => (float) $weekEarnings,
+                'month_earnings' => (float) $monthEarnings,
+                'total_rides' => $totalRides,
+                'avg_commission' => $avgCommission,
+                'monthly_breakdown' => $monthlyBreakdown,
+                'earnings_by_type' => $earningsByType,
+                'last_30_days' => $last30Days,
+                'top_drivers' => $topDrivers,
+                'recent_rides' => $recentRides,
+            ],
+        ]);
+    }
 }

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import DriverNavMobile from '@/components/navbars/DriverNavMobile';
 import { useQuery } from '@tanstack/react-query';
+import { usePreloader } from '../../hooks/usePreloader';
 import { api } from '../../services/api';
-import '../../../css/DriverProfile.css';
+import '../../../css/DriverProfileMobile.css';
 
 interface ProfileData {
     full_name: string;

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import api from '../../../services/api';
 import '../../../css/AdminDashboardMobile.css';
 
 // Types
@@ -129,6 +130,28 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
     const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [earningsData, setEarningsData] = useState<any>(null);
+    const [earningsLoading, setEarningsLoading] = useState<boolean>(false);
+
+    const fetchEarnings = useCallback(async () => {
+        setEarningsLoading(true);
+        try {
+            const data = await api.admin.earnings();
+            if (data.success) {
+                setEarningsData(data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching earnings:', error);
+        } finally {
+            setEarningsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'earnings') {
+            fetchEarnings();
+        }
+    }, [activeTab, fetchEarnings]);
 
     const handleTabChange = (tab: string) => {
         setActiveTab(tab);
@@ -144,6 +167,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
         { id: 'users', label: 'Users', icon: 'fa-users', color: '#3b82f6' },
         { id: 'drivers', label: 'Drivers', icon: 'fa-id-card', color: '#ff4500' },
         { id: 'rides', label: 'Rides', icon: 'fa-car', color: '#22c55e' },
+        { id: 'earnings', label: 'Earnings', icon: 'fa-chart-line', color: '#10b981' },
         { id: 'wallets', label: 'Wallets', icon: 'fa-wallet', color: '#f59e0b' },
         { id: 'kyc', label: 'KYC', icon: 'fa-file-alt', color: '#8b5cf6' },
         { id: 'support', label: 'Support', icon: 'fa-headset', color: '#06b6d4' },
@@ -472,6 +496,97 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
         </div>
     );
 
+    const renderEarnings = () => (
+        <div className="mobile-earnings">
+            <div className="mobile-section-header">
+                <h3>Platform Earnings</h3>
+                <button className="mobile-refresh-btn" onClick={fetchEarnings}>
+                    <i className="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <p style={{ fontSize: '13px', color: '#888', marginBottom: '16px' }}>15% commission from completed rides</p>
+
+            {earningsLoading && !earningsData ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', color: '#ff4500' }}></i>
+                    <p style={{ marginTop: '12px', color: '#999' }}>Loading...</p>
+                </div>
+            ) : earningsData ? (
+                <>
+                    <div className="mobile-stats-grid">
+                        <div className="mobile-stat-card">
+                            <div className="mobile-stat-icon revenue"><i className="fas fa-wallet"></i></div>
+                            <div className="mobile-stat-info">
+                                <h3>Total Earnings</h3>
+                                <p className="stat-value" style={{ fontSize: '18px' }}>{formatCurrency(earningsData.total_earnings)}</p>
+                            </div>
+                        </div>
+                        <div className="mobile-stat-card">
+                            <div className="mobile-stat-icon" style={{ background: '#e3f2fd', color: '#2196f3' }}><i className="fas fa-calendar-day"></i></div>
+                            <div className="mobile-stat-info">
+                                <h3>Today</h3>
+                                <p className="stat-value">{formatCurrency(earningsData.today_earnings)}</p>
+                            </div>
+                        </div>
+                        <div className="mobile-stat-card">
+                            <div className="mobile-stat-icon" style={{ background: '#fff8e1', color: '#f59e0b' }}><i className="fas fa-calendar-week"></i></div>
+                            <div className="mobile-stat-info">
+                                <h3>This Week</h3>
+                                <p className="stat-value">{formatCurrency(earningsData.week_earnings)}</p>
+                            </div>
+                        </div>
+                        <div className="mobile-stat-card">
+                            <div className="mobile-stat-icon" style={{ background: '#f3e5f5', color: '#8b5cf6' }}><i className="fas fa-calendar-alt"></i></div>
+                            <div className="mobile-stat-info">
+                                <h3>This Month</h3>
+                                <p className="stat-value">{formatCurrency(earningsData.month_earnings)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mobile-section" style={{ marginTop: '20px' }}>
+                        <h3>Top Drivers by Commission</h3>
+                        {earningsData.top_drivers && earningsData.top_drivers.length > 0 ? (
+                            earningsData.top_drivers.slice(0, 5).map((driver: any, i: number) => (
+                                <div key={i} className="mobile-activity-item" style={{ borderBottom: '1px solid #f0f0f0', padding: '10px 0' }}>
+                                    <div className="activity-info">
+                                        <p className="activity-title" style={{ fontWeight: 600 }}>#{i + 1} {driver.driver_name}</p>
+                                        <p style={{ fontSize: '12px', color: '#999' }}>{driver.ride_count} rides</p>
+                                    </div>
+                                    <span style={{ fontWeight: 700, color: '#10b981', fontSize: '14px' }}>{formatCurrency(driver.total_commission)}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No data</p>
+                        )}
+                    </div>
+
+                    <div className="mobile-section" style={{ marginTop: '20px' }}>
+                        <h3>Recent Completed Rides</h3>
+                        {earningsData.recent_rides && earningsData.recent_rides.length > 0 ? (
+                            earningsData.recent_rides.slice(0, 10).map((ride: any, i: number) => (
+                                <div key={i} className="mobile-activity-item" style={{ borderBottom: '1px solid #f0f0f0', padding: '10px 0' }}>
+                                    <div className="activity-info">
+                                        <p className="activity-title" style={{ fontFamily: 'monospace', fontSize: '12px' }}>{ride.ride_number}</p>
+                                        <p style={{ fontSize: '12px', color: '#999', textTransform: 'capitalize' }}>{ride.ride_type}</p>
+                                    </div>
+                                    <span style={{ fontWeight: 700, color: '#10b981', fontSize: '14px' }}>{formatCurrency(ride.platform_commission)}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No completed rides</p>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                    <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
+                    Failed to load earnings
+                </div>
+            )}
+        </div>
+    );
+
     const renderDisputes = () => (
         <div className="mobile-disputes">
             <div className="mobile-dispute-list">
@@ -611,6 +726,7 @@ const AdminDashboardMobile: React.FC<AdminDashboardMobileProps> = ({
                 {activeTab === 'users' && renderUsers()}
                 {activeTab === 'drivers' && renderDrivers()}
                 {activeTab === 'rides' && renderRides()}
+                {activeTab === 'earnings' && renderEarnings()}
                 {activeTab === 'wallets' && renderWallets()}
                 {activeTab === 'kyc' && renderKYC()}
                 {activeTab === 'support' && renderSupportTickets()}

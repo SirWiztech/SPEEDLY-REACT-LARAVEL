@@ -226,6 +226,7 @@ export const api = {
       if (params.to) qs.set('to', params.to);
       return apiFetch(`/admin/reports?${qs}`);
     },
+    earnings: () => apiFetch('/admin/earnings'),
     activityLogs: (page?: number) => apiFetch(`/admin/activity-logs${page ? `?page=${page}` : ''}`),
     withdrawals: (params?: { status?: string; page?: number }) => {
       const qs = new URLSearchParams();
