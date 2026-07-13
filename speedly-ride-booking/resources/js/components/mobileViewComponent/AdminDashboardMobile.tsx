@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import api from '../../../services/api';
+import api from '../../services/api';
 import '../../../css/AdminDashboardMobile.css';
 
 // Types
