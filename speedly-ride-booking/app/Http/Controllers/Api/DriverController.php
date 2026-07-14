@@ -314,6 +314,34 @@ class DriverController extends Controller
             ->with('client.user')
             ->orderBy('created_at', 'ASC')
             ->get()
+            ->filter(function ($ride) use ($driverProfile) {
+                // Only rides created within the last 2 hours
+                if ($ride->created_at->lt(Carbon::now()->subHours(2))) {
+                    return false;
+                }
+
+                // Only rides within 50km of driver's current location (if known)
+                if ($driverProfile->current_latitude && $driverProfile->current_longitude && $ride->pickup_latitude && $ride->pickup_longitude) {
+                    $distance = $this->haversineDistance(
+                        $driverProfile->current_latitude,
+                        $driverProfile->current_longitude,
+                        $ride->pickup_latitude,
+                        $ride->pickup_longitude
+                    );
+                    if ($distance > 50) {
+                        return false;
+                    }
+                }
+
+                // Only rides matching driver's vehicle type (if vehicle is set up)
+                $vehicle = $driverProfile->vehicle;
+                if ($vehicle && $vehicle->vehicle_type && $ride->ride_type && $vehicle->vehicle_type !== $ride->ride_type) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->values()
             ->map(function ($ride) {
                 return [
                     'id' => $ride->id,
