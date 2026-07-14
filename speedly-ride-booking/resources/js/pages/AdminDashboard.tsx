@@ -145,8 +145,6 @@ const AdminDashboard: React.FC = () => {
     const [placesLoading, setPlacesLoading] = useState<boolean>(false);
     const [placesSearch, setPlacesSearch] = useState<string>('');
     const [page, setPage] = useState<number>(1);
-    const [earningsData, setEarningsData] = useState<any>(null);
-    const [earningsLoading, setEarningsLoading] = useState<boolean>(false);
     
     let chartInstance: Chart | null = null;
     
@@ -274,21 +272,6 @@ const AdminDashboard: React.FC = () => {
             }
         } catch { } finally { setPlacesLoading(false); }
     }, [placesSearch, page]);
-
-    const fetchEarnings = useCallback(async () => {
-        if (earningsData && activePage === 'earnings') return; // cache
-        setEarningsLoading(true);
-        try {
-            const data = await api.admin.earnings();
-            if (data.success) {
-                setEarningsData(data.data);
-            }
-        } catch (error) {
-            console.error('Error fetching earnings:', error);
-        } finally {
-            setEarningsLoading(false);
-        }
-    }, []);
 
     const handleAddPlace = async () => {
         const { value: formValues } = await Swal.fire({
@@ -535,12 +518,6 @@ const AdminDashboard: React.FC = () => {
         }
     }, [activePage, loading]);
 
-    useEffect(() => {
-        if (activePage === 'earnings' && !loading) {
-            fetchEarnings();
-        }
-    }, [activePage, loading]);
-
     // Initialize chart when data loads
     useEffect(() => {
         if (!loading && revenueData.length) {
@@ -630,7 +607,6 @@ const AdminDashboard: React.FC = () => {
         { id: 'drivers', label: 'Drivers', icon: 'fa-id-card' },
         { id: 'rides', label: 'Rides', icon: 'fa-car' },
         { id: 'payments', label: 'Payments', icon: 'fa-credit-card' },
-        { id: 'earnings', label: 'Earnings', icon: 'fa-chart-line' },
         { id: 'withdrawals', label: 'Withdrawals', icon: 'fa-hand-holding-usd' },
         { id: 'wallets', label: 'Wallets', icon: 'fa-wallet' },
         { id: 'kyc', label: 'KYC Approvals', icon: 'fa-file-alt' },
@@ -1467,173 +1443,6 @@ const AdminDashboard: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                )}
-
-                {/* Earnings Page */}
-                {activePage === 'earnings' && (
-                    <div className="earnings-page">
-                        <div className="page-header">
-                            <h2>Platform Earnings</h2>
-                            <p>15% commission from all completed rides</p>
-                            <button className="btn-premium" onClick={() => { setEarningsData(null); fetchEarnings(); }} style={{ marginLeft: 'auto' }}>
-                                <i className="fas fa-sync-alt"></i> Refresh
-                            </button>
-                        </div>
-
-                        {earningsLoading && !earningsData ? (
-                            <div className="loading-container" style={{ textAlign: 'center', padding: '60px 0' }}>
-                                <i className="fas fa-spinner fa-spin" style={{ fontSize: '32px', color: '#ff4500' }}></i>
-                                <p style={{ marginTop: '16px', color: '#888' }}>Loading earnings data...</p>
-                            </div>
-                        ) : earningsData ? (
-                            <>
-                                <div className="earnings-summary-grid">
-                                    <div className="earnings-stat-card total">
-                                        <div className="earnings-stat-icon"><i className="fas fa-wallet"></i></div>
-                                        <div className="earnings-stat-info">
-                                            <span className="earnings-stat-label">Total Earnings (All Time)</span>
-                                            <span className="earnings-stat-value">{formatCurrency(earningsData.total_earnings)}</span>
-                                            <span className="earnings-stat-sub">{earningsData.total_rides} completed rides</span>
-                                        </div>
-                                    </div>
-                                    <div className="earnings-stat-card today">
-                                        <div className="earnings-stat-icon"><i className="fas fa-calendar-day"></i></div>
-                                        <div className="earnings-stat-info">
-                                            <span className="earnings-stat-label">Today</span>
-                                            <span className="earnings-stat-value">{formatCurrency(earningsData.today_earnings)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="earnings-stat-card week">
-                                        <div className="earnings-stat-icon"><i className="fas fa-calendar-week"></i></div>
-                                        <div className="earnings-stat-info">
-                                            <span className="earnings-stat-label">This Week</span>
-                                            <span className="earnings-stat-value">{formatCurrency(earningsData.week_earnings)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="earnings-stat-card month">
-                                        <div className="earnings-stat-icon"><i className="fas fa-calendar-alt"></i></div>
-                                        <div className="earnings-stat-info">
-                                            <span className="earnings-stat-label">This Month</span>
-                                            <span className="earnings-stat-value">{formatCurrency(earningsData.month_earnings)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Charts row */}
-                                <div className="dashboard-grid">
-                                    <div className="card large">
-                                        <div className="card-header">
-                                            <h2>Earnings (Last 30 Days)</h2>
-                                        </div>
-                                        <div className="chart-container">
-                                            {earningsData.last_30_days && earningsData.last_30_days.length > 0 ? (
-                                                <div className="earnings-bars-chart">
-                                                    {earningsData.last_30_days.map((day: any, i: number) => {
-                                                        const maxVal = Math.max(...earningsData.last_30_days.map((d: any) => d.total), 1);
-                                                        const pct = (day.total / maxVal) * 100;
-                                                        return (
-                                                            <div key={i} className="earnings-bar-wrapper" title={`${day.label}: ${formatCurrency(day.total)}`}>
-                                                                <div className="earnings-bar" style={{ height: `${Math.max(pct, 1)}%` }}>
-                                                                    <span className="earnings-bar-tooltip">{formatCurrency(day.total)}</span>
-                                                                </div>
-                                                                <span className="earnings-bar-label">{day.label.split(' ')[1]}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ) : (
-                                                <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>No earnings data available</div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="card">
-                                        <div className="card-header">
-                                            <h2>By Ride Type</h2>
-                                        </div>
-                                        <div className="earnings-type-list">
-                                            {earningsData.earnings_by_type && earningsData.earnings_by_type.length > 0 ? (
-                                                earningsData.earnings_by_type.map((item: any, i: number) => {
-                                                    const typeTotal = earningsData.earnings_by_type.reduce((s: number, t: any) => s + parseFloat(t.total || 0), 0);
-                                                    const pct = typeTotal > 0 ? ((parseFloat(item.total) / typeTotal) * 100).toFixed(1) : 0;
-                                                    const typeColors: Record<string, string> = { economy: '#10b981', comfort: '#f59e0b', premium: '#8b5cf6' };
-                                                    const color = typeColors[item.ride_type] || '#ff4500';
-                                                    return (
-                                                        <div key={i} className="earnings-type-item">
-                                                            <div className="earnings-type-header">
-                                                                <span className="earnings-type-name" style={{ textTransform: 'capitalize' }}>{item.ride_type}</span>
-                                                                <span className="earnings-type-amount">{formatCurrency(parseFloat(item.total))}</span>
-                                                                <span className="earnings-type-pct">{pct}%</span>
-                                                            </div>
-                                                            <div className="earnings-type-bar-bg">
-                                                                <div className="earnings-type-bar-fill" style={{ width: `${pct}%`, background: color }}></div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            ) : (
-                                                <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No data</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Top Drivers + Recent Rides */}
-                                <div className="dashboard-grid" style={{ marginTop: '24px' }}>
-                                    <div className="card">
-                                        <div className="card-header">
-                                            <h2>Top Drivers by Commission</h2>
-                                        </div>
-                                        <div className="top-drivers-list">
-                                            {earningsData.top_drivers && earningsData.top_drivers.length > 0 ? (
-                                                earningsData.top_drivers.map((driver: any, i: number) => (
-                                                    <div key={i} className="top-driver-item">
-                                                        <div className="top-driver-rank">#{i + 1}</div>
-                                                        <div className="top-driver-info">
-                                                            <span className="top-driver-name">{driver.driver_name}</span>
-                                                            <span className="top-driver-rides">{driver.ride_count} rides</span>
-                                                        </div>
-                                                        <span className="top-driver-commission">{formatCurrency(driver.total_commission)}</span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No data</div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="card">
-                                        <div className="card-header">
-                                            <h2>Recent Completed Rides</h2>
-                                        </div>
-                                        <div className="recent-rides-list">
-                                            {earningsData.recent_rides && earningsData.recent_rides.length > 0 ? (
-                                                earningsData.recent_rides.map((ride: any, i: number) => (
-                                                    <div key={i} className="recent-ride-item">
-                                                        <div className="recent-ride-info">
-                                                            <span className="recent-ride-number">{ride.ride_number}</span>
-                                                            <span className="recent-ride-type" style={{ textTransform: 'capitalize' }}>{ride.ride_type}</span>
-                                                        </div>
-                                                        <div className="recent-ride-detail">
-                                                            <span className="recent-ride-commission">{formatCurrency(ride.platform_commission)}</span>
-                                                            <span className="recent-ride-date">{ride.completed_at ? new Date(ride.completed_at).toLocaleDateString() : ''}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No completed rides</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                                <i className="fas fa-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}></i>
-                                Failed to load earnings data
-                            </div>
-                        )}
                     </div>
                 )}
 
