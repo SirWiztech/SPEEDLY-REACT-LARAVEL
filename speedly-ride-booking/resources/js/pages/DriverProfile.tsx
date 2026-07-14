@@ -1092,6 +1092,7 @@ const DriverProfile: React.FC = () => {
                                 
                                 <div className="vehicle-info-card">
                                     <h4><i className="fas fa-info-circle"></i> Important Information</h4>
+                                    
                                     <p>Ensure your vehicle information is accurate. This information will be visible to passengers when you accept rides.</p>
                                 </div>
                                 

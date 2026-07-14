@@ -762,9 +762,9 @@ const DriverSettings: React.FC = () => {
                                         } else {
                                             Swal.fire({ icon: 'error', title: 'Upload Failed', text: data.message || 'Failed to upload image', confirmButtonColor: '#ff5e00' });
                                         }
-                                    } catch {
+                                    } catch (error: any) {
                                         Swal.close();
-                                        Swal.fire({ icon: 'error', title: 'Upload Failed', text: 'An error occurred', confirmButtonColor: '#ff5e00' });
+                                        Swal.fire({ icon: 'error', title: 'Upload Failed', text: error.message || 'Failed to upload image', confirmButtonColor: '#ff5e00' });
                                     }
                                 };
                                 document.body.appendChild(fileInput);
