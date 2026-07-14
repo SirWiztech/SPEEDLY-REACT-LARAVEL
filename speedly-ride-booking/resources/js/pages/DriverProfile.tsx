@@ -5,9 +5,15 @@ import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '../../css/DriverProfile.css';
 
 const DriverProfileMobile = lazy(() => import('../components/mobileViewComponent/DriverProfileMobile'));
+
+// Scoped fallback so the mobile view works even if the app root hasn't set up
+// a QueryClientProvider yet. Ideally this instance lives once at the app root
+// (e.g. resources/js/app.tsx) and gets shared by the whole app instead.
+const mobileQueryClient = new QueryClient();
 
 class MobileViewErrorBoundary extends React.Component<
     { children: React.ReactNode },
@@ -765,11 +771,13 @@ const DriverProfile: React.FC = () => {
     // Render mobile view after loading is complete
     if (isMobile) {
         return (
-            <MobileViewErrorBoundary>
-                <Suspense fallback={<DesktopPreloader />}>
-                    <DriverProfileMobile />
-                </Suspense>
-            </MobileViewErrorBoundary>
+            <QueryClientProvider client={mobileQueryClient}>
+                <MobileViewErrorBoundary>
+                    <Suspense fallback={<DesktopPreloader />}>
+                        <DriverProfileMobile />
+                    </Suspense>
+                </MobileViewErrorBoundary>
+            </QueryClientProvider>
         );
     }
 
@@ -787,7 +795,7 @@ const DriverProfile: React.FC = () => {
     };
 
     return (
-        <div style={{ background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)', minHeight: '100vh', padding: '20px', overflowY: 'auto' }}>
+        <div style={{ background: 'linear-gradient(135deg, #ff5e00 0%, #ff8c3a 100%)', height: '100vh', padding: '20px', overflowY: 'auto', boxSizing: 'border-box' }}>
         <div className="driver-profile-container">
             {/* Header */}
             <div className="driver-profile-header">
