@@ -1461,6 +1461,113 @@ select.form-control {
     animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* Saved Banks List */
+.saved-banks {
+    background: #f8f9fa;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.saved-banks h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.saved-bank-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid #e8e8e8;
+    transition: all 0.2s ease;
+}
+
+.saved-bank-item:hover {
+    border-color: #ff5e00;
+}
+
+.saved-bank-item.default {
+    border-color: #10B981;
+    background: #f0fdf4;
+}
+
+.bank-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bank-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.bank-account {
+    font-size: 13px;
+    color: #666;
+    font-family: 'Roboto Mono', monospace;
+}
+
+.default-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #10B981;
+    background: #d1fae5;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-top: 2px;
+    width: fit-content;
+}
+
+.bank-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #ff5e00;
+    color: #ff5e00;
+}
+
+.btn-outline:hover {
+    background: #ff5e00;
+    color: #fff;
+}
+
+.btn-danger {
+    background: transparent;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    padding: 6px 10px;
+}
+
+.btn-danger:hover {
+    background: #dc3545;
+    color: #fff;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;

@@ -14,6 +14,8 @@ use App\Models\Notification;
 use App\Models\DriverRating;
 use App\Models\DriverRideDecline;
 use App\Models\SupportTicket;
+use App\Models\DriverBankDetail;
+use App\Models\DriverWithdrawal;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -73,6 +75,14 @@ class DriverController extends Controller
         $totalReviews = DriverRating::where('driver_id', $driverProfile->id)
             ->count();
 
+        $walletCredits = WalletTransaction::where('user_id', $user->id)
+            ->where('transaction_type', 'credit')
+            ->sum('amount');
+        $walletDebits = WalletTransaction::where('user_id', $user->id)
+            ->where('transaction_type', 'debit')
+            ->sum('amount');
+        $walletBalance = $walletCredits - $walletDebits;
+
         $avgFare = $completedRides > 0 ? round($totalFareAmount / $completedRides, 2) : 0;
 
         return response()->json([
@@ -89,6 +99,7 @@ class DriverController extends Controller
                 'total_commission' => $totalCommission,
                 'avg_fare' => $avgFare,
                 'average_rating' => $averageRating ? round($averageRating, 2) : 0,
+                'wallet_balance' => (float) $walletBalance,
                 'total_reviews' => $totalReviews,
                 'driver_status' => $driverProfile->driver_status,
                 'verification_status' => $driverProfile->verification_status
@@ -404,6 +415,23 @@ class DriverController extends Controller
             'promotions' => $notifPrefs['promotions'] ?? false,
         ];
 
+        $bankAccounts = DriverBankDetail::where('driver_id', $driverProfile->id)->get();
+        $primaryBank = $bankAccounts->firstWhere('is_default', true) ?? $bankAccounts->first();
+        $withdrawalHistory = DriverWithdrawal::where('driver_id', $driverProfile->id)
+            ->orderBy('created_at', 'DESC')
+            ->limit(20)
+            ->get()
+            ->map(function ($w) {
+                return [
+                    'id' => $w->id,
+                    'amount' => (float) $w->amount,
+                    'status' => $w->status,
+                    'bank_name' => $w->bank_name,
+                    'account_number' => $w->account_number,
+                    'created_at' => $w->created_at,
+                ];
+            });
+
         $profileData = [
             'id' => $user->id,
             'full_name' => $user->full_name,
@@ -412,9 +440,13 @@ class DriverController extends Controller
             'profile_picture_url' => $user->profile_picture_url,
             'date_of_birth' => $driverProfile->date_of_birth,
             'gender' => $driverProfile->gender,
+            'address' => $driverProfile->address,
+            'city' => $driverProfile->city,
+            'state' => $driverProfile->state,
             'driver_status' => $driverProfile->driver_status,
             'verification_status' => $driverProfile->verification_status,
             'status' => $driverProfile->driver_status,
+            'is_available' => $driverProfile->is_available,
             'created_at' => $user->created_at,
             'license_number' => $driverProfile->license_number,
             'license_expiry' => $driverProfile->license_expiry?->format('Y-m-d'),
@@ -425,13 +457,26 @@ class DriverController extends Controller
             'vehicle' => $vehicle ? [
                 'id' => $vehicle->id,
                 'vehicle_id' => $vehicle->id,
+                'vehicle_type' => $vehicle->vehicle_type,
                 'vehicle_model' => $vehicle->vehicle_model,
                 'vehicle_color' => $vehicle->vehicle_color,
                 'vehicle_year' => $vehicle->vehicle_year,
                 'plate_number' => $vehicle->plate_number,
-                'vehicle_type' => $vehicle->vehicle_type,
                 'vehicle_image_url' => $vehicle->vehicle_image_url,
             ] : null,
+            'bank_name' => $primaryBank?->bank_name ?? null,
+            'account_number' => $primaryBank?->account_number ?? null,
+            'account_name' => $primaryBank?->account_name ?? null,
+            'bank_accounts' => $bankAccounts->map(function ($b) {
+                return [
+                    'id' => $b->id,
+                    'bank_name' => $b->bank_name,
+                    'account_number' => $b->account_number,
+                    'account_name' => $b->account_name,
+                    'is_default' => $b->is_default,
+                ];
+            }),
+            'withdrawal_history' => $withdrawalHistory,
             'notification_settings' => $defaultNotifPrefs,
             'schedule' => [],
             'today_earnings' => (float) $todayEarnings,
@@ -470,6 +515,9 @@ class DriverController extends Controller
             'date_of_birth' => 'sometimes|date',
             'gender' => 'sometimes|string|in:male,female,other,prefer-not-to-say',
             'profile_picture_url' => 'sometimes|string|nullable',
+            'address' => 'sometimes|string|max:255|nullable',
+            'city' => 'sometimes|string|max:100|nullable',
+            'state' => 'sometimes|string|max:100|nullable',
         ]);
 
         if ($request->has('full_name')) {
@@ -497,6 +545,15 @@ class DriverController extends Controller
         }
         if ($request->has('gender')) {
             $driverProfile->gender = $request->gender;
+        }
+        if ($request->has('address')) {
+            $driverProfile->address = $request->address;
+        }
+        if ($request->has('city')) {
+            $driverProfile->city = $request->city;
+        }
+        if ($request->has('state')) {
+            $driverProfile->state = $request->state;
         }
 
         $notifFields = ['ride_requests', 'earnings_notif', 'sound_alerts', 'promotions'];

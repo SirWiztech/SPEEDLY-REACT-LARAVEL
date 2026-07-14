@@ -16,6 +16,7 @@ class DriverProfile extends Model
         'current_latitude', 'current_longitude', 'last_location_update',
         'completed_rides', 'average_rating', 'total_reviews', 'total_earnings',
         'date_of_birth', 'gender', 'notification_preferences',
+        'address', 'city', 'state',
     ];
 
     protected $casts = [

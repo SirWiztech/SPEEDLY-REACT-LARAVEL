@@ -45,30 +45,36 @@ class MobileViewErrorBoundary extends React.Component<
     }
 }
 
+interface DriverVehicle {
+    id: string;
+    vehicle_type: string | null;
+    vehicle_model: string | null;
+    vehicle_color: string | null;
+    vehicle_year: string | null;
+    plate_number: string | null;
+    vehicle_image_url: string | null;
+}
+
 interface DriverData {
     id: string;
-    user_id: string;
-    fullname: string;
-    full_name?: string;
+    full_name: string;
     email: string;
-    phone: string;
-    phone_number?: string;
+    phone_number: string;
     profile_picture_url: string | null;
     address: string | null;
     city: string | null;
     state: string | null;
-    vehicle_type: string | null;
-    vehicle_model: string | null;
-    vehicle_year: string | null;
-    license_plate: string | null;
+    driver_status: string;
+    verification_status: string;
+    is_available: boolean;
+    vehicle: DriverVehicle | null;
     bank_name: string | null;
     account_number: string | null;
     account_name: string | null;
+    bank_accounts: any[];
+    withdrawal_history: any[];
     kyc_status: string | null;
-    license_document: string | null;
-    id_document: string | null;
     created_at: string;
-    updated_at: string;
 }
 
 interface DriverStats {
@@ -112,10 +118,12 @@ const DriverProfile: React.FC = () => {
     const [vehicleType, setVehicleType] = useState<string>('');
     const [vehicleModel, setVehicleModel] = useState<string>('');
     const [vehicleYear, setVehicleYear] = useState<string>('');
+    const [vehicleColor, setVehicleColor] = useState<string>('');
     const [licensePlate, setLicensePlate] = useState<string>('');
     const [bankName, setBankName] = useState<string>('');
     const [accountNumber, setAccountNumber] = useState<string>('');
     const [accountName, setAccountName] = useState<string>('');
+    const [bankAccounts, setBankAccounts] = useState<any[]>([]);
     const [licenseFile, setLicenseFile] = useState<File | null>(null);
     const [idFile, setIdFile] = useState<File | null>(null);
     
@@ -143,20 +151,23 @@ const DriverProfile: React.FC = () => {
             
             if (profileData.success || profileData.data) {
                 const d = profileData.data?.user || profileData.user || profileData.data;
+                const v = d.vehicle || {};
                 setDriverData(d);
                 setWithdrawalHistory(d.withdrawal_history || []);
-                setEditFullname(d.fullname || d.full_name || '');
-                setEditPhone(d.phone || '');
+                setEditFullname(d.full_name || '');
+                setEditPhone(d.phone_number || '');
                 setEditAddress(d.address || '');
                 setEditCity(d.city || '');
                 setEditState(d.state || '');
-                setVehicleType(d.vehicle_type || '');
-                setVehicleModel(d.vehicle_model || '');
-                setVehicleYear(d.vehicle_year || '');
-                setLicensePlate(d.license_plate || '');
+                setVehicleType(v.vehicle_type || '');
+                setVehicleModel(v.vehicle_model || '');
+                setVehicleYear(v.vehicle_year || '');
+                setLicensePlate(v.plate_number || '');
+                setVehicleColor(v.vehicle_color || '');
                 setBankName(d.bank_name || '');
                 setAccountNumber(d.account_number || '');
                 setAccountName(d.account_name || '');
+                setBankAccounts(d.bank_accounts || []);
                 setIsAvailable(d.is_available ?? true);
             }
             if (statsData.success || statsData.data) {
@@ -166,7 +177,7 @@ const DriverProfile: React.FC = () => {
                     total_rides: rawStats.total_rides ?? 0,
                     total_earnings: rawStats.total_earnings ?? 0,
                     wallet_balance: rawStats.wallet_balance ?? 0,
-                    avg_rating: rawStats.avg_rating ?? 0,
+                    avg_rating: rawStats.average_rating ?? 0,
                     completed_rides: rawStats.completed_rides ?? 0,
                     cancelled_rides: rawStats.cancelled_rides ?? 0,
                 });
@@ -205,17 +216,10 @@ const DriverProfile: React.FC = () => {
         try {
             const data = await api.driver.updateProfile({
                 full_name: editFullname,
-                phone: editPhone,
+                phone_number: editPhone,
                 address: editAddress,
                 city: editCity,
                 state: editState,
-                vehicle_type: vehicleType,
-                vehicle_model: vehicleModel,
-                vehicle_year: vehicleYear,
-                license_plate: licensePlate,
-                bank_name: bankName,
-                account_number: accountNumber,
-                account_name: accountName
             });
             
             if (data.success) {
@@ -367,6 +371,7 @@ const DriverProfile: React.FC = () => {
                 vehicle_type: vehicleType,
                 vehicle_model: vehicleModel,
                 vehicle_year: vehicleYear,
+                vehicle_color: vehicleColor,
                 plate_number: licensePlate
             });
             
@@ -441,6 +446,59 @@ const DriverProfile: React.FC = () => {
                 title: 'Error', 
                 text: 'Failed to save bank details',
                 confirmButtonColor: '#ff5e00' 
+            });
+        }
+    };
+
+    // Set default bank
+    const setDefaultBank = async (bankId: string) => {
+        try {
+            await api.driver.setDefaultBank(bankId);
+            Swal.fire({
+                icon: 'success',
+                title: 'Default Bank Updated',
+                text: 'Your default bank account has been changed',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => fetchDriverData());
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Failed to set default bank',
+                confirmButtonColor: '#ff5e00'
+            });
+        }
+    };
+
+    // Remove bank
+    const removeBank = async (bankId: string) => {
+        const confirm = await Swal.fire({
+            title: 'Remove Bank?',
+            text: 'Are you sure you want to remove this bank account?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, remove'
+        });
+        if (!confirm.isConfirmed) return;
+
+        try {
+            await api.driver.removeBankAccount(bankId);
+            Swal.fire({
+                icon: 'success',
+                title: 'Bank Removed',
+                text: 'Bank account has been removed successfully',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => fetchDriverData());
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Failed to remove bank account',
+                confirmButtonColor: '#ff5e00'
             });
         }
     };
@@ -937,7 +995,7 @@ const DriverProfile: React.FC = () => {
                                 </div>
                                 <div className="info-row">
                                     <div className="info-label">Phone Number</div>
-                                    <div className="info-value">{driverData?.phone}</div>
+                                    <div className="info-value">{driverData?.phone_number || driverData?.phone || 'Not provided'}</div>
                                 </div>
                                 <div className="info-row">
                                     <div className="info-label">Address</div>
@@ -959,19 +1017,23 @@ const DriverProfile: React.FC = () => {
                             <div className="info-grid">
                                 <div className="info-row">
                                     <div className="info-label">Vehicle Type</div>
-                                    <div className="info-value">{driverData?.vehicle_type?.toUpperCase() || 'Not provided'}</div>
+                                    <div className="info-value">{driverData?.vehicle?.vehicle_type?.toUpperCase() || 'Not provided'}</div>
                                 </div>
                                 <div className="info-row">
                                     <div className="info-label">Vehicle Model</div>
-                                    <div className="info-value">{driverData?.vehicle_model || 'Not provided'}</div>
+                                    <div className="info-value">{driverData?.vehicle?.vehicle_model || 'Not provided'}</div>
+                                </div>
+                                <div className="info-row">
+                                    <div className="info-label">Vehicle Color</div>
+                                    <div className="info-value">{driverData?.vehicle?.vehicle_color || 'Not provided'}</div>
                                 </div>
                                 <div className="info-row">
                                     <div className="info-label">Vehicle Year</div>
-                                    <div className="info-value">{driverData?.vehicle_year || 'Not provided'}</div>
+                                    <div className="info-value">{driverData?.vehicle?.vehicle_year || 'Not provided'}</div>
                                 </div>
                                 <div className="info-row">
                                     <div className="info-label">License Plate</div>
-                                    <div className="info-value">{driverData?.license_plate || 'Not provided'}</div>
+                                    <div className="info-value">{driverData?.vehicle?.plate_number || 'Not provided'}</div>
                                 </div>
                             </div>
 
@@ -1124,6 +1186,16 @@ const DriverProfile: React.FC = () => {
                                         />
                                     </div>
                                     <div className="form-group">
+                                        <label>Vehicle Color</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control" 
+                                            placeholder="e.g., White, Black, Blue"
+                                            value={vehicleColor} 
+                                            onChange={(e) => setVehicleColor(e.target.value)} 
+                                        />
+                                    </div>
+                                    <div className="form-group">
                                         <label>License Plate Number</label>
                                         <input 
                                             type="text" 
@@ -1157,6 +1229,41 @@ const DriverProfile: React.FC = () => {
                     {activeTab === 'bank' && (
                         <div className="tab-content active">
                             <h3>Bank Account Details</h3>
+                            
+                            {bankAccounts.length > 0 && (
+                                <div className="saved-banks">
+                                    <h4><i className="fas fa-university"></i> Your Saved Banks</h4>
+                                    {bankAccounts.map((bank: any) => (
+                                        <div key={bank.id} className={`saved-bank-item ${bank.is_default ? 'default' : ''}`}>
+                                            <div className="bank-info">
+                                                <span className="bank-name">{bank.bank_name}</span>
+                                                <span className="bank-account">••••{bank.account_number?.slice(-4)}</span>
+                                                {bank.is_default && <span className="default-badge">Default</span>}
+                                            </div>
+                                            <div className="bank-actions">
+                                                {!bank.is_default && (
+                                                    <button 
+                                                        type="button" 
+                                                        className="btn btn-sm btn-outline"
+                                                        onClick={() => setDefaultBank(bank.id)}
+                                                    >
+                                                        Set Default
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => removeBank(bank.id)}
+                                                >
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            <h4>{bankAccounts.length > 0 ? 'Add Another Bank' : 'Add Bank Account'}</h4>
                             <form onSubmit={updateBank}>
                                 <div className="form-grid">
                                     <div className="form-group">
