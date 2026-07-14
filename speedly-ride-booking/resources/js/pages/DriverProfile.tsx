@@ -1,12 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import api from '../services/api';
 import { usePreloader } from '../hooks/usePreloader';
 import { useMobile } from '../hooks/useMobile';
 import DesktopPreloader from '../components/preloader/DesktopPreloader';
-import DriverProfileMobile from '../components/mobileViewComponent/DriverProfileMobile';
 import '../../css/DriverProfile.css';
+
+const DriverProfileMobile = lazy(() => import('../components/mobileViewComponent/DriverProfileMobile'));
+
+class MobileViewErrorBoundary extends React.Component<
+    { children: React.ReactNode },
+    { hasError: boolean; error: Error | null }
+> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, info: React.ErrorInfo) {
+        console.error('DriverProfileMobile failed to load:', error, info);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: 24, textAlign: 'center' }}>
+                    <p>We couldn't load the mobile view. Please refresh, or use a larger screen for now.</p>
+                    <p style={{ fontSize: 12, color: '#999' }}>{this.state.error?.message}</p>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 interface DriverData {
     id: string;
@@ -733,7 +764,13 @@ const DriverProfile: React.FC = () => {
 
     // Render mobile view after loading is complete
     if (isMobile) {
-        return <DriverProfileMobile />;
+        return (
+            <MobileViewErrorBoundary>
+                <Suspense fallback={<DesktopPreloader />}>
+                    <DriverProfileMobile />
+                </Suspense>
+            </MobileViewErrorBoundary>
+        );
     }
 
     const getKycStatusBadge = () => {
