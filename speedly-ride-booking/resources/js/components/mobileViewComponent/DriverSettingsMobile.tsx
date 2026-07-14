@@ -40,6 +40,7 @@ const DriverSettingsMobile: React.FC = () => {
     const [plateNumber, setPlateNumber] = useState<string>('');
     const [insuranceExpiry, setInsuranceExpiry] = useState<string>('');
     const [roadWorthinessExpiry, setRoadWorthinessExpiry] = useState<string>('');
+    const [vehicleImageUrl, setVehicleImageUrl] = useState<string>('');
     const [bankAccounts, setBankAccounts] = useState<BankDetails[]>([]);
     const [todayEarnings, setTodayEarnings] = useState<number>(0);
     const [totalEarnings, setTotalEarnings] = useState<number>(0);
@@ -71,6 +72,7 @@ const DriverSettingsMobile: React.FC = () => {
                     setPlateNumber(d.vehicle?.plate_number || '');
                     setInsuranceExpiry(d.vehicle?.insurance_expiry || '');
                     setRoadWorthinessExpiry(d.vehicle?.road_worthiness_expiry || '');
+                    setVehicleImageUrl(d.vehicle?.vehicle_image_url || '');
                     setTodayEarnings(d.today_earnings || 0);
                     setTotalEarnings(d.total_earnings || 0);
                     setNotificationCount(profileData.data?.notification_count || profileData.notification_count || 0);
@@ -711,6 +713,48 @@ const DriverSettingsMobile: React.FC = () => {
                                     <div className="item-details">
                                         <h3>Vehicle Details</h3>
                                         <p>{vehicleModel ? `${vehicleModel} • ${plateNumber}` : 'Add your vehicle information'}</p>
+                                    </div>
+                                </div>
+                                <div className="item-action"><i className="fas fa-chevron-right"></i></div>
+                            </div>
+
+                            <div className="settings-item" onClick={() => {
+                                const fileInput = document.createElement('input');
+                                fileInput.type = 'file';
+                                fileInput.accept = 'image/jpeg,image/png,image/jpg,image/gif,image/webp';
+                                fileInput.style.display = 'none';
+                                fileInput.onchange = async (e: any) => {
+                                    const file = e.target?.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > 5 * 1024 * 1024) {
+                                        Swal.fire({ icon: 'error', title: 'File too large', text: 'Maximum file size is 5MB', confirmButtonColor: '#ff5e00' });
+                                        return;
+                                    }
+                                    const formData = new FormData();
+                                    formData.append('vehicle_image', file);
+                                    Swal.fire({ title: 'Uploading...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                                    try {
+                                        const data = await api.driver.uploadVehicleImage(formData);
+                                        Swal.close();
+                                        if (data.success) {
+                                            Swal.fire({ icon: 'success', title: 'Image Uploaded', text: 'Vehicle image updated', timer: 1500, showConfirmButton: false }).then(() => fetchSettingsData());
+                                        } else {
+                                            Swal.fire({ icon: 'error', title: 'Upload Failed', text: data.message || 'Failed to upload image', confirmButtonColor: '#ff5e00' });
+                                        }
+                                    } catch {
+                                        Swal.close();
+                                        Swal.fire({ icon: 'error', title: 'Upload Failed', text: 'An error occurred', confirmButtonColor: '#ff5e00' });
+                                    }
+                                };
+                                document.body.appendChild(fileInput);
+                                fileInput.click();
+                                document.body.removeChild(fileInput);
+                            }}>
+                                <div className="item-info">
+                                    <div className="item-icon"><i className="fas fa-camera"></i></div>
+                                    <div className="item-details">
+                                        <h3>Vehicle Image</h3>
+                                        <p>{vehicleImageUrl ? 'Image uploaded' : 'Add vehicle photo'}</p>
                                     </div>
                                 </div>
                                 <div className="item-action"><i className="fas fa-chevron-right"></i></div>

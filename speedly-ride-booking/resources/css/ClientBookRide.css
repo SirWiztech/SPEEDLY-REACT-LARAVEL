@@ -751,10 +751,31 @@
 .driver-car {
     font-size: 13px;
     color: #666;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
 }
 
 .driver-car i {
     margin-right: 5px;
+}
+
+.driver-vehicle-thumb {
+    margin-top: 8px;
+    width: 100%;
+    max-width: 160px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #eee;
+}
+
+.driver-vehicle-thumb img {
+    width: 100%;
+    height: auto;
+    max-height: 80px;
+    object-fit: cover;
+    display: block;
 }
 
 .driver-stats {

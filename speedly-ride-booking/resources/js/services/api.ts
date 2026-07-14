@@ -171,6 +171,8 @@ export const api = {
       apiFetch(`/driver/bank/${id}`, { method: 'DELETE' }),
     updateVehicle: (data: { vehicle_type?: string; vehicle_model?: string; vehicle_color?: string; plate_number?: string; vehicle_year?: string }) =>
       apiFetch('/driver/vehicle/update', { method: 'POST', body: JSON.stringify(data) }),
+    uploadVehicleImage: (formData: FormData) =>
+      apiFetch('/driver/vehicle/upload-image', { method: 'POST', body: formData }),
   },
 
   // Rides

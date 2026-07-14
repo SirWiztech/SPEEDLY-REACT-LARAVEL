@@ -188,6 +188,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Vehicle
         Route::post('/vehicle/update', [DriverController::class, 'updateVehicle']);
 
+        // Vehicle image upload
+        Route::post('/vehicle/upload-image', [DriverController::class, 'uploadVehicleImage']);
+
         // Bank details
         Route::get('/bank', [DriverBankController::class, 'getBankDetails']);
         Route::post('/bank/save', [DriverBankController::class, 'saveBankDetails']);

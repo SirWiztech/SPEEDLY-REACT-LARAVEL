@@ -16,6 +16,7 @@ use App\Models\DriverRideDecline;
 use App\Models\SupportTicket;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 
 class DriverController extends Controller
@@ -401,6 +402,7 @@ class DriverController extends Controller
                 'vehicle_year' => $vehicle->vehicle_year,
                 'plate_number' => $vehicle->plate_number,
                 'vehicle_type' => $vehicle->vehicle_type,
+                'vehicle_image_url' => $vehicle->vehicle_image_url,
             ] : null,
             'notification_settings' => $defaultNotifPrefs,
             'schedule' => [],
@@ -638,17 +640,19 @@ class DriverController extends Controller
             'vehicle_color' => 'sometimes|string|max:50',
             'plate_number' => 'sometimes|string|max:20',
             'vehicle_year' => 'sometimes|string|max:4',
+            'vehicle_image_url' => 'sometimes|string|nullable',
         ]);
 
+        $vehicleFields = ['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year', 'vehicle_image_url'];
         $vehicle = DriverVehicle::where('driver_id', $driverProfile->id)->first();
 
         if ($vehicle) {
-            $vehicle->update($request->only(['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year']));
+            $vehicle->update($request->only($vehicleFields));
         } else {
             $vehicle = DriverVehicle::create([
                 'id' => (string) Str::uuid(),
                 'driver_id' => $driverProfile->id,
-                ...$request->only(['vehicle_type', 'vehicle_model', 'vehicle_color', 'plate_number', 'vehicle_year'])
+                ...$request->only($vehicleFields)
             ]);
         }
 
@@ -738,6 +742,56 @@ class DriverController extends Controller
         return response()->json([
             'success' => true,
             'data' => $tickets,
+        ]);
+    }
+
+    public function uploadVehicleImage(Request $request)
+    {
+        $user = $request->user();
+        $driverProfile = $user->driverProfile;
+
+        if (!$driverProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Driver profile not found'
+            ]);
+        }
+
+        $request->validate([
+            'vehicle_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        $file = $request->file('vehicle_image');
+        $filename = 'vehicle_' . $driverProfile->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('vehicle_images', $filename, 'public');
+
+        if (!$path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload vehicle image'
+            ], 500);
+        }
+
+        $url = asset('storage/' . $path);
+
+        $vehicle = DriverVehicle::where('driver_id', $driverProfile->id)->first();
+        if ($vehicle) {
+            $vehicle->vehicle_image_url = $url;
+            $vehicle->save();
+        } else {
+            $vehicle = DriverVehicle::create([
+                'id' => (string) Str::uuid(),
+                'driver_id' => $driverProfile->id,
+                'vehicle_image_url' => $url,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vehicle image uploaded successfully',
+            'data' => [
+                'vehicle_image_url' => $url,
+            ]
         ]);
     }
 }

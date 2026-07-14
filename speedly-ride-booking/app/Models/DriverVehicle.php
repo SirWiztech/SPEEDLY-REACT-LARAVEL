@@ -12,7 +12,7 @@ class DriverVehicle extends Model
 
     protected $fillable = [
         'id', 'driver_id', 'vehicle_type', 'vehicle_model',
-        'vehicle_color', 'plate_number', 'vehicle_year', 'is_active',
+        'vehicle_color', 'plate_number', 'vehicle_year', 'vehicle_image_url', 'is_active',
     ];
 
     protected $casts = [

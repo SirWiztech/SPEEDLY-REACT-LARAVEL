@@ -35,6 +35,7 @@ interface Driver {
     plate: string;
     type: string;
     photo?: string;
+    vehicle_image?: string;
 }
 
 interface SavedLocation {
@@ -385,7 +386,8 @@ const ClientBookRideMobile: React.FC = () => {
                     vehicle: d.vehicle?.vehicle_type || 'Standard',
                     plate: d.vehicle?.plate_number || '',
                     type: d.vehicle?.vehicle_type || 'standard',
-                    photo: d.user?.profile_picture_url || undefined
+                    photo: d.user?.profile_picture_url || undefined,
+                    vehicle_image: d.vehicle?.vehicle_image_url || undefined
                 })));
             }
         } catch (error) {
@@ -1304,6 +1306,11 @@ const ClientBookRideMobile: React.FC = () => {
                                                     <span>{driver.rating}</span>
                                                 </div>
                                                 <div className="mobile-driver-vehicle"><i className="fas fa-car"></i> {driver.vehicle}</div>
+                                                {driver.vehicle_image ? (
+                                                    <div className="mobile-driver-vehicle-thumb">
+                                                        <img src={driver.vehicle_image} alt="Vehicle" />
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                         <div className="mobile-driver-stats">

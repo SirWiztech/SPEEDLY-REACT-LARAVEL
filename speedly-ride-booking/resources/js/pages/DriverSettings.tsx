@@ -39,6 +39,7 @@ interface VehicleData {
     insurance_expiry: string;
     road_worthiness_expiry: string;
     vehicle_active: boolean;
+    vehicle_image_url?: string;
 }
 
 interface BankDetails {
@@ -80,7 +81,8 @@ const DriverSettings: React.FC = () => {
         passenger_capacity: 4,
         insurance_expiry: '',
         road_worthiness_expiry: '',
-        vehicle_active: true
+        vehicle_active: true,
+        vehicle_image_url: ''
     });
     const [bankAccounts, setBankAccounts] = useState<BankDetails[]>([]);
     const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
@@ -123,7 +125,8 @@ const DriverSettings: React.FC = () => {
                         passenger_capacity: d.vehicle?.passenger_capacity || 4,
                         insurance_expiry: '',
                         road_worthiness_expiry: '',
-                        vehicle_active: true
+                        vehicle_active: true,
+                        vehicle_image_url: d.vehicle?.vehicle_image_url || ''
                     });
                     setNotificationSettings(d.notification_settings || { ride_requests: true, earnings_notif: true, sound_alerts: true, promotions: false });
                     setSchedule(d.schedule || []);
@@ -733,6 +736,51 @@ const DriverSettings: React.FC = () => {
                                     {vehicleData.plate_number && (
                                         <span className="item-badge">{vehicleData.plate_number}</span>
                                     )}
+                                    <i className="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                            <div className="settings-item" onClick={() => {
+                                const fileInput = document.createElement('input');
+                                fileInput.type = 'file';
+                                fileInput.accept = 'image/jpeg,image/png,image/jpg,image/gif,image/webp';
+                                fileInput.style.display = 'none';
+                                fileInput.onchange = async (e: any) => {
+                                    const file = e.target?.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > 5 * 1024 * 1024) {
+                                        Swal.fire({ icon: 'error', title: 'File too large', text: 'Maximum file size is 5MB', confirmButtonColor: '#ff5e00' });
+                                        return;
+                                    }
+                                    const formData = new FormData();
+                                    formData.append('vehicle_image', file);
+                                    Swal.fire({ title: 'Uploading...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                                    try {
+                                        const data = await api.driver.uploadVehicleImage(formData);
+                                        Swal.close();
+                                        if (data.success) {
+                                            Swal.fire({ icon: 'success', title: 'Image Uploaded', text: 'Vehicle image updated', timer: 1500, showConfirmButton: false }).then(() => fetchSettingsData());
+                                        } else {
+                                            Swal.fire({ icon: 'error', title: 'Upload Failed', text: data.message || 'Failed to upload image', confirmButtonColor: '#ff5e00' });
+                                        }
+                                    } catch {
+                                        Swal.close();
+                                        Swal.fire({ icon: 'error', title: 'Upload Failed', text: 'An error occurred', confirmButtonColor: '#ff5e00' });
+                                    }
+                                };
+                                document.body.appendChild(fileInput);
+                                fileInput.click();
+                                document.body.removeChild(fileInput);
+                            }}>
+                                <div className="settings-item-label">
+                                    <i className="fas fa-camera"></i>
+                                    <span>Vehicle Image</span>
+                                </div>
+                                <div className="settings-item-action">
+                                    {vehicleData.vehicle_id ? (
+                                        <span className="item-badge">
+                                            {vehicleData.vehicle_image_url ? '\u2705' : '\u274C'}
+                                        </span>
+                                    ) : null}
                                     <i className="fas fa-chevron-right"></i>
                                 </div>
                             </div>

@@ -315,6 +315,99 @@ const DriverProfile: React.FC = () => {
         }
     };
 
+    // Update vehicle
+    const updateVehicle = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        Swal.fire({
+            title: 'Updating Vehicle...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        try {
+            const data = await api.driver.updateVehicle({
+                vehicle_type: vehicleType,
+                vehicle_model: vehicleModel,
+                vehicle_year: vehicleYear,
+                plate_number: licensePlate
+            });
+            
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Vehicle Updated',
+                    text: 'Your vehicle information has been updated successfully',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    fetchDriverData();
+                    setActiveTab('view');
+                });
+            } else {
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Update Failed', 
+                    text: data.message || 'Failed to update vehicle',
+                    confirmButtonColor: '#ff5e00' 
+                });
+            }
+        } catch (error) {
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Error', 
+                text: 'Failed to update vehicle',
+                confirmButtonColor: '#ff5e00' 
+            });
+        }
+    };
+
+    // Update bank details
+    const updateBank = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        Swal.fire({
+            title: 'Saving Bank Details...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        try {
+            const data = await api.driver.saveBankDetails({
+                bank_name: bankName,
+                account_number: accountNumber,
+                account_name: accountName
+            });
+            
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Bank Details Saved',
+                    text: 'Your bank details have been updated successfully',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    fetchDriverData();
+                    setActiveTab('view');
+                });
+            } else {
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Save Failed', 
+                    text: data.message || 'Failed to save bank details',
+                    confirmButtonColor: '#ff5e00' 
+                });
+            }
+        } catch (error) {
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Error', 
+                text: 'Failed to save bank details',
+                confirmButtonColor: '#ff5e00' 
+            });
+        }
+    };
+
     // Toggle availability
     const toggleAvailability = async (status: boolean) => {
         setIsAvailable(status);
@@ -946,7 +1039,7 @@ const DriverProfile: React.FC = () => {
                     {activeTab === 'vehicle' && (
                         <div className="tab-content active">
                             <h3>Vehicle Information</h3>
-                            <form onSubmit={updateProfile}>
+                            <form onSubmit={updateVehicle}>
                                 <div className="form-grid">
                                     <div className="form-group">
                                         <label>Vehicle Type</label>
@@ -1018,7 +1111,7 @@ const DriverProfile: React.FC = () => {
                     {activeTab === 'bank' && (
                         <div className="tab-content active">
                             <h3>Bank Account Details</h3>
-                            <form onSubmit={updateProfile}>
+                            <form onSubmit={updateBank}>
                                 <div className="form-grid">
                                     <div className="form-group">
                                         <label>Bank Name</label>
